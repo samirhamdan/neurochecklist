@@ -1,16 +1,18 @@
-/**
- * Barra de credibilidade — mini-bio de 1 linha logo abaixo do hero.
- */
 export default function CredibilityBar() {
   return (
-    <aside className="border-y border-brand-100 bg-brand-900">
-      <div className="section-container py-4">
-        <p className="text-center text-sm leading-relaxed text-brand-100 sm:text-base">
-          Por <strong className="text-white">Prof. Dr. Amer Cavalheiro Hamdan</strong>{" "}
+    <div className="bg-ink py-5 text-[.92rem] text-[#B7C2D6]">
+      <div className="wrap flex flex-wrap items-center justify-center gap-x-[26px] gap-y-2.5 text-center">
+        <span className="font-mono text-[.76rem] uppercase tracking-[.08em] text-amber-soft">
+          Autoria
+        </span>
+        <p className="m-0">
+          <b className="font-medium text-white">
+            Prof. Dr. Amer Cavalheiro Hamdan
+          </b>{" "}
           — Professor de Neuropsicologia da UFPR · Pós-doutorado McGill
           University · Especialista em Neuropsicologia (CFP)
         </p>
       </div>
-    </aside>
+    </div>
   );
 }

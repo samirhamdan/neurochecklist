@@ -1,20 +1,19 @@
+import Nav from "@/components/Nav";
 import Hero from "@/components/Hero";
 import CredibilityBar from "@/components/CredibilityBar";
 import PainSection from "@/components/PainSection";
 import MethodSection from "@/components/MethodSection";
-import KitSection from "@/components/KitSection";
 import AuthorSection from "@/components/AuthorSection";
 import AudienceSection from "@/components/AudienceSection";
 import FaqSection from "@/components/FaqSection";
 import OfferSection from "@/components/OfferSection";
-import SectionCta from "@/components/SectionCta";
-import StickyCta from "@/components/StickyCta";
 import Footer from "@/components/Footer";
+import StickyCta from "@/components/StickyCta";
+import RevealObserver from "@/components/RevealObserver";
 import { site, faqItems } from "@/lib/site";
-// import Testimonials from "@/components/Testimonials";        // [PREENCHER] ativar quando houver depoimentos reais (ver components/Testimonials.tsx)
-// import LimitedBonusBanner from "@/components/LimitedBonusBanner"; // ativar apenas com campanha real (ver components/LimitedBonusBanner.tsx)
+// import Testimonials from "@/components/Testimonials";
+// import LimitedBonusBanner from "@/components/LimitedBonusBanner";
 
-/** Schema.org — Product + Person (autor) + FAQPage */
 function JsonLd() {
   const data = {
     "@context": "https://schema.org",
@@ -72,43 +71,32 @@ export default function Page() {
 
       {/* <LimitedBonusBanner /> */}
 
+      <a
+        className="absolute -left-[9999px] top-0 z-[100] bg-ink px-[18px] py-3 text-[.9rem] text-white no-underline focus:left-3 focus:top-3"
+        href="#conteudo"
+      >
+        Ir para o conteúdo
+      </a>
+
+      <Nav />
+
       <main>
-        {/* a. Hero + b. barra de credibilidade */}
         <Hero />
         <CredibilityBar />
-
-        {/* c. A dor + d. a virada */}
         <PainSection />
         <MethodSection />
-        <SectionCta
-          location="apos-metodo"
-          headline="Comece a estruturar sua triagem ainda esta semana."
-        />
 
-        {/* e. O que você recebe + f. autoridade */}
-        <KitSection />
-        <AuthorSection />
-        <SectionCta
-          location="apos-autor"
-          headline="O protocolo de 30 anos de pesquisa, pronto para a sua clínica."
-        />
-
-        {/* Depoimentos — ativar apenas com depoimentos reais e autorizados */}
         {/* <Testimonials /> */}
 
-        {/* g. Qualificação + h. FAQ */}
+        <AuthorSection />
         <AudienceSection />
         <FaqSection />
-
-        {/* i. Oferta final */}
         <OfferSection />
       </main>
 
-      {/* j. Rodapé */}
       <Footer />
-
-      {/* CTA fixo no mobile */}
       <StickyCta />
+      <RevealObserver />
     </>
   );
 }
