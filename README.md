@@ -48,7 +48,7 @@ Alternativa via CLI: `npx vercel` na raiz do projeto.
 
 | O quê | Onde |
 | --- | --- |
-| **Preço, parcelamento, link do checkout, CRP, FAQ, itens do kit** | [`lib/site.ts`](lib/site.ts) — configuração central |
+| **Preço (R$ 197, 20× de R$ 20,37), link do checkout, FAQ, itens do kit** | [`lib/site.ts`](lib/site.ts) — configuração central |
 | Headline do hero (3 variações A/B) | [`components/Hero.tsx`](components/Hero.tsx) → `ACTIVE_HEADLINE` |
 | Copy das seções | `components/*.tsx` (uma seção por arquivo) |
 | Ordem das seções | [`app/page.tsx`](app/page.tsx) |
@@ -56,14 +56,20 @@ Alternativa via CLI: `npx vercel` na raiz do projeto.
 | Imagem de compartilhamento (og:image) | [`app/opengraph-image.tsx`](app/opengraph-image.tsx) (gerada no build) |
 | Cores/tokens de design | [`tailwind.config.ts`](tailwind.config.ts) |
 
+## Design
+
+A paleta é baseada na capa do produto — azul escuro (`ink: #0F172B`) como base,
+com acentos em âmbar (`amber: #C4792E`) para destaque. Tipografia:
+**Instrument Serif** (títulos), **IBM Plex Sans** (corpo), **IBM Plex Mono**
+(rótulos e microcopy).
+
+As imagens do autor (`public/prof-hamdan.webp`) e da capa do produto
+(`public/capa-neurochecklist.webp`) já estão no repositório.
+
 ## Pendências marcadas com `[PREENCHER]`
 
 Busque por `PREENCHER` no código. Resumo:
 
-- **CRP do autor** — `lib/site.ts` (`author.crp`);
-- **Foto profissional do Prof. Hamdan** — `components/AuthorSection.tsx`
-  (salvar em `/public/prof-hamdan.webp` e trocar o placeholder por `next/image`);
-- **Mockups do kit** — `components/KitSection.tsx` e `components/Hero.tsx`;
 - **IDs de rastreamento** — `.env.local` / variáveis na Vercel;
 - **Política de Privacidade e Termos de Uso** — `app/politica-de-privacidade/`
   e `app/termos-de-uso/` (texto jurídico definitivo antes de tráfego pago).

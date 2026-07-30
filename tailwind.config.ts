@@ -1,10 +1,5 @@
 import type { Config } from "tailwindcss";
 
-/**
- * Tokens de design — paleta sóbria/científica.
- * brand  = azul-profundo (autoridade, calma clínica)
- * accent = verde-petróleo (ação/CTA, sem "vermelho de lançamento")
- */
 const config: Config = {
   content: [
     "./app/**/*.{ts,tsx}",
@@ -14,45 +9,30 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: "#f0f6fa",
-          100: "#dcebf3",
-          200: "#bcd8e8",
-          300: "#8dbcd6",
-          400: "#579abd",
-          500: "#357ea3",
-          600: "#256689",
-          700: "#1f5270",
-          800: "#1e465d",
-          900: "#0e3a5d",
-          950: "#0a2740",
-        },
-        accent: {
-          50: "#f0fdf9",
-          100: "#ccfbef",
-          500: "#14b8a6",
-          600: "#0d9488",
-          700: "#0f766e",
-          800: "#115e59",
-        },
-        /** Dourado/âmbar sutil — reservado para destaques de credencial */
-        gold: {
-          100: "#fdf3d9",
-          300: "#f0d78c",
-          400: "#e2b64f",
-          500: "#c99a2e",
-          600: "#a67c1f",
-        },
-      },
-      backgroundImage: {
-        "hero-glow":
-          "radial-gradient(60% 50% at 85% 20%, rgba(87,154,189,0.18) 0%, rgba(87,154,189,0) 100%), radial-gradient(45% 40% at 10% 85%, rgba(20,184,166,0.12) 0%, rgba(20,184,166,0) 100%)",
+        ink: "#0F172B",
+        "ink-soft": "#1C2942",
+        body: "#46536B",
+        paper: "#EBEEF4",
+        "paper-warm": "#F5F6FA",
+        line: "#D5DAE5",
+        amber: "#C4792E",
+        "amber-ink": "#A05A1E",
+        "amber-soft": "#E6C49C",
+        steel: "#5D8CB9",
+        sage: "#5F8AA0",
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        serif: ["var(--font-instrument-serif)", "Georgia", "serif"],
+        sans: ["var(--font-ibm-plex-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-ibm-plex-mono)", "monospace"],
+      },
+      fontSize: {
+        h1: "clamp(2.45rem, 5.2vw, 4.05rem)",
+        h2: "clamp(1.95rem, 3.6vw, 2.85rem)",
       },
       maxWidth: {
-        content: "72rem",
+        content: "1120px",
+        reading: "680px",
       },
     },
   },

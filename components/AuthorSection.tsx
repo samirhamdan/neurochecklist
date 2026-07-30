@@ -1,131 +1,104 @@
-import { Landmark, GraduationCap, Globe2, Award, User } from "lucide-react";
-import { site } from "@/lib/site";
+import Image from "next/image";
 
-/** Linha do tempo de credenciais — mesmo texto usado antes, agora com ícone + marcador visual */
 const TIMELINE = [
-  { icon: Landmark, label: "Prof. UFPR desde 2005" },
-  { icon: GraduationCap, label: "Doutorado UNIFESP" },
-  { icon: Globe2, label: "Pós-doc McGill" },
-  { icon: Award, label: "Especialista em Neuropsicologia (CFP)" },
+  { time: "Doutorado", label: "Psicobiologia — UNIFESP" },
+  { time: "Pós-doc", label: "McGill University, Canadá" },
+  { time: "2005 →", label: "Docente de Neuropsicologia — UFPR" },
+  { time: "Título", label: "Especialista em Neuropsicologia — CFP" },
+  { time: "Pesquisa", label: "Normatização brasileira do RAVLT e do Teste das Trilhas" },
 ];
 
-/**
- * Seção de autoridade completa do Prof. Hamdan. Copy oficial.
- * Tratamento de destaque: fundo escuro dramático, foto grande, citação de
- * impacto para o gancho do RAVLT/Trilhas, credenciais em linha do tempo.
- */
 export default function AuthorSection() {
   return (
     <section
-      className="bg-gradient-to-b from-brand-950 via-brand-950 to-brand-900 text-white"
+      className="bg-ink py-[clamp(64px,9vw,120px)] text-[#B7C2D6]"
       id="autor"
     >
-      <div className="section-container section-padding">
-        <div className="mx-auto max-w-4xl">
-          {/* Citação de impacto — gancho RAVLT/Trilhas */}
-          <div className="relative mx-auto max-w-3xl">
-            <span
-              className="pointer-events-none absolute -left-3 -top-10 select-none font-serif text-8xl leading-none text-gold-400/25 sm:-left-8 sm:text-9xl"
-              aria-hidden="true"
-            >
-              &ldquo;
-            </span>
-            <blockquote className="relative border-l-4 border-gold-400 py-1 pl-6 sm:pl-9">
-              <p className="text-balance text-2xl font-bold leading-snug tracking-tight sm:text-3xl lg:text-4xl">
-                Se você usa as normas brasileiras do{" "}
-                <span className="text-accent-400">RAVLT</span> ou do{" "}
-                <span className="text-accent-400">Teste das Trilhas</span>,
-                você já usa a pesquisa dele.
-              </p>
-            </blockquote>
-          </div>
+      <div className="wrap rv">
+        <span className="eyebrow text-steel before:bg-steel">Quem assina</span>
+        <p
+          className="font-serif leading-[1.2] text-white"
+          style={{ fontSize: "clamp(1.9rem, 4vw, 3rem)", maxWidth: "22ch" }}
+        >
+          Se você usa as normas brasileiras do{" "}
+          <b className="font-normal italic text-amber-soft">RAVLT</b> ou do{" "}
+          <b className="font-normal italic text-amber-soft">
+            Teste das Trilhas
+          </b>
+          , você já usa a pesquisa dele.
+        </p>
 
-          <div className="mt-16 grid items-center gap-10 lg:grid-cols-[300px_1fr] lg:gap-14">
-            {/*
-              [PREENCHER] Foto profissional do Prof. Hamdan.
-              Salve em /public/prof-hamdan.webp (ideal: 640x640, WebP) e troque
-              o placeholder por:
-
-              <Image src="/prof-hamdan.webp" width={300} height={300}
+        <div className="mt-12 grid items-start gap-[60px] max-[900px]:grid-cols-1 min-[901px]:grid-cols-[.9fr_1.1fr]">
+          <div>
+            <figure className="relative grid place-items-end justify-items-center pt-[18px] max-[900px]:mx-auto max-[900px]:max-w-[320px]">
+              <div
+                className="absolute left-1/2 top-[8%] z-0 aspect-square w-[88%] -translate-x-1/2 rounded-full"
+                style={{
+                  background:
+                    "radial-gradient(circle, rgba(196,121,46,.24) 0%, rgba(196,121,46,.06) 45%, transparent 70%)",
+                }}
+                aria-hidden="true"
+              />
+              <Image
+                src="/prof-hamdan.webp"
                 alt="Prof. Dr. Amer Cavalheiro Hamdan"
-                className="aspect-square w-full rounded-2xl object-cover" />
-            */}
-            <div className="relative mx-auto w-full max-w-[280px] lg:mx-0">
-              <div
-                className="absolute -inset-3 rounded-3xl border border-gold-400/25"
-                aria-hidden="true"
+                width={340}
+                height={340}
+                className="relative z-[1] block h-auto w-full max-w-[340px]"
+                style={{
+                  filter:
+                    "grayscale(.22) contrast(1.05) drop-shadow(0 22px 34px rgba(0,0,0,.45))",
+                }}
               />
-              <div
-                className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-brand-700 bg-brand-900 shadow-2xl shadow-black/30"
-                role="img"
-                aria-label="Foto do Prof. Dr. Amer Cavalheiro Hamdan"
-              >
-                <div className="flex flex-col items-center gap-2 text-brand-400">
-                  <User className="h-16 w-16" strokeWidth={1.25} aria-hidden="true" />
-                  <p className="max-w-[10rem] text-center text-xs">
-                    [PREENCHER: foto profissional]
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 text-lg leading-relaxed text-brand-100">
-              <p>
-                O <strong className="text-white">{site.author.name}</strong> é
-                professor de Neuropsicologia da Universidade Federal do
-                Paraná, onde ensina avaliação neuropsicológica há mais de duas
-                décadas.
-              </p>
-              <p>
-                Doutor em Psicobiologia pela UNIFESP, com pós-doutorado na
-                McGill University (Canadá) e título de Especialista em
-                Neuropsicologia pelo Conselho Federal de Psicologia, dedicou
-                sua carreira a uma única pergunta:{" "}
-                <em className="text-white">
-                  como diferenciar, com rigor, o envelhecimento cognitivo
-                  normal do patológico?
-                </em>
-              </p>
-              <p>
-                Dessa trajetória vieram estudos de normatização de
-                instrumentos que hoje fazem parte da rotina de laudo de
-                psicólogos em todo o Brasil — entre eles o RAVLT e o Teste das
-                Trilhas —, além de livro e capítulos em obras de referência da
-                neuropsicologia brasileira.
-              </p>
-              <p className="font-medium text-white">
-                Este checklist é a versão prática desses 30 anos: o que a
-                pesquisa mostra, organizado do jeito que a clínica precisa.
-              </p>
-            </div>
+              <figcaption className="relative z-[2] mt-3.5 w-full border-t border-[#27334B] pt-4 font-mono text-[.78rem] leading-relaxed text-[#EAEEF6]">
+                Prof. Dr. Amer Cavalheiro Hamdan
+                <br />
+                <span className="text-[.7rem] uppercase tracking-[.12em] text-amber-soft">
+                  Neuropsicologia do envelhecimento
+                </span>
+              </figcaption>
+            </figure>
           </div>
+          <div>
+            <p>
+              O{" "}
+              <b className="font-medium text-white">
+                Prof. Dr. Amer Cavalheiro Hamdan
+              </b>{" "}
+              é professor de Neuropsicologia da Universidade Federal do Paraná,
+              onde ensina avaliação neuropsicológica há mais de duas décadas.
+            </p>
+            <p>
+              Doutor em Psicobiologia pela UNIFESP, com pós-doutorado na McGill
+              University e título de Especialista em Neuropsicologia pelo
+              Conselho Federal de Psicologia, dedicou a carreira a uma única
+              pergunta: como diferenciar, com rigor, o envelhecimento cognitivo
+              normal do patológico.
+            </p>
+            <p>
+              Dessa trajetória vieram estudos de normatização de instrumentos que
+              hoje fazem parte da rotina de laudo de psicólogos em todo o Brasil,
+              além de livro e capítulos em obras de referência da neuropsicologia
+              brasileira.
+            </p>
+            <p className="text-[#DEE5F1]">
+              Este checklist é a versão prática desses trinta anos: o que a
+              pesquisa mostra, organizado do jeito que a clínica precisa.
+            </p>
 
-          {/* Linha do tempo de credenciais */}
-          <div className="mt-16">
-            <ol className="relative grid gap-8 sm:grid-cols-4 sm:gap-4">
-              <div
-                className="absolute left-0 right-0 top-6 hidden h-px bg-gradient-to-r from-transparent via-brand-700 to-transparent sm:block"
-                aria-hidden="true"
-              />
-              {TIMELINE.map(({ icon: Icon, label }) => (
+            <ul className="mt-10 list-none border-t border-[#27334B60]">
+              {TIMELINE.map(({ time, label }) => (
                 <li
-                  key={label}
-                  className="relative flex flex-col items-center gap-3 text-center"
+                  key={time}
+                  className="flex items-baseline gap-[18px] border-b border-[#27334B] py-4"
                 >
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gold-400/40 bg-brand-900 text-gold-400 shadow-md shadow-black/20">
-                    <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
-                  </span>
-                  <span className="text-sm font-medium text-brand-100">
-                    {label}
-                  </span>
+                  <time className="w-24 flex-none font-mono text-[.78rem] tracking-[.02em] text-amber-soft">
+                    {time}
+                  </time>
+                  <span className="text-[.97rem] text-[#C7D2E4]">{label}</span>
                 </li>
               ))}
-            </ol>
-
-            {/* [PREENCHER] CRP em lib/site.ts */}
-            <p className="mt-10 text-center text-sm text-brand-400">
-              {site.author.crp}
-            </p>
+            </ul>
           </div>
         </div>
       </div>

@@ -1,28 +1,17 @@
-/**
- * ============================================================
- * CONFIGURAÇÃO CENTRAL DA PÁGINA
- * Edite aqui: preço, links, CRP, nomes, FAQ e itens do kit.
- * Todos os componentes leem deste arquivo — não há preço/link
- * "hardcoded" espalhado pelo código.
- * ============================================================
- */
-
 export const site = {
   productName: "NeuroChecklist",
   productFullName:
     "Checklist de Triagem Neuropsicológica — Guia Prático para Psicólogos",
 
-  /** URL pública final (canonical/OG). Definida via env na Vercel. */
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://neurochecklist.vercel.app",
 
-  /** Link de checkout da Hotmart (os parâmetros UTM são anexados no clique) */
   checkoutUrl:
     "https://pay.hotmart.com/V106813542Y?off=ebi160sc&hotfeature=51",
 
   price: {
-    full: "R$ 297",
-    fullNumber: 297,
-    installments: "12x de R$ 29,64",
+    full: "R$ 197",
+    fullNumber: 197,
+    installments: "20× de R$ 20,37",
     currency: "BRL",
   },
 
@@ -31,18 +20,14 @@ export const site = {
   author: {
     name: "Prof. Dr. Amer Cavalheiro Hamdan",
     shortName: "Prof. Dr. Amer C. Hamdan",
-    // [PREENCHER] CRP do autor — aparece na seção de autoridade e no rodapé
-    crp: "CRP [PREENCHER]",
     role: "Professor de Neuropsicologia da UFPR",
   },
 
-  /** CTA padrão e microcopy — usados em todos os botões */
   cta: {
     label: "Quero o protocolo completo",
     microcopy: "Acesso imediato · Garantia de 7 dias · Compra segura via Hotmart",
   },
 
-  /** Aviso de escopo — rodapé */
   footerDisclaimer:
     "Este material é um instrumento de apoio à prática profissional do psicólogo e não substitui avaliação neuropsicológica completa, julgamento clínico ou diagnóstico médico.",
 
@@ -52,7 +37,6 @@ export const site = {
     "Da suspeita à conduta em 2 sessões: protocolo estruturado de triagem neuropsicológica para psicólogos que atendem idosos, com parâmetros validados para a população brasileira. Por Prof. Dr. Amer C. Hamdan (UFPR).",
 };
 
-/** Itens do kit — seção "O que você recebe" (copy oficial) */
 export const kitItems = [
   {
     title: "Guia Master de Triagem Neuropsicológica",
@@ -91,7 +75,6 @@ export const kitItems = [
   },
 ];
 
-/** FAQ — usado na seção de perguntas e no JSON-LD (FAQPage). Copy oficial. */
 export const faqItems = [
   {
     question: "Este checklist substitui a avaliação neuropsicológica completa?",
@@ -116,7 +99,7 @@ export const faqItems = [
   {
     question: "Quais as formas de pagamento?",
     answer:
-      "Cartão de crédito (em até 12x), Pix e boleto, processados com segurança pela Hotmart.",
+      "Cartão de crédito em até 20 vezes, Pix e boleto, processados com segurança pela Hotmart.",
   },
   {
     question: "Posso usar o template de relatório no meu consultório?",

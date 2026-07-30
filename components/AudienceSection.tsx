@@ -1,67 +1,55 @@
-import { CheckCircle2, XCircle } from "lucide-react";
-
-/**
- * Para quem é / para quem não é — qualificação honesta. Copy oficial.
- */
-
 const FOR_YOU = [
-  "Você é psicólogo(a) e atende (ou quer atender) pacientes idosos",
-  "Já sentiu insegurança diante de uma queixa de memória — sem saber se aprofunda, encaminha ou tranquiliza",
+  "Você é psicólogo(a) e atende — ou quer atender — pacientes idosos",
+  "Já sentiu insegurança diante de uma queixa de memória, sem saber se aprofunda, encaminha ou tranquiliza",
   "Quer estruturar sua triagem com critérios objetivos e referências brasileiras",
   "Quer se comunicar com geriatras e neurologistas em pé de igualdade técnica",
 ];
 
 const NOT_FOR_YOU = [
-  "Você busca um atalho para “dar diagnóstico” sem avaliação adequada — este material existe justamente para o oposto",
-  "Espera um curso completo de neuropsicologia — este é um instrumento prático de triagem, não uma formação",
+  'Busca um atalho para "dar diagnóstico" sem avaliação adequada — este material existe justamente para o oposto',
+  "Espera uma formação completa em neuropsicologia; este é um instrumento prático de triagem",
   "Não atende nem pretende atender população idosa",
 ];
 
 export default function AudienceSection() {
   return (
-    <section className="bg-slate-50">
-      <div className="section-container section-padding">
-        <h2 className="text-center text-2xl font-bold tracking-tight text-brand-950 sm:text-3xl">
-          Este material é para você?
-        </h2>
-
-        <div className="mx-auto mt-14 grid max-w-4xl gap-6 md:grid-cols-2">
-          <div className="surface-card border-accent-100 bg-accent-50/50 p-7">
-            <h3 className="text-lg font-bold text-accent-800">
-              É para você se:
+    <section className="py-[clamp(64px,9vw,120px)]" id="qualificacao">
+      <div className="wrap narrow rv">
+        <span className="eyebrow">Qualificação</span>
+        <h2>Este material é para você?</h2>
+        <div className="mt-10 grid gap-7 max-[900px]:grid-cols-1 min-[901px]:grid-cols-2">
+          <div className="border border-line bg-white p-8 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-26px_rgba(15,23,43,.35)]">
+            <h3 className="mb-5 flex items-center gap-2.5 text-[1.2rem]">
+              É para você se
             </h3>
-            <ul className="mt-6 space-y-5">
+            <ul className="list-none">
               {FOR_YOU.map((item) => (
                 <li
                   key={item}
-                  className="flex gap-3.5 text-base leading-relaxed text-slate-700"
+                  className="flex items-start gap-3 py-[9px] text-[.97rem]"
                 >
-                  <CheckCircle2
-                    className="mt-0.5 h-6 w-6 shrink-0 fill-accent-600 text-white"
-                    strokeWidth={2}
-                    aria-hidden="true"
-                  />
+                  <span className="flex-none font-mono text-[.9rem] leading-[1.6] text-sage">
+                    ✓
+                  </span>
                   {item}
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="surface-card bg-white p-7">
-            <h3 className="text-lg font-bold text-slate-700">
-              Não é para você se:
+          <div className="border border-line bg-paper p-8 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-26px_rgba(15,23,43,.35)]">
+            <h3 className="mb-5 flex items-center gap-2.5 text-[1.2rem]">
+              Não é para você se
             </h3>
-            <ul className="mt-6 space-y-5">
+            <ul className="list-none">
               {NOT_FOR_YOU.map((item) => (
                 <li
                   key={item}
-                  className="flex gap-3.5 text-base leading-relaxed text-slate-600"
+                  className="flex items-start gap-3 py-[9px] text-[.97rem]"
                 >
-                  <XCircle
-                    className="mt-0.5 h-6 w-6 shrink-0 fill-slate-300 text-white"
-                    strokeWidth={2}
-                    aria-hidden="true"
-                  />
+                  <span className="flex-none font-mono text-[.9rem] leading-[1.6] text-[#B08A84]">
+                    ✕
+                  </span>
                   {item}
                 </li>
               ))}
