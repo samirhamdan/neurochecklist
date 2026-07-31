@@ -66,7 +66,7 @@ export default function Hero() {
               width={461}
               height={600}
               priority
-              className="block h-auto w-full"
+              className="block h-auto w-full max-h-[200px] object-cover object-top lg:max-h-none"
             />
           </div>
           <div className="bg-ink px-7 py-[26px]">
