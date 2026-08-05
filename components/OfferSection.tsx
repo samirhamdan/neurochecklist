@@ -16,13 +16,25 @@ export default function OfferSection() {
         </p>
 
         <div className="mx-auto mt-10 max-w-[520px] border border-ink bg-white p-[40px_32px] shadow-[0_28px_60px_-34px_rgba(15,23,43,.4)]">
+          {/* Bloco "o que você leva" com selos */}
+          <p className="mb-4 font-mono text-[.7rem] uppercase tracking-[.14em] text-body">
+            O que você leva
+          </p>
           <ul className="mb-[26px] list-none border-b border-dashed border-line pb-[22px] text-left">
             {kitItems.map((item) => (
               <li
                 key={item.title}
-                className="flex gap-[11px] py-1.5 text-[.95rem] text-ink-soft"
+                className="flex items-center gap-3 py-[7px] text-[.93rem] text-ink-soft"
               >
-                <span className="font-mono text-[.85rem] text-sage">✓</span>
+                {item.isBonus ? (
+                  <span className="inline-block w-[52px] flex-none bg-amber px-1.5 py-px text-center font-mono text-[.58rem] uppercase tracking-[.1em] text-white">
+                    Bônus
+                  </span>
+                ) : (
+                  <span className="inline-block w-[52px] flex-none bg-ink px-1.5 py-px text-center font-mono text-[.58rem] uppercase tracking-[.1em] text-paper-warm">
+                    Incluso
+                  </span>
+                )}
                 {item.title}
               </li>
             ))}

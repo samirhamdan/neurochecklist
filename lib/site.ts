@@ -42,6 +42,7 @@ export const kitItems = [
     title: "Guia Master de Triagem Neuropsicológica",
     description:
       "O manual central: fundamentação técnica, critérios objetivos de investigação, pontos de corte de referência e o passo a passo da aplicação do protocolo em até 2 sessões.",
+    spec: "PDF · guia completo · consulta durante o atendimento", // TODO: confirmar nº de páginas
     tag: "Item 1",
     isBonus: false,
   },
@@ -49,6 +50,7 @@ export const kitItems = [
     title: "Fluxograma de Decisão Clínica",
     description:
       "O mapa visual da conduta: a partir de cada achado, o caminho a seguir — aprofundar, encaminhar ou acompanhar. Para consultar durante o atendimento.",
+    spec: "PDF · 1 página · imprimível", // TODO: confirmar formato
     tag: "Item 2",
     isBonus: false,
   },
@@ -56,6 +58,7 @@ export const kitItems = [
     title: "Guia de Entrevista com o Familiar",
     description:
       "As 10 perguntas que revelam mudanças sutis de comportamento e funcionalidade que o idoso não relata — muitas vezes, o dado mais importante da triagem.",
+    spec: "PDF · roteiro de 10 perguntas · imprimível", // TODO: confirmar formato
     tag: "Bônus 1",
     isBonus: true,
   },
@@ -63,6 +66,7 @@ export const kitItems = [
     title: "Template de Relatório Técnico (Word editável)",
     description:
       "O modelo de documento para comunicar seus achados ao geriatra ou neurologista com estrutura e vocabulário que a rede médica reconhece. Preencha e envie.",
+    spec: "Word (.docx) · editável · pronto para envio",
     tag: "Bônus 2",
     isBonus: true,
   },
@@ -70,6 +74,7 @@ export const kitItems = [
     title: "Ficha de Evolução de Prontuário",
     description:
       "Resumo de escores em uma página A4, para arquivamento rápido e resguardo ético do seu prontuário.",
+    spec: "PDF · 1 página A4 · imprimível",
     tag: "Bônus 3",
     isBonus: true,
   },
