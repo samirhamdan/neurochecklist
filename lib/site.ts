@@ -11,7 +11,7 @@ export const site = {
   price: {
     full: "R$ 197",
     fullNumber: 197,
-    installments: "20× de R$ 20,37",
+    installments: "12× de R$ 19,67",
     currency: "BRL",
   },
 
@@ -20,7 +20,7 @@ export const site = {
   author: {
     name: "Prof. Dr. Amer Cavalheiro Hamdan",
     shortName: "Prof. Dr. Amer C. Hamdan",
-    role: "Professor de Neuropsicologia da UFPR",
+    role: "Professor Titular da UFPR",
   },
 
   cta: {
@@ -104,7 +104,7 @@ export const faqItems = [
   {
     question: "Quais as formas de pagamento?",
     answer:
-      "Cartão de crédito em até 20 vezes, Pix e boleto, processados com segurança pela Hotmart.",
+      "Cartão de crédito em até 12 vezes, Pix e boleto, processados com segurança pela Hotmart.",
   },
   {
     question: "Posso usar o template de relatório no meu consultório?",

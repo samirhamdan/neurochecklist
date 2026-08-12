@@ -64,7 +64,7 @@ export default function OfferSection() {
               Acesso imediato e vitalício · Compra processada pela Hotmart
             </p>
             <ul className="mt-[18px] flex list-none flex-wrap justify-center gap-2">
-              {["Pix", "Cartão em até 20×", "Boleto"].map((method) => (
+              {["Pix", "Cartão em até 12×", "Boleto"].map((method) => (
                 <li
                   key={method}
                   className="rounded-sm border border-line px-[11px] py-1.5 font-mono text-[.7rem] uppercase tracking-[.08em] text-body"

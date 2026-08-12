@@ -9,8 +9,7 @@ export default function CredibilityBar() {
           <b className="font-medium text-white">
             Prof. Dr. Amer Cavalheiro Hamdan
           </b>{" "}
-          — Professor de Neuropsicologia da UFPR · Pós-doutorado McGill
-          University
+          — Professor Titular da UFPR · Pós-doutorado McGill University
         </p>
       </div>
     </div>

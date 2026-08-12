@@ -48,7 +48,7 @@ Alternativa via CLI: `npx vercel` na raiz do projeto.
 
 | O quê | Onde |
 | --- | --- |
-| **Preço (R$ 197, 20× de R$ 20,37), link do checkout, FAQ, itens do kit** | [`lib/site.ts`](lib/site.ts) — configuração central |
+| **Preço (R$ 197, 12× de R$ 19,67), link do checkout, FAQ, itens do kit** | [`lib/site.ts`](lib/site.ts) — configuração central |
 | Headline do hero (3 variações A/B) | [`components/Hero.tsx`](components/Hero.tsx) → `ACTIVE_HEADLINE` |
 | Copy das seções | `components/*.tsx` (uma seção por arquivo) |
 | Ordem das seções | [`app/page.tsx`](app/page.tsx) |
