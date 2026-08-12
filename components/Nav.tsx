@@ -35,7 +35,7 @@ export default function Nav() {
         </a>
         <a
           href="#adquirir"
-          className="hidden border border-ink bg-transparent px-5 py-[11px] text-[.9rem] font-medium text-ink no-underline transition-all duration-[.18s] hover:-translate-y-0.5 hover:border-ink hover:bg-ink hover:text-paper-warm sm:inline-block"
+          className="hidden border border-amber bg-amber px-5 py-[11px] text-[.9rem] font-medium text-white no-underline transition-all duration-[.18s] hover:-translate-y-0.5 hover:border-amber-ink hover:bg-amber-ink sm:inline-block"
           style={{ borderRadius: 2 }}
         >
           Adquirir o protocolo

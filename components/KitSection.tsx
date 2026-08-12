@@ -16,34 +16,6 @@ function Badge({ isBonus }: { isBonus: boolean }) {
   );
 }
 
-function MockupPlaceholder({ tall }: { tall?: boolean }) {
-  return (
-    <div
-      className={`flex items-center justify-center bg-paper ${
-        tall ? "min-h-[200px]" : "min-h-[140px]"
-      }`}
-      role="img"
-      aria-label="Mockup do material"
-    >
-      {/* TODO: substituir por <Image src="/mockups/..." /> quando os arquivos estiverem prontos */}
-      <svg
-        className="h-12 w-12 text-line"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        aria-hidden="true"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-        />
-      </svg>
-    </div>
-  );
-}
-
 export default function KitSection() {
   const master = kitItems[0];
   const rest = kitItems.slice(1);
@@ -52,7 +24,7 @@ export default function KitSection() {
     <section className="bg-paper py-[clamp(64px,9vw,120px)]" id="kit">
       <div className="wrap rv">
         <span className="eyebrow">O que você recebe</span>
-        <h2>O kit clínico completo</h2>
+        <h2>O Protocolo NeuroChecklist</h2>
 
         {/* Faixa de resumo */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border border-line bg-white px-6 py-4 text-center font-mono text-[.78rem] uppercase tracking-[.1em] text-ink-soft md:justify-start md:text-left">
@@ -68,8 +40,7 @@ export default function KitSection() {
         </div>
 
         {/* Card destaque — Guia Master */}
-        <article className="mt-6 grid border border-line bg-white transition-all duration-200 hover:shadow-[0_18px_40px_-26px_rgba(15,23,43,.25)] md:grid-cols-[.45fr_.55fr]">
-          <MockupPlaceholder tall />
+        <article className="mt-6 border border-line bg-white transition-all duration-200 hover:shadow-[0_18px_40px_-26px_rgba(15,23,43,.25)]">
           <div className="flex flex-col justify-center px-7 py-7 md:px-10 md:py-9">
             <div className="mb-3 flex flex-wrap items-center gap-2.5">
               <Badge isBonus={master.isBonus} />
@@ -92,7 +63,6 @@ export default function KitSection() {
               key={item.title}
               className="flex flex-col border border-line bg-white transition-all duration-200 hover:shadow-[0_18px_40px_-26px_rgba(15,23,43,.25)]"
             >
-              <MockupPlaceholder />
               <div className="flex flex-1 flex-col px-6 py-5">
                 <div className="mb-2.5">
                   <Badge isBonus={item.isBonus} />
