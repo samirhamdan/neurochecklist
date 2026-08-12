@@ -71,7 +71,7 @@ export default function Hero() {
           </div>
           <div className="bg-ink px-7 py-[26px]">
             <span className="font-mono text-[.7rem] uppercase tracking-[.18em] text-amber-soft">
-              Kit clínico digital
+              Protocolo NeuroChecklist
             </span>
             <h3 className="mt-2 text-[1.7rem] text-white">
               Checklist de Triagem Neuropsicológica

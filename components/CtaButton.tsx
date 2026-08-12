@@ -28,7 +28,7 @@ export default function CtaButton({
   const base =
     "inline-block font-medium no-underline transition-all duration-[.18s] hover:-translate-y-0.5 text-center";
   const variants = {
-    primary: "bg-ink text-paper-warm border border-ink hover:bg-amber hover:border-amber",
+    primary: "bg-amber text-white border border-amber hover:bg-amber-ink hover:border-amber-ink",
     ghost: "bg-transparent text-ink border border-ink hover:bg-ink hover:text-paper-warm",
   };
   const sizes = {
