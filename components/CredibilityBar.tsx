@@ -10,7 +10,7 @@ export default function CredibilityBar() {
             Prof. Dr. Amer Cavalheiro Hamdan
           </b>{" "}
           — Professor de Neuropsicologia da UFPR · Pós-doutorado McGill
-          University · Especialista em Neuropsicologia (CFP)
+          University
         </p>
       </div>
     </div>

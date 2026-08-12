@@ -9,7 +9,7 @@ export default function Footer() {
           <b className="font-medium text-white">
             Prof. Dr. Amer Cavalheiro Hamdan
           </b>{" "}
-          — Doutor em Psicobiologia · Especialista em Neuropsicologia
+          — Doutor em Psicobiologia
         </p>
         <p>{site.footerDisclaimer}</p>
         <p>

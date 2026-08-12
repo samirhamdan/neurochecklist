@@ -4,7 +4,6 @@ const TIMELINE = [
   { time: "Doutorado", label: "Psicobiologia — UNIFESP" },
   { time: "Pós-doc", label: "McGill University, Canadá" },
   { time: "2005 →", label: "Docente de Neuropsicologia — UFPR" },
-  { time: "Título", label: "Especialista em Neuropsicologia — CFP" },
   { time: "Pesquisa", label: "Normatização brasileira do RAVLT e do Teste das Trilhas" },
 ];
 
@@ -70,8 +69,7 @@ export default function AuthorSection() {
             </p>
             <p>
               Doutor em Psicobiologia pela UNIFESP, com pós-doutorado na McGill
-              University e título de Especialista em Neuropsicologia pelo
-              Conselho Federal de Psicologia, dedicou a carreira a uma única
+              University, dedicou a carreira a uma única
               pergunta: como diferenciar, com rigor, o envelhecimento cognitivo
               normal do patológico.
             </p>
