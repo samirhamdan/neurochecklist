@@ -11,7 +11,7 @@ export const site = {
   price: {
     full: "R$ 197",
     fullNumber: 197,
-    installments: "12× de R$ 19,67",
+    installments: "12× de R$ 20,37",
     currency: "BRL",
   },
 
