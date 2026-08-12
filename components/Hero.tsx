@@ -66,7 +66,7 @@ export default function Hero() {
               width={461}
               height={600}
               priority
-              className="block h-auto w-full"
+              className="block h-auto w-full max-h-[200px] object-cover object-top lg:max-h-none"
             />
           </div>
           <div className="bg-ink px-7 py-[26px]">
@@ -97,8 +97,10 @@ export default function Hero() {
               </li>
             ))}
           </ul>
-          <div className="absolute -bottom-3.5 -right-3.5 bg-amber px-4 py-2.5 font-mono text-[.72rem] uppercase tracking-[.1em] text-white">
-            Aplicável em 2 sessões
+          <div className="flex justify-end px-7 pb-5">
+            <span className="bg-amber px-4 py-2.5 font-mono text-[.72rem] uppercase tracking-[.1em] text-white">
+              Aplicável em 2 sessões
+            </span>
           </div>
         </div>
       </div>

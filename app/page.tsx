@@ -3,6 +3,7 @@ import Hero from "@/components/Hero";
 import CredibilityBar from "@/components/CredibilityBar";
 import PainSection from "@/components/PainSection";
 import MethodSection from "@/components/MethodSection";
+import KitSection from "@/components/KitSection";
 import AuthorSection from "@/components/AuthorSection";
 import AudienceSection from "@/components/AudienceSection";
 import FaqSection from "@/components/FaqSection";
@@ -85,6 +86,7 @@ export default function Page() {
         <CredibilityBar />
         <PainSection />
         <MethodSection />
+        <KitSection />
 
         {/* <Testimonials /> */}
 
