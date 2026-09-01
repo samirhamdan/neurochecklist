@@ -1,0 +1,45 @@
+# Configuracao do sistema de curadoria — Morumbi 3D
+# Copie para morumbi3d.toml (na pasta onde voce roda os comandos) e ajuste.
+# Os numeros abaixo sao PADROES: troque pelos custos reais da operacao antes
+# de usar o preco sugerido para vender.
+
+[impressora]
+nome = "Bambu Lab A1 / A2L"
+mesa_x_mm = 256.0
+mesa_y_mm = 256.0
+altura_max_mm = 256.0
+folga_mm = 3.0              # margem de seguranca descontada da mesa
+altura_camada_mm = 0.24     # perfil padronizado no guia
+preenchimento = 0.08        # 8%
+espessura_parede_mm = 1.2   # 3 perimetros de 0,4 mm
+vazao_cm3_por_hora = 12.0   # vazao efetiva media (calibre com um print real)
+overhead_horas = 0.15       # aquecimento + purga + primeira camada
+angulo_suporte_graus = 45.0
+
+[custo]
+densidade_g_cm3 = 1.24      # PLA (PETG 1.27, ABS 1.04)
+preco_filamento_kg = 120.0
+custo_hora_maquina = 3.50   # depreciacao + energia + manutencao
+taxa_falha = 0.10           # 10% para refugo/reimpressao
+custo_fixo_por_peca = 1.50  # embalagem, etiqueta, acabamento
+multiplicador_margem = 3.0
+densidade_suporte = 0.15
+
+[rede]
+contato = ""                # seu e-mail: vai no User-Agent das requisicoes
+intervalo_min_s = 3.0       # intervalo minimo entre requisicoes ao mesmo site
+timeout_s = 20.0
+tentativas = 3
+cache_ttl_s = 604800        # 7 dias
+respeitar_robots = true
+tamanho_max_download_mb = 80.0
+
+[fontes]
+# Fontes SEM API publica documentada ficam desligadas de proposito.
+# Ligue uma a uma, e so depois de ler os termos de uso do site.
+thingiverse = true          # precisa de THINGIVERSE_TOKEN
+github = true
+printables = false
+makerworld = false
+thangs = false
+cults3d = false
