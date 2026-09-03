@@ -272,10 +272,23 @@ nomeada no aviso e o comando sai com erro, em vez de entregar STL quebrado.
 
 ## Limitações conhecidas do gerador
 
-- **Letreiros muito grandes** (acima de ~15 peças) podem ter uma peça que o
-  verificador marca como suspeita. Ela é nomeada no aviso; o contorno de
-  emergência é `--sem-cortar` e cortar no fatiador, ou mudar um pouco a
-  `--altura`. Até 500 mm de altura (≈10 peças) os testes saem 100% limpos.
+- **O cortador não escala.** Medido no mesmo SVG de três letras, variando só
+  a altura:
+
+  | Altura | Peças | Malha aberta |
+  | --- | --- | --- |
+  | até 500 mm | até 10 | **0%** |
+  | 800 mm | 30 | 3% (1 peça) |
+  | 1 200 mm | 49 | 8% (4 peças) |
+  | 2 000 mm | 124 | **70% (87 peças)** — e 43 s de processamento |
+
+  Ou seja: para letra caixa de tamanho normal ele está sólido; para um
+  letreiro de vários metros ele **não serve** hoje. O comando avisa quando
+  passa de 12 peças e nomeia cada peça aberta, então a falha nunca é
+  silenciosa — mas o conserto de verdade é cortar os contornos em 2D **antes**
+  de extrudar, e não a malha depois; aí cada pedaço nasce fechado pelo mesmo
+  caminho que já é confiável. Enquanto isso: gere uma letra por vez (um SVG
+  para cada) ou use `--sem-cortar` e corte no fatiador.
 - **O chanfro é reto** (chanfro/bisel), não um filete arredondado.
 - **Sem encaixe entre pedaços**: as peças cortadas têm face plana de cola, sem
   pino ou rabo de andorinha.

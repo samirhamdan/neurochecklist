@@ -33,6 +33,9 @@ __all__ = [
     "Face", "GeometriaInvalida", "ResultadoLetra", "gerar_de_svg", "carregar_faces",
 ]
 
+LIMITE_CONFIAVEL_DE_PECAS = 12
+"""Acima disso o cortador comeca a produzir peca aberta (ver o README)."""
+
 
 @dataclass
 class Pedaco:
@@ -157,6 +160,16 @@ def gerar_de_svg(
     if cortar_para_mesa:
         partes, avisos_corte = cortar_para_caber(letra.triangulos, mesa_x, mesa_y)
         resultado.avisos += avisos_corte
+        if len(partes) > LIMITE_CONFIAVEL_DE_PECAS:
+            # Medido: ate ~10 pecas sai 100% limpo; em 30 pecas cai 1; em 124
+            # cai a maioria. Melhor dizer isso na cara do que deixar o usuario
+            # descobrir no fatiador.
+            resultado.avisos.append(
+                f"ATENCAO: {len(partes)} pecas. O cortador so e confiavel ate "
+                f"cerca de {LIMITE_CONFIAVEL_DE_PECAS}; acima disso muitas pecas "
+                "saem com malha aberta. Gere uma letra por vez (um SVG para "
+                "cada) ou use --sem-cortar e corte no fatiador."
+            )
     else:
         partes = [letra.triangulos]
 
