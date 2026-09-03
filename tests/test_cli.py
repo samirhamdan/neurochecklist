@@ -177,3 +177,71 @@ class TesteCLI(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TesteCLILetra(unittest.TestCase):
+    def setUp(self):
+        self.cfg = config_temporaria()
+        patch = mock.patch.object(cli, "carregar_config", lambda caminho=None: self.cfg)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.svg = self.cfg.raiz / "logo.svg"
+        self.svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">'
+            '<path d="M10,10 L90,10 L90,90 L10,90 Z M30,30 L70,30 L70,70 L30,70 Z"/>'
+            '<circle cx="150" cy="50" r="40"/></svg>',
+            encoding="utf-8",
+        )
+
+    def rodar(self, *argv):
+        saida = io.StringIO()
+        with redirect_stdout(saida):
+            codigo = cli.main(list(argv))
+        return codigo, saida.getvalue()
+
+    def test_gera_e_relata(self):
+        codigo, saida = self.rodar("letra", str(self.svg), "--altura", "150")
+        self.assertEqual(codigo, 0)
+        self.assertIn("fechada", saida)
+        self.assertIn("preco sugerido", saida)
+        self.assertIn(".stl", saida)
+
+    def test_opcoes_de_geometria(self):
+        codigo, saida = self.rodar(
+            "letra", str(self.svg), "--altura", "180", "--profundidade", "30",
+            "--parede", "3", "--frente", "2.5", "--chanfro", "1.2",
+            "--furos", "40,40;120,90", "--furo-diametro", "5",
+        )
+        self.assertEqual(codigo, 0)
+        self.assertIn("furo(s) de fixacao", saida)
+
+    def test_macica_e_saida_nomeada(self):
+        destino = self.cfg.raiz / "stl"
+        codigo, saida = self.rodar(
+            "letra", str(self.svg), "--altura", "100", "--macica",
+            "--saida", str(destino), "--nome", "placa",
+        )
+        self.assertEqual(codigo, 0)
+        self.assertIn("macica", saida)
+        self.assertTrue((destino / "placa.stl").is_file())
+
+    def test_peca_grande_e_cortada(self):
+        codigo, saida = self.rodar("letra", str(self.svg), "--altura", "500")
+        self.assertEqual(codigo, 0)
+        self.assertIn("parte1", saida)
+        self.assertIn("nao cabe na mesa util", saida)
+
+    def test_furo_invalido_avisa(self):
+        with self.assertRaises(SystemExit):
+            self.rodar("letra", str(self.svg), "--furos", "abc")
+
+    def test_svg_sem_curvas(self):
+        ruim = self.cfg.raiz / "texto.svg"
+        ruim.write_text('<svg xmlns="http://www.w3.org/2000/svg"><text>ola</text></svg>')
+        codigo, saida = self.rodar("letra", str(ruim))
+        self.assertEqual(codigo, 1)
+        self.assertIn("curvas", saida)
+
+    def test_arquivo_inexistente(self):
+        codigo, saida = self.rodar("letra", str(self.cfg.raiz / "sumiu.svg"))
+        self.assertEqual(codigo, 1)

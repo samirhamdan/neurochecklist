@@ -8,6 +8,7 @@
     morumbi3d aprovar 12 --motivo "testar em preto"
     morumbi3d relatorio --so-seguros
     morumbi3d exportar --saida projeto30.csv
+    morumbi3d letra logo.svg --altura 300 --profundidade 30 --chanfro 1.5
 """
 
 from __future__ import annotations
@@ -363,6 +364,84 @@ def cmd_exportar(args, cfg: Config) -> int:
     return 0
 
 
+def _ler_furos(texto: str | None) -> list[tuple[float, float]]:
+    """Aceita "x,y;x,y" ou "x,y x,y"."""
+
+    if not texto:
+        return []
+    pontos = []
+    for parte in texto.replace(";", " ").split():
+        try:
+            x, y = parte.split(",")
+            pontos.append((float(x), float(y)))
+        except ValueError:
+            raise SystemExit(f"furo invalido: {parte!r} (use x,y)")
+    return pontos
+
+
+def cmd_letra(args, cfg: Config) -> int:
+    from .letras import GeometriaInvalida, gerar_de_svg
+
+    try:
+        resultado = gerar_de_svg(
+            args.svg,
+            cfg,
+            altura=args.altura,
+            profundidade=args.profundidade,
+            parede=args.parede,
+            frente=args.frente,
+            chanfro=args.chanfro,
+            macica=args.macica,
+            furos=_ler_furos(args.furos),
+            furos_auto=args.furos_auto,
+            diametro_furo=args.furo_diametro,
+            espacamento_furo=args.furo_espacamento,
+            cortar_para_mesa=not args.sem_cortar,
+            tolerancia=args.tolerancia,
+            saida=args.saida,
+            nome=args.nome,
+        )
+    except (GeometriaInvalida, FileNotFoundError, ValueError) as exc:
+        print(vermelho(f"nao foi possivel gerar: {exc}"))
+        return 1
+
+    print(negrito(resultado.resumo()))
+    tipo = "macica" if resultado.macica else f"caixa (parede {args.parede} mm)"
+    print(cinza(f"  {tipo} · {len(resultado.furos)} furo(s) de fixacao"))
+    print()
+    for pedaco in resultado.pedacos:
+        rel = pedaco.relatorio
+        estado = verde("fechada") if rel.fechada else vermelho("ABERTA")
+        d = rel.dimensoes_mm
+        print(f"  {negrito(pedaco.nome)}  {pedaco.arquivo}")
+        print(
+            cinza(
+                f"     {d[0]:.0f} x {d[1]:.0f} x {d[2]:.0f} mm · {estado} · "
+                f"{rel.triangulos} triangulos · "
+                f"{'cabe na mesa' if rel.cabe_na_mesa else vermelho('NAO CABE')}"
+            )
+        )
+        print(
+            cinza(
+                f"     ~{rel.material_g:.0f} g · ~{rel.tempo_h:.1f} h · "
+                f"custo R$ {pedaco.orcamento.custo_total:.2f} · "
+                f"preco R$ {pedaco.orcamento.preco_sugerido:.2f}"
+            )
+        )
+    print()
+    print(
+        f"  Total: {resultado.material_g:.0f} g · {resultado.tempo_h:.1f} h · "
+        f"custo R$ {resultado.custo:.2f} · "
+        f"preco sugerido R$ {resultado.preco_sugerido:.2f}"
+    )
+    for aviso in resultado.avisos:
+        print(amarelo(f"  ! {aviso}"))
+    if not resultado.tudo_fechado:
+        print(vermelho("  Alguma peca saiu aberta: confira no fatiador."))
+        return 1
+    return 0
+
+
 def cmd_stats(args, cfg: Config) -> int:
     with Catalogo(cfg) as catalogo:
         e = catalogo.estatisticas()
@@ -508,6 +587,32 @@ def construir_parser() -> argparse.ArgumentParser:
     s.add_argument("--so-seguros", action="store_true")
     s.add_argument("--limite", type=int, default=500)
     s.set_defaults(func=cmd_exportar)
+
+    s = sub.add_parser(
+        "letra",
+        help="gera letra caixa em STL a partir de um SVG",
+        description=(
+            "Converte um SVG (texto ja em curvas) em letra caixa pronta para "
+            "imprimir: face na frente, paredes e fundo aberto. Corta sozinha "
+            "quando a peca nao cabe na mesa."
+        ),
+    )
+    s.add_argument("svg", help="arquivo SVG com o texto em curvas")
+    s.add_argument("--altura", type=float, default=150.0, help="altura da letra em mm")
+    s.add_argument("--profundidade", type=float, default=25.0, help="profundidade em mm")
+    s.add_argument("--parede", type=float, default=2.4, help="espessura da parede em mm")
+    s.add_argument("--frente", type=float, default=2.0, help="espessura da face em mm")
+    s.add_argument("--chanfro", type=float, default=0.0, help="filete lateral em mm")
+    s.add_argument("--macica", action="store_true", help="sem cavidade interna")
+    s.add_argument("--furos", help='furos de fixacao: "x,y;x,y" em mm')
+    s.add_argument("--furos-auto", action="store_true", help="distribui furos sozinho")
+    s.add_argument("--furo-diametro", type=float, default=4.0)
+    s.add_argument("--furo-espacamento", type=float, default=60.0)
+    s.add_argument("--sem-cortar", action="store_true", help="nao corta para caber na mesa")
+    s.add_argument("--tolerancia", type=float, default=0.1, help="achatamento das curvas em mm")
+    s.add_argument("--saida", help="pasta de destino dos STL")
+    s.add_argument("--nome", help="nome base dos arquivos")
+    s.set_defaults(func=cmd_letra)
 
     s = sub.add_parser("stats", help="resumo do funil de curadoria")
     s.set_defaults(func=cmd_stats)

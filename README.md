@@ -1,12 +1,17 @@
-# Morumbi 3D — Busca e Curadoria de Modelos 3D Prontos
+# Morumbi 3D — Ferramentas de Catálogo e Produção
 
-Sistema de linha de comando para **encontrar, avaliar e organizar modelos 3D
-prontos** (STL/3MF) de repositórios públicos, alimentando o catálogo da
-Morumbi 3D com modelos de terceiros bem selecionados.
+Duas ferramentas de linha de comando que dividem a mesma base técnica
+(analisador de malha, custo, mesa da impressora):
 
-Implementa a especificação funcional *Sistema de Busca e Curadoria de Modelos
-3D*, na ordem recomendada por ela: banco de dados + analisador de malha →
-conectores de fonte → filtro de licença → relatório de curadoria.
+| Comando | O que faz |
+| --- | --- |
+| `morumbi3d buscar` e cia. | **Curadoria**: encontra, avalia e organiza modelos 3D prontos de repositórios públicos |
+| `morumbi3d letra` | **Produção**: converte SVG em letra caixa pronta para imprimir |
+
+A primeira implementa a especificação *Sistema de Busca e Curadoria de
+Modelos 3D*, na ordem recomendada por ela: banco de dados + analisador de
+malha → conectores de fonte → filtro de licença → relatório de curadoria.
+A segunda cobre o outro lado do catálogo — o produto feito sob medida.
 
 **Roda só com Python 3.11+ e a biblioteca padrão.** Nenhuma dependência
 obrigatória — inclusive o analisador de malha, que lê STL/3MF/OBJ por conta
@@ -197,16 +202,85 @@ cd morumbi3d
 python3 -m unittest discover -s tests -t .
 ```
 
-112 testes, sem rede e sem dependências: malha (STL binário/ASCII, 3MF, OBJ,
-arquivo truncado, balanço, mesa), licenças, marcas, tradução, linhas, custo,
-banco, deduplicação, tolerância a falha por fonte, parsing de cada conector,
-relatório, CSV e CLI.
+158 testes, sem rede e sem dependências. Curadoria: malha (STL binário/ASCII,
+3MF, OBJ, arquivo truncado, balanço, mesa), licenças, marcas, tradução,
+linhas, custo, banco, deduplicação, tolerância a falha por fonte, parsing de
+cada conector, relatório, CSV e CLI. Letra caixa: aninhamento de contra-formas,
+erosão, triangulação com conservação de área, leitura de SVG, e — o que mais
+importa — **toda combinação de geometria é verificada como malha fechada**,
+incluindo os cortes, onde a soma dos volumes tem que bater com a peça inteira.
 
-## Ainda não implementado (segunda fase, §4)
+## Ainda não implementado na curadoria (segunda fase, §4)
 
 Busca por imagem/forma (o gancho está em
 [`sources/thangs.py`](morumbi3d/sources/thangs.py)), alertas de novidades,
 pré-visualização 3D renderizada, integração direta com o Bambu Studio.
+
+---
+
+# Gerador de letra caixa (`morumbi3d letra`)
+
+Converte um **SVG com o texto já em curvas** em letra caixa pronta para
+imprimir: face na frente, paredes seguindo o contorno e fundo aberto.
+
+```bash
+morumbi3d letra logo.svg --altura 300 --profundidade 30 \
+  --parede 2.4 --frente 2.5 --chanfro 1.5 --furos-auto
+```
+
+Saída: um STL por peça em `~/.morumbi3d/letras/<nome>/`, mais o relatório de
+cada uma — dimensões, malha fechada, se cabe na mesa, gramas, horas, custo e
+preço sugerido.
+
+## O que ele faz
+
+**Lê o SVG de verdade.** Caminhos com todos os comandos (incluindo curvas de
+Bézier e arco elíptico), `rect`, `circle`, `ellipse`, `polygon`, `polyline`, e
+`transform` acumulado pela árvore. Contra-formas — a barriga do "B", o miolo
+do "O" — são reconhecidas pela regra par/ímpar, inclusive ilha dentro de furo.
+Traço (`stroke`) é ignorado: o que vira material é o preenchimento.
+
+**Monta a caixa.** A cavidade é o contorno erodido pela espessura de parede.
+Quando o traço da letra é fino demais para duas paredes, a peça sai maciça e
+o aviso diz por quê — em vez de gerar uma casca impossível.
+
+**Filete lateral** (`--chanfro`): a face da frente encolhe e é costurada ao
+corpo como uma tira de quadriláteros, tirando o "degrau" da aresta.
+
+**Furos de fixação** (`--furos "x,y;x,y"` ou `--furos-auto`): atravessam só a
+face da frente na letra caixa, e a peça inteira na maciça. Furo que cai fora
+da área útil é recusado com aviso — nos automáticos, silenciosamente.
+
+**Corta o que não cabe.** Letreiro de 1 m não entra numa mesa de 25 cm: a peça
+é cortada por planos verticais nos dois eixos e cada corte é **tampado**, para
+cada pedaço sair fechado e colável.
+
+## Por que ele confere o próprio trabalho
+
+Nada é gravado sem antes passar pelo mesmo analisador de malha da curadoria:
+*esta malha é fechada? quantas partes soltas? cabe na mesa?* Isso já pagou:
+
+- a costura dos furos ao contorno inseria um vértice na tampa que a parede não
+  tinha — 152 arestas sem par numa peça que "parecia certa". Daí veio o
+  `costurar_juntas_t`, que divide a aresta em leque;
+- o corte no eixo de simetria de uma peça simétrica saía não-manifold. Hoje o
+  plano anda alguns milímetros — dentro da folga que a mesa ainda permite — até
+  sair peça sã, e diz que andou.
+
+O que o verificador não conseguir consertar, ele **denuncia**: a peça é
+nomeada no aviso e o comando sai com erro, em vez de entregar STL quebrado.
+
+## Limitações conhecidas do gerador
+
+- **Letreiros muito grandes** (acima de ~15 peças) podem ter uma peça que o
+  verificador marca como suspeita. Ela é nomeada no aviso; o contorno de
+  emergência é `--sem-cortar` e cortar no fatiador, ou mudar um pouco a
+  `--altura`. Até 500 mm de altura (≈10 peças) os testes saem 100% limpos.
+- **O chanfro é reto** (chanfro/bisel), não um filete arredondado.
+- **Sem encaixe entre pedaços**: as peças cortadas têm face plana de cola, sem
+  pino ou rabo de andorinha.
+- **A fonte precisa estar em curvas.** Texto vivo no SVG não vira material — o
+  comando avisa e ensina o conserto.
 
 ## Limites que valem dizer em voz alta
 
