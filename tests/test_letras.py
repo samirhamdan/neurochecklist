@@ -6,7 +6,7 @@ import unittest
 from morumbi3d.letras import GeometriaInvalida, carregar_faces, gerar_de_svg
 from morumbi3d.letras import geom2d as g
 from morumbi3d.letras.cortar import cortar, cortar_para_caber, sugerir_cortes
-from morumbi3d.letras.geom2d import Face, circulo, montar_faces, triangular
+from morumbi3d.letras.geom2d import circulo, montar_faces, triangular
 from morumbi3d.letras.solid import (
     costurar_juntas_t, escalar_para_altura, escrever_stl, gerar,
 )
