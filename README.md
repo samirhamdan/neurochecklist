@@ -3,15 +3,19 @@
 Duas ferramentas de linha de comando que dividem a mesma base técnica
 (analisador de malha, custo, mesa da impressora):
 
-| Comando | O que faz |
+| Ferramenta | O que faz |
 | --- | --- |
 | `morumbi3d buscar` e cia. | **Curadoria**: encontra, avalia e organiza modelos 3D prontos de repositórios públicos |
 | `morumbi3d letra` | **Produção**: converte SVG em letra caixa pronta para imprimir |
+| [`web/gerador-letreiros.html`](web/) | **Produção**: placa de nome com letras conectadas, direto no navegador |
 
 A primeira implementa a especificação *Sistema de Busca e Curadoria de
 Modelos 3D*, na ordem recomendada por ela: banco de dados + analisador de
 malha → conectores de fonte → filtro de licença → relatório de curadoria.
-A segunda cobre o outro lado do catálogo — o produto feito sob medida.
+As outras duas cobrem o outro lado do catálogo — o produto feito sob medida —
+e partem de entradas diferentes: o `letra` de um SVG (arte pronta), o gerador
+de letreiros de um nome digitado. O analisador de malha da curadoria confere
+a saída dos três.
 
 **Roda só com Python 3.11+ e a biblioteca padrão.** Nenhuma dependência
 obrigatória — inclusive o analisador de malha, que lê STL/3MF/OBJ por conta
