@@ -11,9 +11,17 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
-# Conferencia extra da analise de malha. Nada aqui e obrigatorio: o
-# analisador proprio (STL/3MF/OBJ) roda so com a biblioteca padrao.
-malha = ["trimesh>=4.0", "numpy>=1.24"]
+# Nada aqui e obrigatorio: o analisador de malha e o cortador proprios rodam
+# so com a biblioteca padrao. Com estes instalados, o trimesh vira conferencia
+# extra da analise e ultimo recurso no corte de letra grande. scipy, networkx
+# e rtree entram porque o trimesh precisa deles e so reclama tarde.
+malha = [
+    "trimesh>=4.0",
+    "numpy>=1.24",
+    "scipy>=1.11",
+    "networkx>=3.0",
+    "rtree>=1.0",
+]
 
 [project.scripts]
 morumbi3d = "morumbi3d.cli:main"

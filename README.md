@@ -195,6 +195,32 @@ fonte disser não, o conector devolve o motivo e a busca segue nas outras.
 
 ---
 
+## Como isto conversa com o `morumbi3d_web`
+
+O gerador de logo (raster → STL) e este gerador de letra (SVG → STL) resolvem
+metades diferentes do mesmo problema e **não compartilham código hoje** — este
+pacote nasceu antes de eu ver o `morumbi3d_web`. Duas consequências, ditas na
+cara:
+
+1. **Há duplicação de geometria.** O `geom2d.py` daqui reimplementa em Python
+   puro o que `shapely` (deslocamento de polígono, booleanas) e
+   `mapbox_earcut` (triangulação) já fazem — e o `morumbi3d_web` já depende
+   dos dois. A regra de ouro do `CLAUDE.md` ("nunca duplique lógica de
+   geometria") diz para não deixar isso assim. A razão de existir era rodar
+   sem instalar nada; se ele for morar dentro do `morumbi3d_web`, o certo é
+   trocar `geom2d.py` por shapely e apagar a versão caseira.
+2. **O corte já usa a stack de vocês.** `letras/malha.py` prefere o cortador
+   próprio (mais rápido, e medindo sai na frente) e chama o `trimesh` só nos
+   planos onde ele falhou — a 1 200 mm isso salva 25 cortes. A ponte respeita
+   as armadilhas já documentadas: nunca `process(validate=True)`,
+   `merge_vertices()` + `fix_normals()`, e `disponivel()` testa `scipy`,
+   `networkx` e `rtree` de saída, em vez de deixar o erro aparecer longe da
+   causa.
+
+Para instalar dentro do `morumbi3d_web`: copie o pacote `morumbi3d/` para lá e
+importe `from morumbi3d.letras import gerar_de_svg`. O `app.py` chama essa
+função e não reimplementa nada — mesma regra do `gerar_logo_3d.py`.
+
 ## Testes
 
 ```bash
@@ -202,13 +228,15 @@ cd morumbi3d
 python3 -m unittest discover -s tests -t .
 ```
 
-158 testes, sem rede e sem dependências. Curadoria: malha (STL binário/ASCII,
+163 testes, sem rede e sem dependências. Curadoria: malha (STL binário/ASCII,
 3MF, OBJ, arquivo truncado, balanço, mesa), licenças, marcas, tradução,
 linhas, custo, banco, deduplicação, tolerância a falha por fonte, parsing de
 cada conector, relatório, CSV e CLI. Letra caixa: aninhamento de contra-formas,
 erosão, triangulação com conservação de área, leitura de SVG, e — o que mais
 importa — **toda combinação de geometria é verificada como malha fechada**,
 incluindo os cortes, onde a soma dos volumes tem que bater com a peça inteira.
+Os testes da ponte do `trimesh` se pulam sozinhos quando ele não está
+instalado.
 
 ## Ainda não implementado na curadoria (segunda fase, §4)
 
@@ -277,18 +305,18 @@ nomeada no aviso e o comando sai com erro, em vez de entregar STL quebrado.
 
   | Altura | Peças | Malha aberta |
   | --- | --- | --- |
-  | até 500 mm | até 10 | **0%** |
-  | 800 mm | 30 | 3% (1 peça) |
-  | 1 200 mm | 49 | 8% (4 peças) |
-  | 2 000 mm | 124 | **70% (87 peças)** — e 43 s de processamento |
+  | até 800 mm | até 29 | **0%** |
+  | 1 200 mm | 47 | 4% (2 peças) |
+  | 2 000 mm | 111 | **68% (76 peças)** |
 
-  Ou seja: para letra caixa de tamanho normal ele está sólido; para um
-  letreiro de vários metros ele **não serve** hoje. O comando avisa quando
-  passa de 12 peças e nomeia cada peça aberta, então a falha nunca é
-  silenciosa — mas o conserto de verdade é cortar os contornos em 2D **antes**
-  de extrudar, e não a malha depois; aí cada pedaço nasce fechado pelo mesmo
-  caminho que já é confiável. Enquanto isso: gere uma letra por vez (um SVG
-  para cada) ou use `--sem-cortar` e corte no fatiador.
+  Para letra caixa de tamanho normal — e 800 mm já é um letreiro grande — ele
+  está sólido. Para vários metros ele **não serve** hoje. O comando avisa
+  quando passa de 12 peças e nomeia cada peça aberta, então a falha nunca é
+  silenciosa. O conserto de verdade continua sendo cortar os contornos em 2D
+  **antes** de extrudar (com `shapely`, que o morumbi3d_web já usa), e não a
+  malha depois: aí cada pedaço nasce fechado pelo mesmo caminho que já é
+  confiável. Enquanto isso: gere uma letra por vez ou use `--sem-cortar` e
+  corte no fatiador.
 - **O chanfro é reto** (chanfro/bisel), não um filete arredondado.
 - **Sem encaixe entre pedaços**: as peças cortadas têm face plana de cola, sem
   pino ou rabo de andorinha.

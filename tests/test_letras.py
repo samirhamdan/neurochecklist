@@ -2,6 +2,7 @@
 
 import math
 import unittest
+from unittest import mock
 
 from morumbi3d.letras import GeometriaInvalida, carregar_faces, gerar_de_svg
 from morumbi3d.letras import geom2d as g
@@ -380,3 +381,71 @@ class TesteFluxoCompleto(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestePonteTrimesh(unittest.TestCase):
+    """A ponte opcional para o trimesh (ver morumbi3d/letras/malha.py)."""
+
+    def setUp(self):
+        from morumbi3d.letras import malha
+
+        self.malha = malha
+        disponivel, motivo = malha.disponivel()
+        if not disponivel:
+            self.skipTest(f"trimesh indisponivel: {motivo}")
+        self.cfg = config_temporaria()
+
+    def test_disponivel_testa_o_caminho_todo(self):
+        """Nao basta importar: scipy/networkx/rtree faltam longe da causa."""
+
+        ok, motivo = self.malha.disponivel()
+        self.assertTrue(ok)
+        self.assertIn("trimesh", motivo)
+
+    def test_ida_e_volta_preserva_a_geometria(self):
+        letra = gerar(montar_faces([QUADRADO]), profundidade=10, macica=True)
+        malha = self.malha.para_trimesh(letra.triangulos)
+        self.assertTrue(malha.is_watertight)
+        voltou = self.malha.para_triangulos(malha)
+        relatorio = analisar_triangulos(voltou, self.cfg)
+        self.assertTrue(relatorio.fechada)
+        self.assertAlmostEqual(relatorio.volume_cm3, 100.0, places=2)
+
+    def test_corte_por_um_plano(self):
+        letra = gerar(
+            montar_faces([[(0, 0), (400, 0), (400, 150), (0, 150)]]),
+            profundidade=25, parede=3, frente=3,
+        )
+        inteira = analisar_triangulos(letra.triangulos, self.cfg)
+        partes = self.malha.cortar_um_plano(letra.triangulos, 0, 200.0)
+        self.assertIsNotNone(partes)
+        self.assertEqual(len(partes), 2)
+        soma = 0.0
+        for parte in partes:
+            relatorio = analisar_triangulos(parte, self.cfg)
+            self.assertTrue(relatorio.fechada)
+            soma += relatorio.volume_cm3
+        self.assertAlmostEqual(soma, inteira.volume_cm3, delta=inteira.volume_cm3 * 0.001)
+
+    def test_plano_fora_do_material_devolve_uma_peca_so(self):
+        """Plano no vazio entre duas letras nao e erro: nao corta nada."""
+
+        letra = gerar(montar_faces([QUADRADO]), profundidade=20)
+        partes = self.malha.cortar_um_plano(letra.triangulos, 0, 500.0)
+        self.assertIsNotNone(partes)
+        self.assertEqual(len(partes), 1)
+
+    def test_pacote_funciona_sem_trimesh(self):
+        """A ponte e opcional: sem ela o cortador proprio assume."""
+
+        with mock.patch.object(self.malha, "_estado", {"ok": False, "motivo": "teste"}):
+            self.assertIsNone(self.malha.cortar_um_plano([], 0, 0.0))
+        letra = gerar(
+            montar_faces([[(0, 0), (400, 0), (400, 150), (0, 150)]]),
+            profundidade=25, parede=3, frente=3,
+        )
+        with mock.patch("morumbi3d.letras.cortar.cortar_um_plano", return_value=None):
+            pedacos, _ = cortar(letra.triangulos, 0, [200.0])
+        self.assertEqual(len(pedacos), 2)
+        for pedaco in pedacos:
+            self.assertTrue(analisar_triangulos(pedaco, self.cfg).fechada)

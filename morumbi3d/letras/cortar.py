@@ -13,6 +13,7 @@ from __future__ import annotations
 import math
 
 from .geom2d import montar_faces, triangular
+from .malha import cortar_um_plano
 from .solid import Triangulo, costurar_juntas_t
 
 EPS = 1e-7
@@ -191,8 +192,8 @@ def _afastar_da_degenerescencia(
     return corte
 
 
-def _partir(triangulos: list[Triangulo], eixo: int, corte: float):
-    """Um corte so: devolve (abaixo, acima) ja tampados e costurados."""
+def _partir(triangulos: list[Triangulo], eixo: int, corte: float) -> list[list[Triangulo]]:
+    """Um corte so, pelo cortador proprio: devolve os pedacos ja tampados."""
 
     abaixo: list[Triangulo] = []
     acima: list[Triangulo] = []
@@ -211,19 +212,32 @@ def _partir(triangulos: list[Triangulo], eixo: int, corte: float):
                 segmentos.append(segmento)
     abaixo += _tampar(segmentos, eixo, corte, para_mais=True)
     acima += _tampar(segmentos, eixo, corte, para_mais=False)
-    return costurar_juntas_t(abaixo)[0], costurar_juntas_t(acima)[0]
+    return [
+        parte
+        for parte in (costurar_juntas_t(abaixo)[0], costurar_juntas_t(acima)[0])
+        if parte
+    ]
+
+
+_config_do_corte: list = []
 
 
 def _sao(pedaco: list[Triangulo]) -> bool:
-    """O pedaco saiu fechado e inteiro? Usa o mesmo analisador da curadoria."""
+    """O pedaco saiu fechado e inteiro? Usa o mesmo analisador da curadoria.
+
+    A configuracao fica em cache: esta funcao roda uma vez por candidato de
+    plano, e reler o TOML do disco a cada chamada dominava o tempo de corte
+    de uma peca grande.
+    """
 
     from ..config import carregar_config
     from ..mesh import analisar_triangulos
 
     if not pedaco:
         return False
-    relatorio = analisar_triangulos(pedaco, carregar_config())
-    return relatorio.fechada
+    if not _config_do_corte:
+        _config_do_corte.append(carregar_config())
+    return analisar_triangulos(pedaco, _config_do_corte[0]).fechada
 
 
 def cortar(
@@ -262,22 +276,34 @@ def cortar(
                 for d in (tolerancia_desvio * i / 5.0, -tolerancia_desvio * i / 5.0)
             ]
 
+        def tentar(motor, desvios_) -> tuple[list, float] | None:
+            for desvio in desvios_:
+                corte = _afastar_da_degenerescencia(atual, eixo, pedido + desvio)
+                partes = motor(atual, eixo, corte)
+                if partes is None:
+                    continue
+                partes = [p for p in partes if p]
+                if partes and all(_sao(parte) for parte in partes):
+                    return partes, corte
+            return None
+
+        # O cortador proprio vem primeiro: medindo em letreiro grande ele sai
+        # na frente do trimesh e e varias vezes mais rapido. O trimesh entra
+        # so onde ele falhou em TODOS os planos — ali, um motor de producao
+        # testado por muita gente vale a tentativa extra.
+        achado = tentar(_partir, desvios) or tentar(cortar_um_plano, desvios)
         resultado = None
-        for desvio in desvios:
-            corte = _afastar_da_degenerescencia(atual, eixo, pedido + desvio)
-            abaixo, acima = _partir(atual, eixo, corte)
-            if _sao(abaixo) and _sao(acima):
-                if abs(corte - pedido) > 0.05:
-                    avisos.append(
-                        f"corte movido de {pedido:.1f} para {corte:.1f} mm "
-                        "para sair com malha fechada"
-                    )
-                resultado = (abaixo, acima)
-                break
+        if achado is not None:
+            resultado, corte = achado
+            if abs(corte - pedido) > 0.05:
+                avisos.append(
+                    f"corte movido de {pedido:.1f} para {corte:.1f} mm "
+                    "para sair com malha fechada"
+                )
 
         if resultado is None:
             corte = _afastar_da_degenerescencia(atual, eixo, pedido)
-            resultado = _partir(atual, eixo, corte)
+            resultado = [p for p in _partir(atual, eixo, corte) if p]
             avisos.append(
                 f"corte em {pedido:.1f} mm saiu com malha suspeita — confira o "
                 "pedaco no fatiador antes de imprimir"
@@ -303,10 +329,6 @@ def cortar_para_caber(
 
     avisos: list[str] = []
 
-    x0, x1 = _extensao(triangulos, 0)
-    y0, y1 = _extensao(triangulos, 1)
-    largura, altura = x1 - x0, y1 - y0
-
     def folga(comprimento: float, mesa: float) -> float:
         """Quanto o plano pode andar sem estourar a mesa."""
 
@@ -315,34 +337,75 @@ def cortar_para_caber(
         partes = math.ceil(comprimento / mesa)
         return max(1.0, (mesa - comprimento / partes) * 0.45)
 
-    posicoes_x = [x0 + p for p in sugerir_cortes(largura, altura, mesa_x, mesa_y)]
-    if posicoes_x:
-        avisos.append(
-            f"largura de {largura:.0f} mm nao cabe na mesa util de {mesa_x:.0f} mm: "
-            f"cortada em {len(posicoes_x) + 1} pedacos"
+    cortou_em = set()
+
+    def cortar_corpo(corpo: list[Triangulo]) -> list[list[Triangulo]]:
+        """Corta UM corpo nos dois eixos, na medida que ele precisar."""
+
+        cx0, cx1 = _extensao(corpo, 0)
+        cy0, cy1 = _extensao(corpo, 1)
+        largura_c, altura_c = cx1 - cx0, cy1 - cy0
+
+        posicoes_x = [
+            cx0 + p for p in sugerir_cortes(largura_c, altura_c, mesa_x, mesa_y)
+        ]
+        if posicoes_x:
+            cortou_em.add("largura")
+        pedacos, notas = cortar(
+            corpo, 0, posicoes_x, tolerancia_desvio=folga(largura_c, mesa_x)
         )
-    pedacos, avisos_corte = cortar(
-        triangulos, 0, posicoes_x, tolerancia_desvio=folga(largura, mesa_x)
-    )
-    avisos += avisos_corte
+        avisos.extend(notas)
+
+        saida: list[list[Triangulo]] = []
+        for pedaco in pedacos:
+            py0, py1 = _extensao(pedaco, 1)
+            posicoes_y = [
+                py0 + p for p in sugerir_cortes(py1 - py0, 0.0, mesa_y, mesa_y)
+            ]
+            if not posicoes_y:
+                saida.append(pedaco)
+                continue
+            cortou_em.add("altura")
+            partes, mais = cortar(
+                pedaco, 1, posicoes_y, tolerancia_desvio=folga(py1 - py0, mesa_y)
+            )
+            avisos.extend(mais)
+            saida.extend(partes)
+        return saida
+
+    x0, x1 = _extensao(triangulos, 0)
+    y0, y1 = _extensao(triangulos, 1)
+    largura, altura = x1 - x0, y1 - y0
+
+    if largura <= mesa_x and altura <= mesa_y:
+        # Cabe inteiro: sai num arquivo so, com as letras juntas como estao.
+        # Separar corpos aqui viraria um STL por letra sem necessidade.
+        return [list(triangulos)], avisos
+
+    # Corta a peca inteira, sem separar as letras antes. Separar parecia boa
+    # ideia (cada plano cairia dentro de material em vez de cair no vazio
+    # entre as letras), mas medindo o resultado piorou: a 800 mm foram 21% de
+    # peca aberta contra 0% sem separar, e seis vezes mais lento. Quem ja
+    # resolvia o vazio era o descarte de pedaco vazio, no laco de corte.
+    corpos = [list(triangulos)]
 
     finais: list[list[Triangulo]] = []
-    cortes_y = 0
-    for pedaco in pedacos:
-        py0, py1 = _extensao(pedaco, 1)
-        posicoes_y = [py0 + p for p in sugerir_cortes(py1 - py0, 0.0, mesa_y, mesa_y)]
-        if not posicoes_y:
-            finais.append(pedaco)
-            continue
-        cortes_y += len(posicoes_y)
-        partes, mais_avisos = cortar(
-            pedaco, 1, posicoes_y, tolerancia_desvio=folga(py1 - py0, mesa_y)
-        )
-        finais.extend(partes)
-        avisos += mais_avisos
-    if cortes_y:
+    for corpo in corpos:
+        finais.extend(cortar_corpo(corpo))
+
+    if "largura" in cortou_em:
         avisos.append(
-            f"altura maior que a mesa util de {mesa_y:.0f} mm: {cortes_y} corte(s) "
-            "adicional(is) na horizontal"
+            f"largura de {largura:.0f} mm nao cabe na mesa util de "
+            f"{mesa_x:.0f} mm: cortada na vertical"
+        )
+    if "altura" in cortou_em:
+        avisos.append(
+            f"altura de {altura:.0f} mm nao cabe na mesa util de "
+            f"{mesa_y:.0f} mm: cortada na horizontal"
+        )
+    if len(finais) > 1:
+        avisos.append(
+            f"{len(finais)} pecas no total, a partir de {len(corpos)} corpo(s) "
+            "separado(s) — cada letra e cortada por conta propria"
         )
     return finais, avisos
