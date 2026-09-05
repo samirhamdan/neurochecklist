@@ -64,9 +64,9 @@ git reset --hard "origin/$BRANCH"
 
 # Dependencia so quando o requirements mudou: pip install a cada deploy
 # gasta minutos e RAM que esta maquina nao tem sobrando.
-if ! git diff --quiet "$ANTES" "$DEPOIS" -- app/requirements.txt 2>/dev/null; then
+if ! git diff --quiet "$ANTES" "$DEPOIS" -- requirements.txt 2>/dev/null; then
   echo "==> requirements.txt mudou: atualizando o venv"
-  ./venv/bin/pip install --quiet -r app/requirements.txt
+  ./venv/bin/pip install --quiet -r requirements.txt
 fi
 
 chown -R "$DONO" "$REPO"
@@ -76,10 +76,11 @@ echo "==> Reiniciando $SERVICO"
 
 # Conferir que subiu. Sem isso, um deploy quebrado so aparece quando um
 # cliente reclama.
-echo "==> Conferindo em http://$BIND/ ..."
+# /saude responde sem senha; a raiz redirecionaria para a tela de entrada.
+echo "==> Conferindo em http://$BIND/saude ..."
 OK=0
 for _ in $(seq 1 15); do
-  if "$CURL" -fsS -o /dev/null --max-time 4 "http://$BIND/"; then OK=1; break; fi
+  if "$CURL" -fsS -o /dev/null --max-time 4 "http://$BIND/saude"; then OK=1; break; fi
   sleep 2
 done
 

@@ -7,6 +7,7 @@ errada, expoe dado de cliente.
 import importlib
 import os
 import tempfile
+import time
 import unittest
 
 try:
@@ -254,3 +255,243 @@ class TesteFila(unittest.TestCase):
         r = resumo()
         self.assertEqual(r["trocas_de_cor"], 0)
         self.assertEqual(r["purga_g"], 0)
+
+
+@unittest.skipUnless(TEM_FLASK, "flask nao instalado")
+def _logo_disponivel():
+    """O gerador de logo precisa de opencv, trimesh e scipy — 180 MB.
+
+    Quem so quer o painel instala `pip install -e ".[sistema]"` e nao tem
+    nada disso. A suite tem que dizer "pulei" nesse caso, e nao quebrar com
+    ImportError vindo de dentro de um teste de rota.
+    """
+    try:
+        import sistema.logo.app  # noqa: F401
+    except Exception:
+        return False
+    return True
+
+
+LOGO_INSTALADO = _logo_disponivel()
+SEM_LOGO = "gerador de logo nao instalado (opencv/trimesh)"
+
+
+class TesteJuncao(unittest.TestCase):
+    """O gerador de logo montado em /logo, com uma porta de entrada so.
+
+    O teste que mais importa aqui e o de fora: se a guarda falhar, o gerador
+    fica aberto na internet, porque o cadeado Basic dele foi retirado.
+    """
+
+    def montar_wsgi(self):
+        import importlib
+
+        os.environ["MORUMBI_DADOS"] = tempfile.mkdtemp(prefix="morumbi-juncao-")
+        os.environ["MORUMBI_USUARIO"] = "samir"
+        os.environ["MORUMBI_SENHA"] = "segredo"
+        os.environ["MORUMBI_BIND"] = "127.0.0.1:5000"
+        os.environ["MORUMBI_HTTPS"] = "0"
+
+        from sistema import auth, dados
+        importlib.reload(dados)
+        importlib.reload(auth)
+        from sistema import app as modulo
+        importlib.reload(modulo)
+        import wsgi
+        importlib.reload(wsgi)
+        wsgi.sistema.config["TESTING"] = True
+        return wsgi
+
+    def setUp(self):
+        self.wsgi = self.montar_wsgi()
+        self.cliente = self.wsgi.sistema.test_client()
+
+    def test_logo_sem_entrar_manda_para_a_entrada(self):
+        r = self.cliente.get("/logo/")
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/entrar", r.headers["Location"])
+        self.assertIn("destino=/logo/", r.headers["Location"])
+
+    def test_api_do_logo_tambem_esta_guardada(self):
+        """O cadeado Basic saiu; se a guarda falhar, a API fica aberta."""
+
+        for caminho in ("/logo/api/enviar", "/logo/api/gerar", "/logo/api/baixar/abc"):
+            with self.subTest(caminho=caminho):
+                r = self.cliente.post(caminho)
+                self.assertEqual(r.status_code, 302, f"{caminho} respondeu sem sessao")
+                self.assertIn("/entrar", r.headers["Location"])
+
+    @unittest.skipUnless(LOGO_INSTALADO, SEM_LOGO)
+    def test_logo_abre_depois_de_entrar(self):
+        self.cliente.post("/entrar", data={"usuario": "samir", "senha": "segredo"})
+        r = self.cliente.get("/logo/")
+        self.assertEqual(r.status_code, 200)
+        corpo = r.get_data(as_text=True)
+        self.assertIn("gerador de logo", corpo.lower())
+        self.assertIn("Solte um logo aqui", corpo)
+
+    @unittest.skipUnless(LOGO_INSTALADO, SEM_LOGO)
+    def test_interface_do_logo_usa_prefixo(self):
+        """Montado sob /logo, as chamadas nao podem ser absolutas."""
+
+        self.cliente.post("/entrar", data={"usuario": "samir", "senha": "segredo"})
+        corpo = self.cliente.get("/logo/").get_data(as_text=True)
+        self.assertIn("const BASE = location.pathname", corpo)
+        self.assertIn("BASE + '/api/enviar'", corpo)
+        self.assertNotIn("fetch('/api/", corpo)
+
+    def test_painel_continua_de_pe(self):
+        self.cliente.post("/entrar", data={"usuario": "samir", "senha": "segredo"})
+        self.assertEqual(self.cliente.get("/").status_code, 200)
+        self.assertEqual(self.cliente.get("/letreiros").status_code, 200)
+        self.assertEqual(self.cliente.get("/saude").status_code, 200)
+
+    def test_gerador_quebrado_nao_derruba_o_sistema(self):
+        """Dependencia faltando tira /logo do ar, nao o painel."""
+
+        import wsgi
+
+        quebrado = wsgi._com_sessao(wsgi._explicar_falha("ModuleNotFoundError: cv2"))
+        from werkzeug.middleware.dispatcher import DispatcherMiddleware
+
+        wsgi.sistema.wsgi_app = DispatcherMiddleware(
+            wsgi.criar_app().wsgi_app, {"/logo": quebrado})
+        cliente = wsgi.sistema.test_client()
+        cliente.post("/entrar", data={"usuario": "samir", "senha": "segredo"})
+        self.assertEqual(cliente.get("/").status_code, 200, "o painel tem que continuar")
+        r = cliente.get("/logo/")
+        self.assertEqual(r.status_code, 503)
+        self.assertIn("cv2", r.get_data(as_text=True))
+
+
+class TesteImplantacao(unittest.TestCase):
+    """Os arquivos de implantacao apontam para caminhos que existem.
+
+    A juncao moveu o gerador de logo para dentro do sistema e levou o
+    wsgi.py e o gunicorn.conf.py para a raiz do repositorio. Duas dessas
+    referencias ficaram para tras e eu so achei rodando na mao: o
+    atualizar.sh ainda procurava app/requirements.txt, e a mensagem final
+    do migrar-para-git.sh mandava apontar o ExecStart para a subpasta, onde
+    o wsgi.py nao esta mais. As duas so apareceriam no dia do deploy, com o
+    site fora do ar. Estes testes existem para isso nao se repetir.
+    """
+
+    RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _ler(self, *partes):
+        with open(os.path.join(self.RAIZ, *partes), encoding="utf-8") as f:
+            return f.read()
+
+    def test_gunicorn_conf_carrega_e_e_sensata(self):
+        espaco = {"__file__": os.path.join(self.RAIZ, "gunicorn.conf.py")}
+        os.environ["MORUMBI_BIND"] = "172.18.0.1:5000"
+        try:
+            exec(compile(self._ler("gunicorn.conf.py"), "gunicorn.conf.py", "exec"), espaco)
+        finally:
+            os.environ.pop("MORUMBI_BIND", None)
+        self.assertEqual(espaco["bind"], "172.18.0.1:5000", "tem que obedecer o systemd")
+        self.assertEqual(espaco["workers"], 1, "2 GB de RAM nao aguentam mais de um")
+        # Gerar STL de logo complexo passa facil dos 30s padrao do gunicorn.
+        self.assertGreaterEqual(espaco["timeout"], 120)
+
+    def test_caminhos_citados_pela_implantacao_existem(self):
+        """Todo arquivo que os scripts mandam o Samir usar tem que existir."""
+        citados = {
+            "wsgi.py": "wsgi:app",
+            "gunicorn.conf.py": "-c ... gunicorn.conf.py",
+            "requirements.txt": "pip install -r",
+        }
+        for arquivo, onde in citados.items():
+            self.assertTrue(
+                os.path.isfile(os.path.join(self.RAIZ, arquivo)),
+                f"{arquivo} e citado na implantacao ({onde}) e nao esta na raiz")
+
+        # assertTrue e nao assertIn de proposito: assertIn imprime o arquivo
+        # inteiro na falha, e sao 100 linhas de shell para dizer uma coisa so.
+        atualizar = self._ler("implantar", "atualizar.sh")
+        self.assertTrue("-- requirements.txt" in atualizar,
+                        "atualizar.sh: o requirements da raiz e o unico que existe"
+                        " depois da juncao")
+        self.assertTrue("app/requirements.txt" not in atualizar,
+                        "atualizar.sh ainda procura o requirements na subpasta app/")
+        # A raiz responde 302 para /entrar; um 302 nao prova que o app esta sao.
+        self.assertTrue("/saude" in atualizar,
+                        "atualizar.sh: a checagem de saude precisa de rota sem senha")
+
+    def test_servico_e_migracao_sobem_o_sistema_inteiro(self):
+        """Nao o gerador de logo sozinho, que era o que subia antes."""
+        for arquivo in (("implantar", "morumbi3d.service"),
+                        ("implantar", "migrar-para-git.sh")):
+            texto = self._ler(*arquivo)
+            nome = arquivo[-1]
+            self.assertTrue("wsgi:app" in texto,
+                            f"{nome} tem que subir o wsgi da raiz, nao so o gerador")
+            # WorkingDirectory na subpasta faz o gunicorn nao achar o wsgi.py.
+            self.assertTrue("WorkingDirectory=$REPO/$SUBPASTA" not in texto,
+                            f"{nome}: WorkingDirectory tem que ficar na raiz do repo")
+            self.assertTrue("$SUBPASTA/gunicorn.conf.py" not in texto,
+                            f"{nome}: o gunicorn.conf.py mora na raiz depois da juncao")
+
+    def test_service_modelo_nao_leva_senha_de_verdade(self):
+        modelo = self._ler("implantar", "morumbi3d.service")
+        self.assertTrue("MORUMBI_SENHA=TROQUE_ESTA_SENHA" in modelo,
+                        "o modelo no git nao pode carregar a senha de verdade")
+        # O bind do gateway do Docker: o Caddy roda em container e nao
+        # alcanca o 127.0.0.1 do host.
+        self.assertTrue("MORUMBI_BIND=172.18.0.1:5000" in modelo,
+                        "o modelo tem que trazer o bind do gateway do Docker")
+
+
+@unittest.skipUnless(LOGO_INSTALADO, SEM_LOGO)
+class TesteFaxinaCompartilhada(unittest.TestCase):
+    """A juncao fez os dois apps dividirem a mesma MORUMBI_DADOS.
+
+    O gerador de logo apaga sozinho o que passa da validade, para o disco do
+    VPS nao encher. Antes ele era dono da pasta e podia apagar qualquer
+    coisa velha; agora o banco de pedidos e a chave que assina os cookies
+    moram no mesmo lugar.
+    """
+
+    def setUp(self):
+        import shutil as _shutil
+        from sistema.logo import app as modulo
+
+        self.modulo = modulo
+        self.pasta = tempfile.mkdtemp(prefix="morumbi-faxina-")
+        self.addCleanup(_shutil.rmtree, self.pasta, ignore_errors=True)
+
+        self.pasta_antiga, modulo.PASTA = modulo.PASTA, self.pasta
+        self.validade, modulo.VALIDADE_H = modulo.VALIDADE_H, 12.0
+
+    def tearDown(self):
+        self.modulo.PASTA = self.pasta_antiga
+        self.modulo.VALIDADE_H = self.validade
+
+    def _criar(self, nome, pasta=True, velho=True):
+        alvo = os.path.join(self.pasta, nome)
+        if pasta:
+            os.makedirs(alvo)
+        else:
+            with open(alvo, "w") as f:
+                f.write("x")
+        if velho:
+            antigo = time.time() - 48 * 3600
+            os.utime(alvo, (antigo, antigo))
+        return alvo
+
+    def test_apaga_upload_vencido_e_so_ele(self):
+        vencido = self._criar("a1b2c3d4e5f6")
+        recente = self._criar("0123456789ab", velho=False)
+        banco = self._criar("sistema.sqlite3", pasta=False)
+        chave = self._criar("chave_sessao", pasta=False)
+        # MPLCONFIGDIR, que o morumbi3d.service aponta para dentro daqui.
+        matplotlib = self._criar(".mpl")
+        # Espaco para o painel crescer sem tropecar na faxina alheia.
+        pedidos = self._criar("pedidos")
+
+        self.modulo.faxina()
+
+        self.assertFalse(os.path.exists(vencido), "upload vencido tinha que sair")
+        for sobrevivente in (recente, banco, chave, matplotlib, pedidos):
+            self.assertTrue(os.path.exists(sobrevivente),
+                            f"a faxina do gerador de logo comeu {os.path.basename(sobrevivente)}")

@@ -7,3 +7,10 @@ catalogo.sqlite3
 relatorios/
 cache/
 *.csv
+
+# Dados de execucao (MORUMBI_DADOS). O README manda usar ./dados, e ali
+# ficam a chave que assina os cookies, o banco de pedidos e os logos que
+# os clientes enviaram. Nada disso pode ir para o repositorio.
+dados/
+sistema.sqlite3
+chave_sessao

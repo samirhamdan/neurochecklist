@@ -18,8 +18,8 @@ coisas que o repositório não sabe:
 | | no repositório (modelo) | no VPS (real) |
 | --- | --- | --- |
 | `MORUMBI_SENHA` | `TROQUE_ESTA_SENHA` | a senha de verdade |
-| `MORUMBI_BIND` | `127.0.0.1:5000` | `172.18.0.1:5000` |
-| `MORUMBI_WORKERS` / `MemoryMax` | 2 / 1500M | 1 / 800M |
+| `MORUMBI_BIND` | `172.18.0.1:5000` | idem — mas confira |
+| `MORUMBI_WORKERS` / `MemoryMax` | 1 / 800M | confira os desta máquina |
 
 Sobrescrever esse arquivo a partir do git faz duas estragos de uma vez: o
 site sai do ar (o Caddy roda em container e não alcança o `127.0.0.1` do
@@ -44,9 +44,20 @@ script: se o servidor estiver mais novo que o repositório — um ajuste feito
 deploy faria a produção voltar no tempo em silêncio. Nesse caso ele manda
 você levar o que está rodando para o repositório primeiro.
 
-Só quando bate ele move o app para `app/`, pluga o git e avisa do único
-ajuste manual que resta: apontar `WorkingDirectory` e `ExecStart` do serviço
-para a nova subpasta.
+Só quando bate ele move o app para `sistema/logo/` — onde o gerador de logo
+passou a morar depois da junção — pluga o git e avisa dos ajustes manuais que
+restam no serviço:
+
+```ini
+WorkingDirectory=/opt/morumbi3d
+ExecStart=/opt/morumbi3d/venv/bin/gunicorn -c /opt/morumbi3d/gunicorn.conf.py wsgi:app
+```
+
+`wsgi:app` é a mudança que importa: o serviço deixa de subir só o gerador de
+logo e passa a subir o sistema inteiro, com o gerador pendurado em `/logo/`.
+O modelo completo do arquivo está em
+[`morumbi3d.service`](morumbi3d.service) — modelo, não o que roda: o que roda
+tem a senha de verdade e não vem do git.
 
 ## Repositório privado: chave de deploy
 
@@ -85,10 +96,11 @@ git add -A && git commit -m "o que mudou" && git push
 ```
 
 `atualizar.sh` mostra o que vai entrar, atualiza o venv **só quando o
-`requirements.txt` mudou** (esta máquina não tem RAM sobrando para um
+`requirements.txt` da raiz mudou** (esta máquina não tem RAM sobrando para um
 `pip install` a cada deploy), reinicia, e **confere se o serviço voltou**.
 Se não voltar em 30 segundos, ele desfaz sozinho e deixa a versão anterior
-no ar. Deploy quebrado que fica quebrado até alguém reclamar é o que este
+no ar. A conferência bate em `/saude`, que responde sem senha — a raiz
+redirecionaria para a tela de entrada e um 302 não prova que o app está são. Deploy quebrado que fica quebrado até alguém reclamar é o que este
 laço existe para evitar.
 
 Alteração feita na unha dentro de `/opt/morumbi3d` é salva em

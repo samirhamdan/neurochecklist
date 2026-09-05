@@ -9,6 +9,7 @@ Duas ferramentas de linha de comando que dividem a mesma base técnica
 | `morumbi3d letra` | **Produção**: converte SVG em letra caixa pronta para imprimir |
 | [`web/gerador-letreiros.html`](web/) | **Produção**: placa de nome com letras conectadas, direto no navegador |
 | [`sistema/`](sistema/) | **Gestão**: entrada e painel — fila de produção, pedidos e estoque |
+| [`sistema/logo/`](sistema/logo/) | **Produção**: gerador de logo 3D (imagem → STL), agora dentro do sistema |
 
 A primeira implementa a especificação *Sistema de Busca e Curadoria de
 Modelos 3D*, na ordem recomendada por ela: banco de dados + analisador de
@@ -200,31 +201,66 @@ fonte disser não, o conector devolve o motivo e a busca segue nas outras.
 
 ---
 
-## Como isto conversa com o `morumbi3d_web`
+## Um serviço só: `wsgi.py`
 
-O gerador de logo (raster → STL) e este gerador de letra (SVG → STL) resolvem
-metades diferentes do mesmo problema e **não compartilham código hoje** — este
-pacote nasceu antes de eu ver o `morumbi3d_web`. Duas consequências, ditas na
-cara:
+O gerador de logo (`morumbi3d_web`) morava num serviço próprio. Agora mora em
+[`sistema/logo/`](sistema/logo/) e sobe junto com o painel, num processo só:
 
-1. **Há duplicação de geometria.** O `geom2d.py` daqui reimplementa em Python
-   puro o que `shapely` (deslocamento de polígono, booleanas) e
-   `mapbox_earcut` (triangulação) já fazem — e o `morumbi3d_web` já depende
-   dos dois. A regra de ouro do `CLAUDE.md` ("nunca duplique lógica de
-   geometria") diz para não deixar isso assim. A razão de existir era rodar
-   sem instalar nada; se ele for morar dentro do `morumbi3d_web`, o certo é
-   trocar `geom2d.py` por shapely e apagar a versão caseira.
-2. **O corte já usa a stack de vocês.** `letras/malha.py` prefere o cortador
-   próprio (mais rápido, e medindo sai na frente) e chama o `trimesh` só nos
-   planos onde ele falhou — a 1 200 mm isso salva 25 cortes. A ponte respeita
-   as armadilhas já documentadas: nunca `process(validate=True)`,
-   `merge_vertices()` + `fix_normals()`, e `disponivel()` testa `scipy`,
-   `networkx` e `rtree` de saída, em vez de deixar o erro aparecer longe da
-   causa.
+```bash
+pip install -r requirements.txt
+MORUMBI_USUARIO=samir MORUMBI_SENHA=troque \
+  gunicorn -c gunicorn.conf.py wsgi:app
+```
 
-Para instalar dentro do `morumbi3d_web`: copie o pacote `morumbi3d/` para lá e
-importe `from morumbi3d.letras import gerar_de_svg`. O `app.py` chama essa
-função e não reimplementa nada — mesma regra do `gerar_logo_3d.py`.
+| Endereço | O quê |
+| --- | --- |
+| `/` | painel — fila, pedidos, estoque |
+| `/entrar` | tela de entrada (a única sem cadeado, junto com `/saude`) |
+| `/letreiros` | gerador de placa de nome (roda no navegador) |
+| `/logo/` | gerador de logo 3D (roda no servidor) |
+
+A razão é a máquina: o VPS tem 2 GB, e cada processo gunicorn carrega numpy,
+scipy, opencv e trimesh por conta própria — 300 a 400 MB cada um. Dois
+serviços separados **não cabiam** com folga; um cabe.
+
+Três detalhes que essa junção obrigou:
+
+1. **Um cadeado, não dois.** O gerador de logo tinha Basic auth própria
+   (popup do navegador). Manter as duas pediria a senha duas vezes na mesma
+   sessão. Então `wsgi.py` desliga a Basic dele (`SENHA = ""`) e põe a guarda
+   de sessão do sistema na frente de `/logo` inteiro — **inclusive as rotas
+   de API**, que é o que de fato importa: sem a guarda, desligar a Basic
+   deixaria `/logo/api/gerar` aberto na internet. Há teste para cada uma
+   dessas rotas.
+2. **O front do logo virou relativo.** Ele chamava `fetch('/api/gerar')`, que
+   sob `/logo/` bateria na raiz e daria 404. Uma linha resolve, e ela deriva
+   o prefixo em vez de fixá-lo:
+   `const BASE = location.pathname.replace(/\/+$/, "")...`
+3. **Falta de dependência não derruba o painel.** Se `opencv` ou `trimesh`
+   não estiverem instalados, `/logo` responde 503 dizendo qual import falhou
+   — o resto do sistema continua no ar. Antes, o mesmo erro impediria o
+   processo inteiro de subir.
+
+O que **não** mudou: `sistema/logo/app.py` continua chamando as funções de
+`gerar_logo_3d.py`, sem geometria duplicada no servidor. É a regra de ouro do
+`CLAUDE.md` e ela vale igual depois da junção.
+
+### Duplicação que sobrou
+
+`morumbi3d/letras/geom2d.py` reimplementa em Python puro o que `shapely`
+(deslocamento de polígono, booleanas) e `mapbox_earcut` (triangulação) fazem —
+e agora que os dois estão no mesmo `requirements.txt`, essa duplicação não tem
+mais desculpa de "rodar sem instalar nada". Trocar `geom2d.py` por shapely é o
+próximo passo óbvio, e é também o conserto de verdade do cortador (ver
+limitações abaixo). Não fiz junto porque é reescrita de geometria, e geometria
+aqui só muda com o verificador de malha confirmando peça a peça.
+
+O corte já usa a stack de vocês: `letras/malha.py` prefere o cortador próprio
+(mais rápido, e medindo sai na frente) e chama o `trimesh` só nos planos onde
+ele falhou — a 1 200 mm isso salva 25 cortes. A ponte respeita as armadilhas
+já documentadas: nunca `process(validate=True)`, `merge_vertices()` +
+`fix_normals()`, e `disponivel()` testa `scipy`, `networkx` e `rtree` de
+saída, em vez de deixar o erro aparecer longe da causa.
 
 ## Testes
 
@@ -233,7 +269,11 @@ cd morumbi3d
 python3 -m unittest discover -s tests -t .
 ```
 
-163 testes, sem rede e sem dependências. Curadoria: malha (STL binário/ASCII,
+194 testes, **sem rede**. Os da curadoria e do gerador de letra caixa rodam
+sem dependência nenhuma; os do sistema pedem Flask, e os dois que abrem o
+gerador de logo se pulam sozinhos quando `opencv`/`trimesh` não estão
+instalados — quem só quer o painel não precisa de 180 MB de biblioteca.
+Curadoria: malha (STL binário/ASCII,
 3MF, OBJ, arquivo truncado, balanço, mesa), licenças, marcas, tradução,
 linhas, custo, banco, deduplicação, tolerância a falha por fonte, parsing de
 cada conector, relatório, CSV e CLI. Letra caixa: aninhamento de contra-formas,
@@ -241,7 +281,11 @@ erosão, triangulação com conservação de área, leitura de SVG, e — o que 
 importa — **toda combinação de geometria é verificada como malha fechada**,
 incluindo os cortes, onde a soma dos volumes tem que bater com a peça inteira.
 Os testes da ponte do `trimesh` se pulam sozinhos quando ele não está
-instalado.
+instalado. Junção: as quatro rotas de `/logo` recusam quem não entrou, a
+interface usa prefixo relativo, e falta de dependência devolve 503 em `/logo`
+sem derrubar o painel. Implantação: o `gunicorn.conf.py` carrega e obedece o
+`MORUMBI_BIND` do systemd, e todo caminho que os scripts mandam usar existe —
+foi assim que apareceram duas referências que a junção deixou para trás.
 
 ## Ainda não implementado na curadoria (segunda fase, §4)
 

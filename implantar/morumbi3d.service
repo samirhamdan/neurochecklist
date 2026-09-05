@@ -1,0 +1,43 @@
+# MODELO. Copie para /etc/systemd/system/morumbi3d.service e ajuste.
+#
+# O arquivo que roda no servidor NAO vem do git: ele tem a senha real e os
+# valores desta maquina. O implantar/atualizar.sh nao encosta nele de
+# proposito. Se voce sobrescrever com este modelo, confira antes:
+#   - MORUMBI_SENHA precisa da senha de verdade;
+#   - MORUMBI_BIND precisa ser 172.18.0.1:5000 (o gateway do Docker), porque
+#     o Caddy roda em container e nao alcanca o 127.0.0.1 do host.
+
+[Unit]
+Description=Sistema Morumbi 3D (painel, letreiros e logo)
+After=network.target
+
+[Service]
+Type=simple
+User=morumbi
+Group=morumbi
+WorkingDirectory=/opt/morumbi3d
+
+Environment="MORUMBI_USUARIO=samir"
+Environment="MORUMBI_SENHA=TROQUE_ESTA_SENHA"
+Environment="MORUMBI_DADOS=/var/lib/morumbi3d"
+Environment="MORUMBI_VALIDADE_H=12"
+Environment="MORUMBI_WORKERS=1"
+Environment="MORUMBI_BIND=172.18.0.1:5000"
+Environment="MORUMBI_HTTPS=1"
+Environment="MPLCONFIGDIR=/var/lib/morumbi3d/.mpl"
+
+ExecStart=/opt/morumbi3d/venv/bin/gunicorn -c /opt/morumbi3d/gunicorn.conf.py wsgi:app
+
+Restart=always
+RestartSec=5
+
+# Contencao: o servico so enxerga o que precisa
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/morumbi3d
+MemoryMax=800M
+
+[Install]
+WantedBy=multi-user.target

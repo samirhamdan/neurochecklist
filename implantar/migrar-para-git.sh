@@ -15,7 +15,7 @@ set -euo pipefail
 URL="${1:-}"
 REPO="${MORUMBI_REPO:-/opt/morumbi3d}"
 BRANCH="${2:-main}"
-SUBPASTA="${MORUMBI_SUBPASTA:-app}"   # onde o app Flask mora dentro do repo
+SUBPASTA="${MORUMBI_SUBPASTA:-sistema/logo}"   # onde o gerador de logo mora no repo
 
 if [ -z "$URL" ]; then
   echo "uso: $0 <url-do-repositorio> [branch]" >&2
@@ -100,10 +100,14 @@ echo "    tudo igual."
 echo
 echo "==> Movendo o app para $SUBPASTA/ (o venv fica onde esta)"
 mkdir -p "$REPO/$SUBPASTA"
+# A subpasta tem mais de um nivel ("sistema/logo"), mas o find abaixo lista
+# so o primeiro. Comparar com $SUBPASTA inteiro nunca casaria, e o laco
+# tentaria mover $REPO/sistema para dentro de $REPO/sistema/logo.
+RAIZ_SUB="${SUBPASTA%%/*}"
 while IFS= read -r item; do
   nome=$(basename "$item")
   [ "$nome" = "venv" ] && continue
-  [ "$nome" = "$SUBPASTA" ] && continue
+  [ "$nome" = "$RAIZ_SUB" ] && continue
   mv "$item" "$REPO/$SUBPASTA/"
 done < <(find "$REPO" -mindepth 1 -maxdepth 1)
 
@@ -129,11 +133,19 @@ cat <<FIM
 
 Pronto. Falta UM ajuste manual, uma vez so.
 
-O app agora mora em $REPO/$SUBPASTA/, e nao mais na raiz. Edite
-/etc/systemd/system/morumbi3d.service e aponte os dois caminhos:
+O gerador de logo agora mora em $REPO/$SUBPASTA/, e quem sobe o servico e o
+$REPO/wsgi.py, que serve o painel em / e o gerador em /logo/. Edite
+/etc/systemd/system/morumbi3d.service:
 
-    WorkingDirectory=$REPO/$SUBPASTA
-    ExecStart=$REPO/venv/bin/gunicorn -c $REPO/$SUBPASTA/gunicorn.conf.py wsgi:app
+    WorkingDirectory=$REPO
+    ExecStart=$REPO/venv/bin/gunicorn -c $REPO/gunicorn.conf.py wsgi:app
+
+Repare que o WorkingDirectory continua na RAIZ, e nao na subpasta: o wsgi.py
+e o gunicorn.conf.py ficam la. Apontar para a subpasta faz o servico nao subir.
+
+O sistema pede senha por formulario agora, e nao mais pelo popup do navegador.
+Confira que MORUMBI_USUARIO e MORUMBI_SENHA continuam no arquivo: sem senha o
+app se recusa a subir em endereco publico, de proposito.
 
 NAO mexa em mais nada nesse arquivo: a senha, o MORUMBI_BIND do gateway do
 Docker e os limites de memoria dessa maquina estao nele e o repositorio nao
