@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block titulo %}Painel — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+
+<header class="topo">
+  <div class="dentro">
+    <div class="logo">Morumbi <span>3D</span></div>
+    <nav>
+      <a href="{{ url_for('painel') }}">Painel</a>
+      <a href="{{ url_for('letreiros') }}">Gerar letreiro</a>
+      {% if com_senha %}
+        <span class="quem">{{ usuario }}</span>
+        <form method="post" action="{{ url_for('sair') }}">
+          <button type="submit">Sair</button>
+        </form>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<main class="pagina">
+
+{% if atrasados or filamento_baixo or not com_senha %}
+  <div class="avisos">
+    {% if not com_senha %}
+      <div class="aviso atencao">Sem <b>MORUMBI_SENHA</b> configurada: qualquer
+        pessoa que alcance este endereço entra. Só permitido rodando no próprio
+        computador.</div>
+    {% endif %}
+    {% for p in atrasados %}
+      <div class="aviso mal">Pedido de <b>{{ p.cliente }}</b> passou do prazo
+        ({{ p.prazo }}).</div>
+    {% endfor %}
+    {% for f in filamento_baixo %}
+      <div class="aviso atencao">Filamento <b>{{ f.cor }}</b> em
+        {{ f.gramas|round|int }} g — abaixo do mínimo de
+        {{ f.minimo|round|int }} g.</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if vazio %}
+
+  <h2 class="secao">Começando</h2>
+  <div class="bloco">
+    <div class="vazio">
+      <h3>Ainda não há nada registrado.</h3>
+      <p>Este painel mostra a fila de produção, os pedidos abertos e o estoque
+      de filamento. Enquanto nada for cadastrado, ele fica assim — em vez de
+      inventar movimento que não existe.</p>
+      <p>A ordem que faz o resto valer a pena:</p>
+      <ol>
+        <li>Cadastrar o primeiro pedido, <b>com o canal de origem</b>. É esse
+          campo que responde de onde vêm os pedidos.</li>
+        <li>Ao tirar a peça da mesa, lançar as gramas e as horas reais. Com
+          trinta peças, dá para saber se o preço cobre o custo.</li>
+        <li>Cadastrar o estoque de filamento por cor, para a fila avisar antes
+          de a cor acabar no meio de um pedido.</li>
+      </ol>
+    </div>
+  </div>
+
+{% else %}
+
+  <div class="painel">
+
+    <section class="bloco">
+      <header>
+        <h3>Fila de produção</h3>
+        <span class="nota">{{ '%.1f'|format(horas_fila) }} h previstas ·
+          {{ trocas_de_cor }} troca(s) de cor · {{ purga_g }} g de purga</span>
+      </header>
+      <div class="corpo">
+        {% for cor, pecas in fila_por_cor.items() %}
+          <div class="cor-grupo">
+            <div class="cor-titulo">
+              <span class="bolinha" style="background:{{ cores.get(cor, '#B9BEC4') }}"></span>
+              {{ cor }}
+              <span class="qtd">{{ pecas|length }} peça(s)</span>
+            </div>
+            <ul class="pecas">
+              {% for peca in pecas %}
+                <li>
+                  <span>{{ peca.descricao }}</span>
+                  <span class="hora">
+                    {% if peca.horas_est %}{{ '%.1f'|format(peca.horas_est) }} h{% else %}—{% endif %}
+                  </span>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="bloco">
+      <header><h3>Estoque de filamento</h3></header>
+      <div class="corpo">
+        {% if filamento %}
+          <div class="barras">
+            {% for f in filamento %}
+              {% set cheio = (f.gramas / (f.minimo * 4) * 100) if f.minimo else 0 %}
+              <div class="barra-linha">
+                <span class="nome">{{ f.cor }}</span>
+                <span class="barra">
+                  <i class="{{ 'baixo' if f.gramas <= f.minimo else '' }}"
+                     style="width:{{ [cheio, 100]|min|round|int }}%"></i>
+                </span>
+                <span class="g">{{ f.gramas|round|int }} g</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color:var(--suave);font-size:15px">Nenhuma cor cadastrada.</p>
+        {% endif %}
+      </div>
+    </section>
+
+  </div>
+
+  <h2 class="secao">Pedidos abertos</h2>
+  <div class="bloco">
+    <div class="corpo">
+      <table class="lista">
+        <thead>
+          <tr><th>Cliente</th><th>Canal</th><th>Situação</th><th>Prazo</th>
+            <th class="num">Valor</th></tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos %}
+            <tr>
+              <td>{{ p.cliente }}</td>
+              <td>{{ p.canal or '—' }}</td>
+              <td><span class="etiqueta">{{ p.status }}</span></td>
+              <td>
+                {% if p.dias is none %}—
+                {% elif p.dias < 0 %}<span class="etiqueta atrasado">{{ -p.dias }} d atrasado</span>
+                {% elif p.dias == 0 %}<span class="etiqueta hoje">hoje</span>
+                {% else %}em {{ p.dias }} d{% endif %}
+              </td>
+              <td class="num">{% if p.valor %}R$ {{ '%.2f'|format(p.valor) }}{% else %}—{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% endif %}
+
+  <h2 class="secao">Criar</h2>
+  <div class="atalhos">
+    <a class="atalho" href="{{ url_for('letreiros') }}">
+      <b>Gerador de letreiros</b>
+      <span>Nome digitado vira placa com letras conectadas. 6 temas, 3 tamanhos,
+        luminária de 60 mm.</span>
+    </a>
+    <a class="atalho" href="/logo">
+      <b>Gerador de logo 3D</b>
+      <span>Imagem do logo vira STL: recorte de fundo, vetorização e checagem
+        de traço fino.</span>
+    </a>
+  </div>
+
+</main>
+{% endblock %}

@@ -23,8 +23,15 @@ malha = [
     "rtree>=1.0",
 ]
 
+# O sistema de gestao (telas de entrada e painel). Os geradores e a
+# curadoria continuam rodando sem isto.
+sistema = ["flask>=3.0"]
+
 [project.scripts]
 morumbi3d = "morumbi3d.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["morumbi3d*"]
+include = ["morumbi3d*", "sistema*"]
+
+[tool.setuptools.package-data]
+sistema = ["templates/*.html", "static/*.css"]

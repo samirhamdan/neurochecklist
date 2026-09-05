@@ -8,6 +8,7 @@ Duas ferramentas de linha de comando que dividem a mesma base técnica
 | `morumbi3d buscar` e cia. | **Curadoria**: encontra, avalia e organiza modelos 3D prontos de repositórios públicos |
 | `morumbi3d letra` | **Produção**: converte SVG em letra caixa pronta para imprimir |
 | [`web/gerador-letreiros.html`](web/) | **Produção**: placa de nome com letras conectadas, direto no navegador |
+| [`sistema/`](sistema/) | **Gestão**: entrada e painel — fila de produção, pedidos e estoque |
 
 A primeira implementa a especificação *Sistema de Busca e Curadoria de
 Modelos 3D*, na ordem recomendada por ela: banco de dados + analisador de
