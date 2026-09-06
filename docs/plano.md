@@ -62,11 +62,16 @@ Sem produto não existe pedido; sem filamento o produto não tem custo.
 **Entra:** filamento (marca, tipo, cor, estoque g, mínimo); insumo (unidade,
 estoque, mínimo, valor); produto (peso, tempo, filamento padrão, insumos,
 fotos, arquivos STL/3MF). **Soltar o STL preenche peso e tempo** pelo
-analisador de malha.
+analisador de malha — e também **as medidas da caixa**, porque o mesmo
+analisador já calcula a caixa que envolve a peça. Isso é o que faz a cotação
+de frete do sprint 8 sair sozinha.
+
+Produto guarda ainda **preço por canal**. Vender na Shopee pelo preço do
+balcão é vender no prejuízo: a comissão sai do seu bolso, não do cliente.
 
 **Eu testo:** peso lido do STL bate com o do analisador, peça a peça ·
 produto sem filamento não salva com custo zero fingido · estoque abaixo do
-mínimo aparece no painel.
+mínimo aparece no painel · caixa calculada cabe a peça girada, e não só reta.
 
 **Você confere:** cadastre o letreiro ANA de 22 cm soltando o STL que o
 gerador já produz; peso e custo têm que aparecer sozinhos e bater com a
@@ -79,13 +84,24 @@ O buraco de hoje. Sem tela de cadastrar pedido, o painel repete a mesma
 mensagem para sempre.
 
 **Entra:** cliente (nome, WhatsApp, canal, observações); pedido (cliente,
-itens, quantidade, valor, prazo); canal por pedido, herdado do cliente e
-editável; orçamento é o pedido antes de aprovar. **Todo registro grava quem
-o criou e quando** — hoje é sempre você, mas o campo já nasce.
+itens, quantidade, valor, prazo); orçamento é o pedido antes de aprovar.
+**Todo registro grava quem o criou e quando** — hoje é sempre você, mas o
+campo já nasce.
+
+O pedido nasce **sem saber de onde veio**, e é isso que deixa a Shopee e o
+Mercado Livre entrarem depois sem reescrever nada. Quatro campos que custam
+nada agora e não têm como ser preenchidos no passado:
+
+| Campo | Para quê |
+| --- | --- |
+| `canal` | Balcão, Instagram, WhatsApp, indicação, Morumbi Festas, loja, Shopee, Mercado Livre |
+| `id_no_canal` | O número do pedido lá fora. É por ele que se confere o que caiu e o que faltou |
+| `comissao` | O que o canal cobra. Fica em cadastro, porque as taxas mudam |
+| `valor_liquido` | O que sobra de verdade. Sem ele, o relatório de vendas mente |
 
 **Eu testo:** pedido novo entra na fila agrupado pela cor certa · prazo
 vencido marca atrasado e o grupo sobe na fila · aprovar orçamento não
-duplica o pedido.
+duplica o pedido · o mesmo `id_no_canal` não entra duas vezes.
 
 **Você confere:** cadastre um pedido real vindo do Instagram; o painel tem
 que sair do vazio e mostrar a peça na cor certa.
@@ -166,33 +182,62 @@ mesmos números da tela.
 **Você confere:** rode o de filamento gasto do mês e compare com o que sumiu
 dos rolos; diferença grande é refugo não registrado ou peso errado.
 
-## Sprint 8 — Loja online
+## Sprint 8 — Loja própria
 **Tamanho G · depende do 2, 5 e 6**
 
 O único item que traz cliente novo em vez de organizar o que já existe. Por
-isso é o último: precisa que todo o resto funcione, senão a venda cai num
-sistema que não sabe o que fazer com ela.
+isso é o último dos que dependem só de nós: precisa que todo o resto
+funcione, senão a venda cai num sistema que não sabe o que fazer com ela.
 
 ```
 Vitrine → Pedido ou orçamento → Pagamento → Aguardando produção → Conta a receber
 ```
 
-**Entra:** vitrine pública (produto, foto, preço, prazo) · personalização
-usando os geradores que já existem · pagamento por checkout hospedado, com
-PIX · pagou, entra em aguardando produção e gera a conta a receber.
+**Entra:** vitrine pública com foto, prazo e **preço à vista para peça de
+catálogo** · peça personalizada entra como **sob consulta**, virando orçamento
+no sprint 6 · **Mercado Pago** por checkout hospedado, com PIX · **entrega e
+retirada**, com frete cotado no **Melhor Envio** usando peso e caixa que o
+sprint 1 já calculou · pagou, entra em aguardando produção e gera a conta a
+receber.
 
-**Eu testo:** **aviso de pagamento repetido não cria dois pedidos** — o meio
-de pagamento reenvia o aviso quando não tem resposta, e essa é a falha
-clássica · pedido só entra na produção depois do pagamento confirmado ·
-preço da vitrine é o mesmo que o sistema calcula.
+**Eu testo:** **aviso de pagamento repetido não cria dois pedidos** — o
+Mercado Pago reenvia o aviso quando não tem resposta, e essa é a falha
+clássica que faz o cliente ser cobrado uma vez e o pedido nascer duas ·
+pedido só entra na produção depois do pagamento confirmado · frete cotado
+bate com o peso real da caixa, e não com o da peça nua · retirada não cobra
+frete · preço da vitrine é o mesmo que o sistema calcula.
 
-**Você confere:** compre de você mesmo, PIX de R$ 1 num produto de teste; o
-pedido aparece em aguardando produção e a conta em contas a receber, cada um
-uma vez só.
+**Você confere:** compre de você mesmo, PIX de R$ 1 num produto de teste,
+uma vez com entrega e uma vez com retirada. O pedido aparece em aguardando
+produção e a conta em contas a receber, cada um uma vez só.
 
----
+## Sprint 9 — Shopee e Mercado Livre
+**Tamanho G · depende do 8 · o único que depende de terceiros**
 
-## Três decisões já tomadas
+O pedido do marketplace entra pela **mesma porta** que a loja usa no sprint
+8 — é por isso que os quatro campos do sprint 2 existem desde o começo. O que
+muda é quem bate na porta.
+
+**Entra:** conexão com Shopee e Mercado Livre · pedido de lá vira pedido
+aqui, com o número de lá guardado · estoque de peça pronta sincronizado nos
+dois sentidos, para não vender o que não existe · comissão de cada
+marketplace no cadastro, alimentando o valor líquido.
+
+**Eu testo:** o mesmo pedido chegando duas vezes vira um pedido só · vender
+no balcão baixa o anúncio nos dois marketplaces · marketplace fora do ar não
+derruba a loja nem o painel · valor líquido bate com o extrato deles, não com
+o preço anunciado.
+
+**Você confere:** faça uma venda de teste na Shopee. Ela tem que aparecer no
+painel com o número do pedido de lá, e o valor líquido tem que bater com o
+que a Shopee diz que vai te pagar.
+
+**O que pode travar:** este é o único sprint que depende de coisa fora do
+nosso alcance. Os dois exigem conta de desenvolvedor aprovada, e as regras e
+taxas deles mudam sem avisar. Antes de começar, você vai precisar criar as
+duas contas e me passar as credenciais.
+
+## Quatro decisões já tomadas
 
 - **O cartão nunca passa pelo servidor.** A loja manda o cliente para o
   checkout do meio de pagamento e recebe o aviso de volta. Guardar cartão
@@ -201,6 +246,13 @@ uma vez só.
 - **A precificação continua sendo a nossa.** A deles multiplica hora por
   valor e soma margem. A nossa já calcula casca, preenchimento, suporte e
   purga por troca de cor, com piso de R$ 18 + R$ 0,60/g arredondado a R$ 5.
+- **Modelo de dados geral agora; código de integração só quando existir.**
+  Mesma lógica da decisão anterior, aplicada aos marketplaces. Os campos do
+  pedido (canal, número lá fora, comissão, valor líquido) entram no sprint 2,
+  porque um pedido antigo sem eles nunca mais terá de onde tirá-los. Já o
+  código que fala com a Shopee fica para o sprint 9 — escrever hoje um
+  encaixe genérico para uma API que ainda não li é adivinhar, e adivinhação
+  em código custa mais caro do que quatro colunas.
 - **Quem fez fica gravado desde já; quem pode fazer o quê fica para depois.**
   O Samir administra sozinho hoje, e haverá colaboradores em atendimento e
   outros departamentos mais adiante. As duas metades disso têm custos muito
@@ -211,11 +263,12 @@ uma vez só.
   grava autor e data agora, a autenticação continua a mesma (uma senha, no
   serviço), e a tela de equipe só entra quando existir a segunda pessoa.
 
-## Perguntas em aberto
+## Respostas que fecharam o plano
 
-1. **Qual meio de pagamento na loja?** Mercado Pago é o caminho mais curto
-   no Brasil (PIX, cartão, boleto, checkout hospedado).
-2. **A loja mostra preço para todo mundo?** Catálogo tem preço; peça sob
-   medida pode ser preço na hora, se o gerador calcular, ou orçamento.
-3. **Entrega ou retirada?** Com entrega, o pedido precisa de endereço e
-   frete — muda o sprint 8.
+| Pergunta | Resposta | Onde entra |
+| --- | --- | --- |
+| Quem opera | Samir hoje; colaboradores em atendimento e outros departamentos depois | Autor em todo registro: sprints 2 e 3 |
+| Pagamento | Mercado Pago | Sprint 8 |
+| Preço na vitrine | Catálogo com preço; personalizado sob consulta | Sprints 6 e 8 |
+| Entrega | Entrega via Melhor Envio, e retirada | Sprints 1 e 8 |
+| Marketplace | Preparar para Shopee e Mercado Livre | Campos no sprint 2; integração no 9 |
