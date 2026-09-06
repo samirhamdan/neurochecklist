@@ -102,15 +102,24 @@ BIND="${BIND:-127.0.0.1:5000}"
 
 echo "==> 6/6  Reiniciando e conferindo em http://$BIND/saude"
 "$SYSTEMCTL" restart "$SERVICO"
+echo -n "    aguardando o servico subir (leva uns 10s, ele carrega opencv e trimesh)"
 OK=0
 for _ in $(seq 1 20); do
-  if "$CURL" -fsS -o /dev/null --max-time 4 "http://$BIND/saude"; then OK=1; break; fi
+  # -s sem -S: enquanto o gunicorn carrega, a recusa de conexao e esperada,
+  # nao e erro. Imprimir cada tentativa fazia um deploy BEM SUCEDIDO mostrar
+  # "Failed to connect" em vermelho logo antes de "Pronto, esta no ar" --
+  # assustador e sem motivo. Se as 20 falharem, a tentativa final abaixo
+  # mostra o erro de verdade.
+  if "$CURL" -fs -o /dev/null --max-time 4 "http://$BIND/saude"; then OK=1; break; fi
+  echo -n "."
   sleep 2
 done
+echo
 
 if [ "$OK" != "1" ]; then
   trap - ERR   # a partir daqui quem desfaz sou eu, e nao o trap
-  echo "ERRO: o servico nao respondeu em 40 segundos." >&2
+  echo "ERRO: o servico nao respondeu em 40 segundos. O motivo:" >&2
+  "$CURL" -fsS -o /dev/null --max-time 4 "http://$BIND/saude" || true
   desfazer
   echo "Veja o que aconteceu:  journalctl -u $SERVICO -n 50" >&2
   exit 1
