@@ -1,27 +1,44 @@
 /* Sistema Morumbi 3D — folha unica.
-   Segue o que o CLAUDE.md ja define: Barlow + IBM Plex Mono, rubilith
-   #E23A45, "palco escuro para julgar, bancada clara para ler numero".
-   A entrada e o palco; o painel, onde se le numero, e a bancada. */
+   Barlow + IBM Plex Mono e "palco escuro para julgar, bancada clara para
+   ler numero" seguem valendo: a entrada e o palco, o painel e a bancada.
+
+   O que mudou: o rubilith #E23A45 saiu. Ele era uma referencia (a mascara
+   de fotolito) escolhida antes de eu ver a marca; a marca de verdade e
+   azul, grafite e laranja, e marca ganha de referencia.
+
+   O M da marca tem tres partes: facetas azuis a esquerda, grafite no
+   meio, laranjas a direita. Na tela os dois lados fazem trabalhos
+   diferentes, e nao decoracao alternada:
+
+     azul    -> acao      (botao, foco, link, o que se clica)
+     laranja -> atencao   (urgencia, filamento acabando, aviso)
+
+   Os neutros esfriaram junto. Eram bege-acinzentados para acompanhar o
+   vermelho quente; com azul na tela, cinza quente puxa para o esverdeado
+   e suja o botao. */
 
 :root{
-  --rubilith:#E23A45;
+  --azul:#1266E0;    --azul-claro:#3FA9F5;  --azul-escuro:#0B3FA8;
+  --laranja:#F4621A; --laranja-claro:#FF8A1F; --laranja-escuro:#D8410A;
+  --grafite:#15191D;
+
   --verde:#1F7A4D;  --verde-fundo:#E7F3EC;
   --ambar:#8A5A00;  --ambar-fundo:#FAF0DC;
   --vermelho:#B3261E; --vermelho-fundo:#FBEAEA;
 
-  --bancada:#F4F2EE;
+  --bancada:#F1F3F5;
   --mesa:#FFFFFF;
-  --mesa-2:#FAF8F5;
-  --tinta:#191C20;
-  --suave:#6E6862;
-  --linha:#E3DDD5;
-  --linha-forte:#CEC6BB;
+  --mesa-2:#F8FAFB;
+  --tinta:#15191D;
+  --suave:#606A75;
+  --linha:#DDE2E7;
+  --linha-forte:#C2CAD2;
 
-  --palco:#15171A;
-  --palco-2:#1E2126;
-  --palco-linha:#2C3037;
-  --palco-tinta:#EAE6E0;
-  --palco-suave:#8E8880;
+  --palco:#14181C;
+  --palco-2:#1C2127;
+  --palco-linha:#2A313A;
+  --palco-tinta:#E8ECEF;
+  --palco-suave:#8A939D;
 }
 
 *{box-sizing:border-box}
@@ -32,7 +49,7 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace}
-:focus-visible{outline:2px solid var(--rubilith);outline-offset:2px}
+:focus-visible{outline:2px solid var(--azul-claro);outline-offset:2px}
 
 /* ===================== palco: a tela de entrada ===================== */
 body.palco{
@@ -51,12 +68,32 @@ body.palco::before{
 }
 @media(min-width:860px){.palco .caixa{grid-template-columns:1fr 380px}}
 
-.marca{display:flex;flex-direction:column;gap:18px}
+.marca{display:flex;flex-direction:column;gap:18px;align-items:flex-start}
+.marca .simbolo{
+  width:min(340px,72%);height:auto;display:block;margin-bottom:4px;
+}
 .marca .nome{
   font-size:clamp(38px,6vw,58px);font-weight:700;line-height:1;
   letter-spacing:-.03em;margin:0;
 }
-.marca .nome span{color:var(--rubilith)}
+/* Sem o arquivo da marca, o nome escrito faz as vezes dela -- com o 3 e o
+   D nas cores que eles tem no logotipo, e nao um vermelho qualquer. */
+.marca .nome .tres{color:var(--laranja)}
+.marca .nome .de{color:var(--azul-claro)}
+.marca .lema{
+  font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+  font-weight:600;margin:0;color:var(--palco-suave);
+}
+.marca .lema .a{color:var(--azul-claro)}
+.marca .lema .b{color:var(--laranja-claro)}
+/* A chamada e o <h1> da pagina. Ela e menor que a marca de proposito: o
+   logotipo domina o olho, o titulo diz o que o sistema faz. Tamanho e
+   hierarquia semantica nao precisam andar juntos. */
+.marca .chamada{
+  font-size:clamp(23px,3.1vw,31px);font-weight:600;line-height:1.22;
+  letter-spacing:-.02em;margin:6px 0 0;max-width:19ch;
+  color:var(--palco-tinta);
+}
 .marca .diz{
   font-size:19px;color:var(--palco-suave);max-width:34ch;margin:0;
 }
@@ -70,7 +107,7 @@ form.entrada{
   background:var(--palco-2);border:1px solid var(--palco-linha);
   border-radius:6px;padding:28px;display:flex;flex-direction:column;gap:18px;
 }
-form.entrada h1{
+form.entrada h2{
   margin:0;font-size:21px;font-weight:600;letter-spacing:-.01em;
 }
 .campo{display:flex;flex-direction:column;gap:6px}
@@ -83,17 +120,17 @@ form.entrada h1{
   background:#101215;border:1px solid var(--palco-linha);
   color:var(--palco-tinta);
 }
-.campo input:focus{border-color:var(--rubilith);outline:none}
+.campo input:focus{border-color:var(--azul-claro);outline:none}
 button.principal{
   font:inherit;font-size:16px;font-weight:600;padding:12px 16px;
-  background:var(--rubilith);color:#fff;border:none;border-radius:4px;
+  background:var(--azul);color:#fff;border:none;border-radius:4px;
   cursor:pointer;letter-spacing:.01em;
 }
-button.principal:hover{background:#C8323C}
-button.principal:disabled{background:#4A3034;cursor:not-allowed}
+button.principal:hover{background:var(--azul-escuro)}
+button.principal:disabled{background:#26303C;color:#78828E;cursor:not-allowed}
 
 .recado{
-  border-left:3px solid var(--rubilith);background:rgba(226,58,69,.12);
+  border-left:3px solid var(--laranja);background:rgba(244,98,26,.13);
   padding:11px 14px;border-radius:0 4px 4px 0;font-size:14.5px;
 }
 .recado.aberto{border-left-color:var(--ambar);background:rgba(217,166,70,.13)}
@@ -108,8 +145,12 @@ body.bancada{background:var(--bancada);color:var(--tinta)}
   max-width:1180px;margin:0 auto;display:flex;align-items:center;
   gap:20px;min-height:60px;flex-wrap:wrap;
 }
-.topo .logo{font-weight:700;letter-spacing:-.02em;font-size:19px}
-.topo .logo span{color:var(--rubilith)}
+/* Sem display:flex aqui: ele transforma "Morumbi " num item de flex e
+   descarta o espaco do fim, colando as duas palavras em "Morumbi3D". */
+.topo .logo{font-weight:700;letter-spacing:-.02em;font-size:19px;line-height:1}
+.topo .logo img{height:32px;width:auto;display:block}
+.topo .logo .tres{color:var(--laranja-escuro)}
+.topo .logo .de{color:var(--azul)}
 .topo nav{display:flex;gap:4px;margin-left:auto;align-items:center}
 .topo nav a{
   color:var(--tinta);text-decoration:none;font-size:14.5px;font-weight:500;
@@ -121,7 +162,7 @@ body.bancada{background:var(--bancada);color:var(--tinta)}
   font:inherit;font-size:14px;background:none;border:1px solid var(--linha-forte);
   color:var(--suave);padding:6px 12px;border-radius:4px;cursor:pointer;
 }
-.topo button:hover{border-color:var(--rubilith);color:var(--rubilith)}
+.topo button:hover{border-color:var(--azul);color:var(--azul)}
 .quem{font-size:13px;color:var(--suave)}
 
 .pagina{max-width:1180px;margin:0 auto;padding:26px 24px 72px}
@@ -219,9 +260,12 @@ table.lista td.num{
 a.atalho{
   display:flex;flex-direction:column;gap:5px;text-decoration:none;color:inherit;
   background:var(--mesa);border:1px solid var(--linha);border-radius:6px;
-  padding:16px 18px;border-left:3px solid var(--rubilith);
+  padding:16px 18px;border-left:3px solid var(--azul);
 }
-a.atalho:hover{border-color:var(--linha-forte);border-left-color:var(--rubilith)}
+/* Um atalho por metade do M: letreiro no azul, logo no laranja. Sao as
+   duas coisas que o sistema cria, e a marca ja separa as duas cores. */
+a.atalho:nth-of-type(2){border-left-color:var(--laranja)}
+a.atalho:hover{border-color:var(--linha-forte)}
 a.atalho b{font-size:16px;font-weight:600}
 a.atalho span{font-size:14px;color:var(--suave);line-height:1.4}
 

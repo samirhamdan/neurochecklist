@@ -514,3 +514,59 @@ class TesteFaxinaCompartilhada(unittest.TestCase):
         for sobrevivente in (recente, banco, chave, matplotlib, pedidos):
             self.assertTrue(os.path.exists(sobrevivente),
                             f"a faxina do gerador de logo comeu {os.path.basename(sobrevivente)}")
+
+
+class TesteMarca(unittest.TestCase):
+    """O logotipo e um arquivo que pode nao estar la.
+
+    <img> com arquivo inexistente nao falha: mostra o icone de imagem
+    quebrada, que numa tela de entrada e pior do que nao ter logotipo.
+    Entao as telas escrevem o nome quando o arquivo falta.
+    """
+
+    def setUp(self):
+        import importlib
+        os.environ["MORUMBI_DADOS"] = tempfile.mkdtemp(prefix="morumbi-marca-")
+        os.environ["MORUMBI_USUARIO"] = "samir"
+        os.environ["MORUMBI_SENHA"] = "segredo"
+        os.environ["MORUMBI_BIND"] = "127.0.0.1:5000"
+        os.environ["MORUMBI_HTTPS"] = "0"
+        from sistema import auth, dados
+        importlib.reload(dados); importlib.reload(auth)
+        from sistema import app as modulo
+        importlib.reload(modulo)
+        self.modulo = modulo
+        self.app = modulo.criar_app()
+        self.app.config["TESTING"] = True
+        self.cliente = self.app.test_client()
+
+    def test_sem_arquivo_escreve_o_nome(self):
+        corpo = self.cliente.get("/entrar").get_data(as_text=True)
+        self.assertNotIn("<img class=\"simbolo\"", corpo)
+        self.assertIn('class="tres">3<', corpo)
+        self.assertIn('class="de">D<', corpo)
+
+    def test_com_arquivo_usa_a_imagem(self):
+        pasta = os.path.join(os.path.dirname(os.path.abspath(self.modulo.__file__)), "static")
+        alvo = os.path.join(pasta, "marca.svg")
+        criei = not os.path.exists(alvo)
+        if criei:
+            with open(alvo, "w") as f:
+                f.write('<svg xmlns="http://www.w3.org/2000/svg"/>')
+            self.addCleanup(os.remove, alvo)
+        corpo = self.cliente.get("/entrar").get_data(as_text=True)
+        self.assertIn("marca.svg", corpo)
+        self.assertIn('alt="Morumbi 3D"', corpo)
+
+    def test_procura_sem_reiniciar(self):
+        """Basta soltar o arquivo na pasta; nao pode exigir restart."""
+        self.assertEqual(self.modulo.arquivo_da_marca.__module__, "sistema.app")
+        chamadas = []
+        original = os.path.exists
+        try:
+            os.path.exists = lambda p: (chamadas.append(p), original(p))[1]
+            self.cliente.get("/entrar")
+        finally:
+            os.path.exists = original
+        self.assertTrue(any("marca." in c for c in chamadas),
+                        "a marca foi resolvida na subida, nao a cada pagina")

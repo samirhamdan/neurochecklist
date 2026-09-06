@@ -5,7 +5,13 @@
 
 <header class="topo">
   <div class="dentro">
-    <div class="logo">Morumbi <span>3D</span></div>
+    <div class="logo">
+      {% if marca %}
+        <img src="{{ url_for('static', filename=marca) }}" alt="Morumbi 3D" height="32">
+      {% else %}
+        Morumbi <span class="tres">3</span><span class="de">D</span>
+      {% endif %}
+    </div>
     <nav>
       <a href="{{ url_for('painel') }}">Painel</a>
       <a href="{{ url_for('letreiros') }}">Gerar letreiro</a>

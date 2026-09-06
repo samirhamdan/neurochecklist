@@ -23,6 +23,22 @@ from . import auth, dados
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+# O logotipo entra como arquivo em sistema/static/. Enquanto ele nao
+# estiver la, as telas escrevem o nome no lugar -- em vez de mostrar uma
+# imagem quebrada, que e o que <img> faz com arquivo que nao existe.
+# Confere a cada pagina, e nao na subida: assim basta soltar o arquivo na
+# pasta, sem depender de reiniciar o servico para ele aparecer.
+MARCAS = ("marca.svg", "marca.png", "marca.webp")
+
+
+def arquivo_da_marca() -> str:
+    pasta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+    for nome in MARCAS:
+        if os.path.exists(os.path.join(pasta, nome)):
+            return nome
+    return ""
+
+
 def criar_app() -> Flask:
     auth.verificar_configuracao()
 
@@ -43,6 +59,7 @@ def criar_app() -> Flask:
         return {
             "com_senha": bool(auth.SENHA),
             "usuario": session.get("usuario", ""),
+            "marca": arquivo_da_marca(),
         }
 
     # ---------------------------------------------------------------- telas
