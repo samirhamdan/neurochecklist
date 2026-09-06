@@ -52,6 +52,15 @@ tar czf "$BACKUP" --exclude=venv --exclude=__pycache__ \
 cp -a "$UNIDADE" "$BACKUP.service" 2>/dev/null || true
 echo "    guardado. O servico tambem: $BACKUP.service"
 
+# Git 2.35.6 em diante recusa mexer em repositorio cujos arquivos sao de
+# outro dono ("dubious ownership"). Aqui isso e o arranjo normal e nao o
+# ataque que a checagem existe para pegar: os arquivos pertencem ao usuario
+# do servico (o gunicorn roda como ele) e quem administra e o root. Marcar
+# uma vez, sem duplicar a linha a cada execucao.
+if ! git config --global --get-all safe.directory 2>/dev/null | grep -qxF "$REPO"; then
+  git config --global --add safe.directory "$REPO"
+fi
+
 echo "==> 2/6  Baixando o repositorio (nada mudou em $REPO ainda)"
 git clone --quiet --branch "$BRANCH" "$URL" "$TMP/novo"
 for obrigatorio in wsgi.py gunicorn.conf.py requirements.txt sistema/logo/app.py; do

@@ -440,6 +440,28 @@ class TesteImplantacao(unittest.TestCase):
         self.assertTrue("desfazer" in instalar and "/saude" in instalar,
                         "instalar.sh precisa conferir a saude e saber desfazer")
 
+    def test_scripts_liberam_o_repo_antes_de_usar_git(self):
+        """Git recusa repositorio de outro dono, e aqui isso e o normal.
+
+        O instalador entrega os arquivos ao usuario do servico (o gunicorn
+        roda como ele) e o deploy roda como root. Git 2.35.6+ chama isso de
+        "dubious ownership" e para. Aconteceu no servidor de verdade, no
+        primeiro atualizar.sh depois da instalacao.
+        """
+        for arquivo in (("implantar", "atualizar.sh"), ("implantar", "instalar.sh")):
+            texto = self._ler(*arquivo)
+            nome = arquivo[-1]
+            self.assertTrue("safe.directory" in texto,
+                            f"{nome} nao libera o repo e vai parar em dubious ownership")
+            # --add sozinho repete a linha a cada deploy.
+            self.assertTrue("--get-all safe.directory" in texto,
+                            f"{nome} precisa conferir antes de adicionar, senao duplica")
+
+        # Ordem importa: liberar depois do primeiro git nao adianta nada.
+        texto = self._ler("implantar", "atualizar.sh")
+        self.assertLess(texto.index("safe.directory"), texto.index("git rev-parse HEAD"),
+                        "atualizar.sh usa git antes de liberar o repo")
+
     def test_instalador_nao_escreve_segredo_no_servico(self):
         """A senha real so existe na maquina; o repositorio nao a conhece."""
         instalar = self._ler("implantar", "instalar.sh")

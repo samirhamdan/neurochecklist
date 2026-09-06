@@ -37,6 +37,15 @@ BIND=$("$SYSTEMCTL" show "$SERVICO" -p Environment --value 2>/dev/null \
        | tr ' ' '\n' | sed -n 's/^MORUMBI_BIND=//p' | head -1)
 BIND="${BIND:-127.0.0.1:5000}"
 
+# Git 2.35.6 em diante recusa mexer em repositorio cujos arquivos sao de
+# outro dono ("dubious ownership"). Aqui isso e o arranjo normal e nao o
+# ataque que a checagem existe para pegar: os arquivos pertencem ao usuario
+# do servico (o gunicorn roda como ele) e quem administra e o root. Marcar
+# uma vez, sem duplicar a linha a cada execucao.
+if ! git config --global --get-all safe.directory 2>/dev/null | grep -qxF "$REPO"; then
+  git config --global --add safe.directory "$REPO"
+fi
+
 ANTES=$(git rev-parse HEAD)
 echo "==> Estava em $(git log --oneline -1)"
 
