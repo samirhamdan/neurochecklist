@@ -269,7 +269,7 @@ cd morumbi3d
 python3 -m unittest discover -s tests -t .
 ```
 
-194 testes, **sem rede**. Os da curadoria e do gerador de letra caixa rodam
+196 testes, **sem rede**. Os da curadoria e do gerador de letra caixa rodam
 sem dependência nenhuma; os do sistema pedem Flask, e os dois que abrem o
 gerador de logo se pulam sozinhos quando `opencv`/`trimesh` não estão
 instalados — quem só quer o painel não precisa de 180 MB de biblioteca.
@@ -284,8 +284,10 @@ Os testes da ponte do `trimesh` se pulam sozinhos quando ele não está
 instalado. Junção: as quatro rotas de `/logo` recusam quem não entrou, a
 interface usa prefixo relativo, e falta de dependência devolve 503 em `/logo`
 sem derrubar o painel. Implantação: o `gunicorn.conf.py` carrega e obedece o
-`MORUMBI_BIND` do systemd, e todo caminho que os scripts mandam usar existe —
-foi assim que apareceram duas referências que a junção deixou para trás.
+`MORUMBI_BIND` do systemd, todo caminho que os scripts mandam usar existe, e
+o instalador confere o clone antes de apagar o que está rodando, poupa o
+`venv` e sabe desfazer — foi assim que apareceram as referências que a
+junção deixou para trás.
 
 ## Ainda não implementado na curadoria (segunda fase, §4)
 

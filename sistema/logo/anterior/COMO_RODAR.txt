@@ -1,0 +1,82 @@
+==============================================================
+ GERADOR DE LOGO 3D - Morumbi 3D
+ Interface local
+==============================================================
+
+ESTRUTURA DAS PASTAS
+--------------------
+Os tres arquivos precisam ficar assim:
+
+    morumbi3d_web/
+        app.py
+        gerar_logo_3d.py
+        static/
+            index.html
+
+Se o index.html nao estiver dentro de "static", a pagina
+abre em branco.
+
+
+INSTALACAO (uma vez so)
+-----------------------
+    pip install flask trimesh shapely mapbox_earcut opencv-python pillow numpy matplotlib
+
+
+PARA USAR
+---------
+    cd morumbi3d_web
+    python3 app.py
+
+Depois abra no navegador:
+
+    http://localhost:5000
+
+Para parar o servidor: Ctrl+C na janela do terminal.
+
+Tudo roda na sua maquina. Nenhuma imagem sai para a internet.
+
+
+FLUXO DE TRABALHO
+-----------------
+1. Arraste o logo para a area escura.
+
+2. Olhe a mancha vermelha. Ela e exatamente o que vai virar
+   plastico. Se estiver sobrando ou faltando pedaco, ajuste
+   antes de gerar.
+
+3. Logo com fundo escuro ou traco vazado:
+   - clique em "Por cor"
+   - clique em "Conta-gotas" e depois no traco do logo
+   - se o desenho for so contorno, ligue "Manter miolo"
+
+4. Confira a barra embaixo do palco: largura, altura,
+   espessura e quantidade de corpos soltos.
+
+5. Leia o aviso de robustez na coluna da direita. Se acusar
+   traco fino, aumente a largura ou use "Engordar traco".
+
+6. "Gerar STL" e depois "Baixar pacote".
+
+O pacote traz os STL, o preview em PNG e o relatorio de
+producao com a altura de troca de filamento.
+
+
+SE DER PROBLEMA
+---------------
+Pagina em branco
+    O index.html nao esta dentro da pasta "static".
+
+"Nada foi detectado"
+    A cor-alvo nao existe na imagem, ou a tolerancia esta
+    baixa demais. Aumente a tolerancia ou volte para
+    "Automatico".
+
+Recorte pegou o fundo inteiro
+    Baixe a sensibilidade ao fundo, ou use "Por cor".
+
+Muitos corpos soltos
+    Normal em logo com elementos separados. Mantenha a
+    "Placa de fundo" ligada que ela segura tudo.
+
+Porta 5000 ocupada
+    Troque a ultima linha do app.py para port=5001.

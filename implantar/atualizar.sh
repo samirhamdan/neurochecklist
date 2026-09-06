@@ -25,7 +25,7 @@ CURL="${CURL:-curl}"
 cd "$REPO"
 
 if [ ! -d .git ]; then
-  echo "ERRO: $REPO nao e um clone git. Rode implantar/migrar-para-git.sh primeiro." >&2
+  echo "ERRO: $REPO nao e um clone git. Rode implantar/instalar.sh primeiro." >&2
   exit 1
 fi
 

@@ -1,0 +1,33 @@
+[Unit]
+Description=Gerador de Logo 3D - Morumbi 3D
+After=network.target
+
+[Service]
+Type=simple
+User=morumbi
+Group=morumbi
+WorkingDirectory=/opt/morumbi3d
+
+Environment="MORUMBI_USUARIO=samir"
+Environment="MORUMBI_SENHA=TROQUE_ESTA_SENHA"
+Environment="MORUMBI_DADOS=/var/lib/morumbi3d"
+Environment="MORUMBI_VALIDADE_H=12"
+Environment="MORUMBI_WORKERS=2"
+Environment="MORUMBI_BIND=127.0.0.1:5000"
+Environment="MPLCONFIGDIR=/var/lib/morumbi3d/.mpl"
+
+ExecStart=/opt/morumbi3d/venv/bin/gunicorn -c /opt/morumbi3d/gunicorn.conf.py wsgi:app
+
+Restart=always
+RestartSec=5
+
+# Contencao: o servico so enxerga o que precisa
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/morumbi3d
+MemoryMax=1500M
+
+[Install]
+WantedBy=multi-user.target

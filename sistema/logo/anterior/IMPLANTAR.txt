@@ -1,0 +1,218 @@
+==============================================================
+ IMPLANTAR NO VPS - morumbi3d.duckdns.org
+ Gerador de Logo 3D / Morumbi 3D
+==============================================================
+
+Este guia assume Ubuntu ou Debian. O passo 0 confirma isso.
+Rode tudo conectado por SSH, como root ou com sudo.
+
+
+--------------------------------------------------------------
+ 0. CONFERIR A MAQUINA
+--------------------------------------------------------------
+
+    cat /etc/os-release | head -2
+    free -m | head -2
+    curl -s ifconfig.me; echo
+    dig +short morumbi3d.duckdns.org
+
+As duas ultimas linhas precisam mostrar O MESMO IP. Se o DuckDNS
+estiver apontando para outro lugar, corrija no painel do DuckDNS
+antes de continuar, senao o certificado HTTPS nao sai.
+
+Olhe a RAM na linha do "free -m". Se a coluna total for menor que
+1500, edite depois o arquivo morumbi3d.service e troque
+MORUMBI_WORKERS=2 por MORUMBI_WORKERS=1.
+
+
+--------------------------------------------------------------
+ 1. INSTALAR OS PROGRAMAS DE BASE
+--------------------------------------------------------------
+
+    apt update
+    apt install -y python3 python3-venv python3-pip nginx certbot \
+                   python3-certbot-nginx unzip
+
+(No AlmaLinux ou Rocky troque "apt install -y" por "dnf install -y".)
+
+
+--------------------------------------------------------------
+ 2. CRIAR USUARIO E PASTAS
+--------------------------------------------------------------
+
+O servico roda com usuario proprio, sem poderes. Se alguem achar
+uma falha no app, o estrago fica contido.
+
+    useradd -r -s /usr/sbin/nologin morumbi
+    mkdir -p /opt/morumbi3d
+    mkdir -p /var/lib/morumbi3d
+    chown -R morumbi:morumbi /var/lib/morumbi3d
+
+
+--------------------------------------------------------------
+ 3. SUBIR OS ARQUIVOS
+--------------------------------------------------------------
+
+No SEU computador (PowerShell, na pasta onde esta o zip):
+
+    scp morumbi3d_web.zip root@SEU_IP:/tmp/
+
+De volta no VPS:
+
+    cd /tmp
+    unzip -o morumbi3d_web.zip
+    cp -r morumbi3d_web/* /opt/morumbi3d/
+    chown -R morumbi:morumbi /opt/morumbi3d
+
+
+--------------------------------------------------------------
+ 4. AMBIENTE PYTHON
+--------------------------------------------------------------
+
+    cd /opt/morumbi3d
+    python3 -m venv venv
+    ./venv/bin/pip install --upgrade pip
+    ./venv/bin/pip install -r requirements.txt
+
+Demora alguns minutos. No fim, teste:
+
+    ./venv/bin/python -c "import trimesh, cv2, scipy, shapely; print('tudo ok')"
+
+
+--------------------------------------------------------------
+ 5. DEFINIR A SENHA
+--------------------------------------------------------------
+
+    nano /opt/morumbi3d/morumbi3d.service
+
+Troque a linha:
+
+    Environment="MORUMBI_SENHA=TROQUE_ESTA_SENHA"
+
+por uma senha de verdade. Se quiser gerar uma:
+
+    openssl rand -base64 18
+
+Guarde essa senha. Ela e o unico portao entre o app e a internet.
+Salve com Ctrl+O, Enter, e saia com Ctrl+X.
+
+
+--------------------------------------------------------------
+ 6. LIGAR O SERVICO
+--------------------------------------------------------------
+
+    cp /opt/morumbi3d/morumbi3d.service /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable --now morumbi3d
+    systemctl status morumbi3d
+
+Precisa aparecer "active (running)" em verde. Teste local:
+
+    curl -u samir:SUA_SENHA http://127.0.0.1:5000/ | head -5
+
+Se sair HTML, o app esta de pe.
+
+
+--------------------------------------------------------------
+ 7. NGINX
+--------------------------------------------------------------
+
+    cp /opt/morumbi3d/nginx-morumbi3d.conf /etc/nginx/sites-available/morumbi3d
+    ln -sf /etc/nginx/sites-available/morumbi3d /etc/nginx/sites-enabled/
+    rm -f /etc/nginx/sites-enabled/default
+    nginx -t
+    systemctl reload nginx
+
+O "nginx -t" tem que dizer "syntax is ok" e "test is successful".
+
+
+--------------------------------------------------------------
+ 8. HTTPS
+--------------------------------------------------------------
+
+Faca este passo. Basic Auth sem HTTPS manda a sua senha em texto
+puro por toda conexao no caminho.
+
+    certbot --nginx -d morumbi3d.duckdns.org
+
+Responda o e-mail, aceite os termos e escolha REDIRECIONAR quando
+ele perguntar. O certbot ajusta o nginx sozinho e renova o
+certificado automaticamente daqui pra frente.
+
+
+--------------------------------------------------------------
+ 9. FIREWALL
+--------------------------------------------------------------
+
+    ufw allow OpenSSH
+    ufw allow 'Nginx Full'
+    ufw --force enable
+    ufw status
+
+A porta 5000 NAO deve aparecer na lista. O app so responde para o
+nginx, atraves de 127.0.0.1. Quem vem da internet passa pelo nginx
+obrigatoriamente.
+
+
+--------------------------------------------------------------
+ 10. USAR
+--------------------------------------------------------------
+
+    https://morumbi3d.duckdns.org
+
+O navegador pede usuario e senha. Usuario: samir (ou o que voce
+tiver posto em MORUMBI_USUARIO).
+
+
+==============================================================
+ MANUTENCAO
+==============================================================
+
+Ver o que esta acontecendo:
+
+    journalctl -u morumbi3d -f
+
+Reiniciar:
+
+    systemctl restart morumbi3d
+
+Atualizar o codigo depois de mudar algo:
+
+    cp -r /tmp/morumbi3d_web/* /opt/morumbi3d/
+    chown -R morumbi:morumbi /opt/morumbi3d
+    systemctl restart morumbi3d
+
+Ver espaco ocupado pelos uploads:
+
+    du -sh /var/lib/morumbi3d
+
+A faxina automatica apaga upload com mais de 12 horas. Para mudar
+esse prazo, ajuste MORUMBI_VALIDADE_H no arquivo do servico.
+
+
+==============================================================
+ SE DER PROBLEMA
+==============================================================
+
+Servico nao sobe
+    journalctl -u morumbi3d -n 50
+    Quase sempre e caminho errado no ExecStart ou falta de
+    permissao em /var/lib/morumbi3d.
+
+Erro 502 no navegador
+    O nginx esta de pe mas o app nao. Veja o status do servico.
+
+Erro 504 ao gerar STL
+    Logo pesado demais para o tempo limite. Suba proxy_read_timeout
+    no nginx e timeout no gunicorn.
+
+Certbot falha
+    O DuckDNS nao esta apontando para o IP do VPS, ou a porta 80
+    esta fechada. Confira o passo 0.
+
+Processo morto no meio da geracao
+    Falta de RAM. Baixe MORUMBI_WORKERS para 1 e reinicie.
+
+Upload grande falha
+    Aumente client_max_body_size no nginx E o MAX_CONTENT_LENGTH
+    no app.py. Os dois precisam bater.

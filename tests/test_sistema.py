@@ -371,9 +371,9 @@ class TesteImplantacao(unittest.TestCase):
     wsgi.py e o gunicorn.conf.py para a raiz do repositorio. Duas dessas
     referencias ficaram para tras e eu so achei rodando na mao: o
     atualizar.sh ainda procurava app/requirements.txt, e a mensagem final
-    do migrar-para-git.sh mandava apontar o ExecStart para a subpasta, onde
-    o wsgi.py nao esta mais. As duas so apareceriam no dia do deploy, com o
-    site fora do ar. Estes testes existem para isso nao se repetir.
+    do script de instalacao mandava apontar o ExecStart para a subpasta,
+    onde o wsgi.py nao esta mais. As duas so apareceriam no dia do deploy,
+    com o site fora do ar. Estes testes existem para isso nao se repetir.
     """
 
     RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -418,19 +418,38 @@ class TesteImplantacao(unittest.TestCase):
         self.assertTrue("/saude" in atualizar,
                         "atualizar.sh: a checagem de saude precisa de rota sem senha")
 
-    def test_servico_e_migracao_sobem_o_sistema_inteiro(self):
+    def test_servico_sobe_o_sistema_inteiro(self):
         """Nao o gerador de logo sozinho, que era o que subia antes."""
-        for arquivo in (("implantar", "morumbi3d.service"),
-                        ("implantar", "migrar-para-git.sh")):
-            texto = self._ler(*arquivo)
-            nome = arquivo[-1]
-            self.assertTrue("wsgi:app" in texto,
-                            f"{nome} tem que subir o wsgi da raiz, nao so o gerador")
-            # WorkingDirectory na subpasta faz o gunicorn nao achar o wsgi.py.
-            self.assertTrue("WorkingDirectory=$REPO/$SUBPASTA" not in texto,
-                            f"{nome}: WorkingDirectory tem que ficar na raiz do repo")
-            self.assertTrue("$SUBPASTA/gunicorn.conf.py" not in texto,
-                            f"{nome}: o gunicorn.conf.py mora na raiz depois da juncao")
+        modelo = self._ler("implantar", "morumbi3d.service")
+        self.assertTrue("wsgi:app" in modelo,
+                        "o servico tem que subir o wsgi da raiz")
+        self.assertTrue("WorkingDirectory=/opt/morumbi3d\n" in modelo,
+                        "o WorkingDirectory e a raiz: e la que o wsgi.py mora")
+
+    def test_instalador_confere_antes_de_trocar(self):
+        """Ele apaga a instalacao que esta rodando. Tem que olhar antes."""
+        instalar = self._ler("implantar", "instalar.sh")
+        for exigido in ("wsgi.py", "gunicorn.conf.py", "requirements.txt",
+                        "sistema/logo/app.py"):
+            self.assertTrue(exigido in instalar,
+                            f"instalar.sh nao confere se {exigido} veio no clone")
+        # O venv custa 180 MB e um pip install que as vezes falha por RAM.
+        self.assertTrue("-not -name venv" in instalar,
+                        "instalar.sh apagaria o venv junto")
+        # Sem isto, deploy quebrado fica quebrado ate o cliente reclamar.
+        self.assertTrue("desfazer" in instalar and "/saude" in instalar,
+                        "instalar.sh precisa conferir a saude e saber desfazer")
+
+    def test_instalador_nao_escreve_segredo_no_servico(self):
+        """A senha real so existe na maquina; o repositorio nao a conhece."""
+        instalar = self._ler("implantar", "instalar.sh")
+        self.assertTrue("MORUMBI_SENHA=" not in instalar,
+                        "instalar.sh nao pode escrever senha no servico")
+        # A unica linha do servico que ele tem permissao de mexer.
+        mexidas = [l for l in instalar.splitlines()
+                   if l.strip().startswith("sed -i") and "UNIDADE" in l]
+        self.assertEqual(len(mexidas), 1, f"mexeu em mais coisa do servico: {mexidas}")
+        self.assertTrue("MORUMBI_WORKERS" in mexidas[0], mexidas[0])
 
     def test_service_modelo_nao_leva_senha_de_verdade(self):
         modelo = self._ler("implantar", "morumbi3d.service")

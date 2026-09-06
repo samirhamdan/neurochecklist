@@ -27,37 +27,43 @@ host) e a autenticação desliga (sem `MORUMBI_SENHA` o app fica aberto). Por
 isso `atualizar.sh` não encosta nele — e lê o `MORUMBI_BIND` de dentro do
 systemd para saber onde conferir se o serviço subiu.
 
-## Primeira vez: migrar
+## Primeira vez: `instalar.sh`
 
-A instalação de hoje é uma pasta solta. `migrar-para-git.sh` a converte em
-clone **sem sobrescrever nada**:
+A instalação de hoje é uma pasta solta com o gerador de logo. `instalar.sh`
+a troca pelo repositório, **mantendo o que não pode ser refeito**:
 
 ```bash
 # no VPS, como root
-bash /caminho/migrar-para-git.sh git@github.com:samirhamdan/morumbi3d.git
+bash /caminho/instalar.sh git@github-morumbi3d:samirhamdan/morumbi3d.git
 ```
 
-Ele faz backup, compara arquivo a arquivo o que está rodando com o que está
-no repositório, e **para se houver diferença**. Essa parada é o ponto do
-script: se o servidor estiver mais novo que o repositório — um ajuste feito
-às pressas, um arquivo corrigido na unha — conectar o git e dar o primeiro
-deploy faria a produção voltar no tempo em silêncio. Nesse caso ele manda
-você levar o que está rodando para o repositório primeiro.
+| Preservado | Por quê |
+| --- | --- |
+| `venv/` | 180 MB já instalados. Refazer num VPS de 2 GB demora e às vezes falha por falta de RAM |
+| `/var/lib/morumbi3d` | os uploads e o banco. O script não encosta |
+| `morumbi3d.service` | a senha real, o bind do Docker e os limites desta máquina |
 
-Só quando bate ele move o app para `sistema/logo/` — onde o gerador de logo
-passou a morar depois da junção — pluga o git e avisa dos ajustes manuais que
-restam no serviço:
+Do serviço ele muda **uma linha só**: `MORUMBI_WORKERS` para 1, porque o
+processo agora carrega painel e gerador juntos. O `ExecStart` continua igual
+— `wsgi.py` e `gunicorn.conf.py` ficaram na raiz, que já é o
+`WorkingDirectory`.
 
-```ini
-WorkingDirectory=/opt/morumbi3d
-ExecStart=/opt/morumbi3d/venv/bin/gunicorn -c /opt/morumbi3d/gunicorn.conf.py wsgi:app
-```
+**Se o serviço não voltar em 40 segundos, ele desfaz tudo sozinho**: devolve
+os arquivos antigos do backup, devolve o arquivo do serviço e reinicia. O
+comando para desfazer à mão também é impresso no fim, com os caminhos já
+preenchidos.
 
-`wsgi:app` é a mudança que importa: o serviço deixa de subir só o gerador de
-logo e passa a subir o sistema inteiro, com o gerador pendurado em `/logo/`.
-O modelo completo do arquivo está em
-[`morumbi3d.service`](morumbi3d.service) — modelo, não o que roda: o que roda
-tem a senha de verdade e não vem do git.
+Havia aqui um `migrar-para-git.sh` que comparava arquivo a arquivo e parava
+se o servidor estivesse na frente. Ele foi **removido**: aquela comparação
+supunha que a pasta do VPS fosse cópia exata de uma subpasta do repositório,
+e depois da junção não é mais — parte dos arquivos do servidor foi
+substituída por equivalentes na raiz. Rodá-lo hoje daria uma recusa que
+parece erro e não é. A pergunta que ele existia para responder — *o servidor
+tem algo que o repositório não tem?* — foi respondida comparando os arquivos
+na mão: `gerar_logo_3d.py` idêntico, `app.py` e `index.html` diferindo só
+pelas alterações da junção, e os sete arquivos que só existiam no VPS estão
+agora em [`sistema/logo/anterior/`](../sistema/logo/anterior/) e no
+`CLAUDE.md` da raiz.
 
 ## Repositório privado: chave de deploy
 
