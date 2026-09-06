@@ -3,26 +3,7 @@
 {% block corpo %}bancada{% endblock %}
 {% block conteudo %}
 
-<header class="topo">
-  <div class="dentro">
-    <div class="logo">
-      {% if marca_simbolo %}
-        <img src="{{ url_for('static', filename=marca_simbolo) }}" alt="" height="30">
-      {% endif %}
-      <span>Morumbi <span class="tres">3</span><span class="de">D</span></span>
-    </div>
-    <nav>
-      <a href="{{ url_for('painel') }}">Painel</a>
-      <a href="{{ url_for('letreiros') }}">Gerar letreiro</a>
-      {% if com_senha %}
-        <span class="quem">{{ usuario }}</span>
-        <form method="post" action="{{ url_for('sair') }}">
-          <button type="submit">Sair</button>
-        </form>
-      {% endif %}
-    </nav>
-  </div>
-</header>
+{% include "_topo.html" %}
 
 <main class="pagina">
 
@@ -107,7 +88,9 @@
             {% for f in filamento %}
               {% set cheio = (f.gramas / (f.minimo * 4) * 100) if f.minimo else 0 %}
               <div class="barra-linha">
-                <span class="nome">{{ f.cor }}</span>
+                <span class="nome">
+                  <span class="bolinha" style="background:{{ cores.get(f.cor, '#B9BEC4') }}"></span>{{ f.nome }}
+                </span>
                 <span class="barra">
                   <i class="{{ 'baixo' if f.gramas <= f.minimo else '' }}"
                      style="width:{{ [cheio, 100]|min|round|int }}%"></i>

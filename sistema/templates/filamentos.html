@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Filamentos — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina">
+  <div class="cabecalho-lista">
+    <h2 class="secao">Filamentos</h2>
+    <a class="botao" href="{{ url_for('editar_filamento') }}">Novo filamento</a>
+  </div>
+
+  {% if filamentos %}
+  <div class="cartao"><div class="rolagem">
+    <table class="tabela">
+      <thead><tr>
+        <th>Filamento</th><th>Tipo</th><th class="num">Estoque</th>
+        <th class="num">Mínimo</th><th class="num">R$/kg</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for f in filamentos %}
+        <tr class="{{ 'inativo' if not f.ativo }}">
+          <td>
+            <span class="bolinha" style="background:{{ cores.get(f.cor, '#B9BEC4') }}"></span>
+            <a href="{{ url_for('editar_filamento', id_=f.id) }}">{{ f.nome }}</a>
+            {% if f.marca %}<span class="fraco">{{ f.marca }}</span>{% endif %}
+            {% if not f.ativo %}<span class="etiqueta cinza">inativo</span>{% endif %}
+          </td>
+          <td>{{ f.tipo }}</td>
+          <td class="num mono {{ 'alerta' if f.gramas <= f.minimo }}">{{ f.gramas|round|int }} g</td>
+          <td class="num mono fraco">{{ f.minimo|round|int }} g</td>
+          <td class="num mono">{{ 'R$ %.2f'|format(f.preco_kg) if f.preco_kg else '—' }}</td>
+          <td class="num"><a href="{{ url_for('editar_filamento', id_=f.id) }}">editar</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  <p class="nota">O <b>R$/kg</b> é o que alimenta o custo de todo produto que usa o
+  filamento. Sem ele o custo sai zero, e o sistema avisa em vez de inventar um número.</p>
+  {% else %}
+  <div class="cartao cartao-vazio">
+    <b>Nenhum filamento cadastrado.</b>
+    <span>O produto precisa de um filamento para ter custo. Comece pelas cores que você
+    mais imprime.</span>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

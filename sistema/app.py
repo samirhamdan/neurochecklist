@@ -15,10 +15,11 @@ from __future__ import annotations
 import os
 
 from flask import (
+    abort,
     Flask, redirect, render_template, request, send_from_directory, session, url_for,
 )
 
-from . import auth, dados
+from . import analise, auth, custo, dados
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -68,7 +69,7 @@ def criar_app() -> Flask:
     @app.route("/")
     @auth.exige_login
     def painel():
-        return render_template("painel.html", **dados.resumo())
+        return render_template("painel.html", aba="painel", **dados.resumo())
 
     @app.route("/entrar", methods=["GET", "POST"])
     def entrar():
@@ -114,6 +115,118 @@ def criar_app() -> Flask:
     def sair():
         session.clear()
         return redirect(url_for("entrar"))
+
+    # ------------------------------------------------------------- cadastros
+    def _conta_do_produto(prod: dict, param: dict) -> custo.Conta:
+        insumos = sum(v["quantidade"] * v["valor_unit"] for v in prod.get("insumos", []))
+        return custo.calcular(prod.get("gramas") or 0, prod.get("horas") or 0,
+                              prod.get("filamento_preco_kg"), insumos, param=param)
+
+    @app.route("/filamentos")
+    @auth.exige_login
+    def lista_filamentos():
+        return render_template("filamentos.html", aba="filamentos",
+                               filamentos=dados.filamentos(False), cores=dados.CORES)
+
+    @app.route("/filamentos/novo", methods=["GET", "POST"])
+    @app.route("/filamentos/<int:id_>", methods=["GET", "POST"])
+    @auth.exige_login
+    def editar_filamento(id_=None):
+        atual = dados.filamento(id_) if id_ else None
+        if id_ and not atual:
+            abort(404)
+        if request.method == "POST":
+            try:
+                dados.salvar_filamento(request.form, session.get("usuario", ""), id_)
+            except ValueError as erro:
+                return render_template(
+                    "filamento.html", aba="filamentos", cores=dados.CORES, erro=str(erro),
+                    atual=dados.campos_filamento(request.form)), 400
+            return redirect(url_for("lista_filamentos"))
+        return render_template("filamento.html", aba="filamentos", atual=atual,
+                               cores=dados.CORES)
+
+    @app.route("/insumos")
+    @auth.exige_login
+    def lista_insumos():
+        return render_template("insumos.html", aba="insumos", insumos=dados.insumos(False))
+
+    @app.route("/insumos/novo", methods=["GET", "POST"])
+    @app.route("/insumos/<int:id_>", methods=["GET", "POST"])
+    @auth.exige_login
+    def editar_insumo(id_=None):
+        atual = dados.insumo(id_) if id_ else None
+        if id_ and not atual:
+            abort(404)
+        if request.method == "POST":
+            try:
+                dados.salvar_insumo(request.form, session.get("usuario", ""), id_)
+            except ValueError as erro:
+                return render_template(
+                    "insumo.html", aba="insumos", erro=str(erro),
+                    atual=dados.campos_insumo(request.form)), 400
+            return redirect(url_for("lista_insumos"))
+        return render_template("insumo.html", aba="insumos", atual=atual)
+
+    @app.route("/produtos")
+    @auth.exige_login
+    def lista_produtos():
+        param = dados.parametros()
+        itens = dados.produtos(False)
+        for p in itens:
+            p["conta"] = custo.calcular(p.get("gramas") or 0, p.get("horas") or 0,
+                                        p.get("filamento_preco_kg"), param=param)
+        return render_template("produtos.html", aba="produtos", produtos=itens,
+                               cores=dados.CORES)
+
+    @app.route("/produtos/novo", methods=["GET", "POST"])
+    @app.route("/produtos/<int:id_>", methods=["GET", "POST"])
+    @auth.exige_login
+    def editar_produto(id_=None):
+        atual = dados.produto(id_) if id_ else None
+        if id_ and not atual:
+            abort(404)
+        param = dados.parametros()
+        if request.method == "POST":
+            vinculos = [(int(i), dados._numero(request.form.get(f"insumo_{i}")))
+                        for i in request.form.getlist("insumo_id")]
+            try:
+                novo_id = dados.salvar_produto(request.form, session.get("usuario", ""),
+                                               id_, vinculos)
+            except ValueError as erro:
+                return render_template(
+                    "produto.html", aba="produtos", erro=str(erro), param=param,
+                    atual=dados.campos_produto(request.form),
+                    filamentos=dados.filamentos(), insumos=dados.insumos()), 400
+            return redirect(url_for("editar_produto", id_=novo_id))
+        conta = _conta_do_produto(atual, param) if atual else None
+        return render_template("produto.html", aba="produtos", atual=atual, conta=conta,
+                               param=param, filamentos=dados.filamentos(),
+                               insumos=dados.insumos())
+
+    @app.route("/produtos/medir", methods=["POST"])
+    @auth.exige_login
+    def medir_arquivo():
+        """Le o STL e devolve peso, tempo e caixa para o formulario preencher.
+
+        E o passo que tira o chute do cadastro: o peso vem do arquivo que vai
+        ser impresso, e nao da lembranca de quanto pesou da ultima vez.
+        """
+        enviado = request.files.get("modelo")
+        if not enviado or not enviado.filename:
+            return {"erro": "Nenhum arquivo enviado."}, 400
+        try:
+            caminho = analise.guardar(enviado, dados.PASTA)
+            medida = analise.medir(caminho)
+        except analise.ArquivoRecusado as erro:
+            return {"erro": str(erro)}, 400
+        param = dados.parametros()
+        preco_kg = None
+        if request.form.get("filamento_id"):
+            fil = dados.filamento(int(request.form["filamento_id"]))
+            preco_kg = fil["preco_kg"] if fil else None
+        conta = custo.calcular(medida["gramas"], medida["horas"], preco_kg, param=param)
+        return {"medida": medida, "conta": conta.como_dict()}, 200
 
     # ------------------------------------------------------------ ferramentas
     @app.route("/letreiros")

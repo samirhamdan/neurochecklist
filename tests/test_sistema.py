@@ -189,7 +189,8 @@ class TestePainel(unittest.TestCase):
                     " VALUES (1, ?, ?, ?, 'na fila', ?)",
                     (f"Letreiro {cor}", cor, horas, agora()))
             conn.execute(
-                "INSERT INTO filamento (cor, gramas, minimo) VALUES ('Vermelho', 120, 300)")
+                "INSERT INTO filamentos (nome, tipo, cor, gramas, minimo, criado_em)"
+                " VALUES ('PLA Vermelho', 'PLA', 'Vermelho', 120, 300, ?)", (agora(),))
 
         corpo = self.cliente.get("/").get_data(as_text=True)
         self.assertIn("Ana Paula", corpo)

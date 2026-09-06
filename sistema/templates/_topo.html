@@ -1,0 +1,27 @@
+{# A barra de cima, uma vez so. Antes ela morava dentro do painel.html; com
+   seis telas, copiar a navegacao em cada uma garante que uma delas fica para
+   tras no dia em que entrar um item novo. #}
+<header class="topo">
+  <div class="dentro">
+    <a class="logo" href="{{ url_for('painel') }}">
+      {% if marca_simbolo %}
+        <img src="{{ url_for('static', filename=marca_simbolo) }}" alt="" height="30">
+      {% endif %}
+      <span>Morumbi <span class="tres">3</span><span class="de">D</span></span>
+    </a>
+    <nav>
+      <a href="{{ url_for('painel') }}" {{ 'class=aqui' if aba == 'painel' }}>Painel</a>
+      <a href="{{ url_for('lista_produtos') }}" {{ 'class=aqui' if aba == 'produtos' }}>Produtos</a>
+      <a href="{{ url_for('lista_filamentos') }}" {{ 'class=aqui' if aba == 'filamentos' }}>Filamentos</a>
+      <a href="{{ url_for('lista_insumos') }}" {{ 'class=aqui' if aba == 'insumos' }}>Insumos</a>
+      <a href="{{ url_for('letreiros') }}">Gerar letreiro</a>
+      <a href="/logo/">Gerar logo</a>
+      {% if com_senha %}
+        <span class="quem">{{ usuario }}</span>
+        <form method="post" action="{{ url_for('sair') }}">
+          <button type="submit">Sair</button>
+        </form>
+      {% endif %}
+    </nav>
+  </div>
+</header>

@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar' if atual and atual.id else 'Novo' }} produto — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina">
+  <h2 class="secao">{{ 'Editar produto' if atual and atual.id else 'Novo produto' }}</h2>
+  {% if erro %}<div class="recado erro">{{ erro }}</div>{% endif %}
+
+  <form class="duas-colunas" method="post" id="form-produto">
+    <div class="cartao formulario">
+      <h3 class="titulo-cartao">Identificação</h3>
+      <div class="linha">
+        <label class="campo cresce"><span>Nome</span>
+          <input name="nome" required maxlength="90" placeholder="Ex: Topo de bolo ANA 18 cm"
+                 value="{{ atual.nome if atual else '' }}">
+        </label>
+        <label class="campo"><span>SKU</span>
+          <input name="sku" maxlength="30" placeholder="M3D-TB-001"
+                 value="{{ atual.sku if atual else '' }}">
+        </label>
+      </div>
+      <div class="linha">
+        <label class="campo"><span>Categoria</span>
+          <input name="categoria" maxlength="40" placeholder="Topo de bolo"
+                 value="{{ atual.categoria if atual else '' }}">
+        </label>
+        <label class="campo cresce"><span>Filamento</span>
+          <select name="filamento_id" id="filamento">
+            <option value="">Sem filamento definido</option>
+            {% for f in filamentos %}
+            <option value="{{ f.id }}" {{ 'selected' if atual and atual.filamento_id == f.id }}>
+              {{ f.nome }}{% if f.preco_kg %} — R$ {{ '%.2f'|format(f.preco_kg) }}/kg{% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <label class="campo"><span>Observação</span>
+        <input name="observacao" maxlength="200"
+               placeholder="Acabamento, montagem, o que lembrar na hora de imprimir"
+               value="{{ atual.observacao if atual else '' }}">
+      </label>
+
+      <h3 class="titulo-cartao">Medidas</h3>
+      <div class="solte" id="solte">
+        <input type="file" id="modelo" accept=".stl,.3mf,.obj" hidden>
+        <button type="button" class="botao vazado" id="escolher">Escolher arquivo 3D</button>
+        <span class="fraco">STL, 3MF ou OBJ — o peso, o tempo e a caixa vêm dele</span>
+        <div id="veredito" class="veredito" hidden></div>
+      </div>
+      <input type="hidden" name="arquivo" id="arquivo" value="{{ atual.arquivo if atual else '' }}">
+      <input type="hidden" name="malha_ok" id="malha_ok" value="{{ atual.malha_ok if atual and atual.malha_ok is not none else '' }}">
+      <input type="hidden" name="malha_nota" id="malha_nota" value="{{ atual.malha_nota if atual and atual.malha_nota else '' }}">
+      <div class="linha">
+        <label class="campo"><span>Peso (g)</span>
+          <input name="gramas" id="gramas" type="number" step="0.1" min="0"
+                 value="{{ atual.gramas|round(1) if atual and atual.gramas else '' }}">
+        </label>
+        <label class="campo"><span>Tempo (h)</span>
+          <input name="horas" id="horas" type="number" step="0.01" min="0"
+                 value="{{ atual.horas|round(2) if atual and atual.horas else '' }}">
+        </label>
+      </div>
+      <div class="linha">
+        <label class="campo"><span>Caixa X (mm)</span>
+          <input name="caixa_x" id="caixa_x" type="number" step="0.1" min="0"
+                 value="{{ atual.caixa_x|round(1) if atual and atual.caixa_x else '' }}">
+        </label>
+        <label class="campo"><span>Caixa Y</span>
+          <input name="caixa_y" id="caixa_y" type="number" step="0.1" min="0"
+                 value="{{ atual.caixa_y|round(1) if atual and atual.caixa_y else '' }}">
+        </label>
+        <label class="campo"><span>Caixa Z</span>
+          <input name="caixa_z" id="caixa_z" type="number" step="0.1" min="0"
+                 value="{{ atual.caixa_z|round(1) if atual and atual.caixa_z else '' }}">
+        </label>
+      </div>
+      <p class="nota">A caixa é o que o Melhor Envio vai pedir para cotar o frete. Some a
+      folga da embalagem depois — esta é a peça nua.</p>
+    </div>
+
+    <div class="coluna-lado">
+      <div class="cartao">
+        <h3 class="titulo-cartao">Custo e preço</h3>
+        <dl class="numeros" id="numeros">
+          <div><dt>Filamento</dt><dd class="mono">R$ {{ '%.2f'|format(conta.custo_filamento) if conta else '0,00' }}</dd></div>
+          <div><dt>Máquina</dt><dd class="mono">R$ {{ '%.2f'|format(conta.custo_maquina) if conta else '0,00' }}</dd></div>
+          <div><dt>Insumos</dt><dd class="mono">R$ {{ '%.2f'|format(conta.custo_insumos) if conta else '0,00' }}</dd></div>
+          <div><dt>Reserva de falha</dt><dd class="mono">R$ {{ '%.2f'|format(conta.custo_falha) if conta else '0,00' }}</dd></div>
+          <div class="somado"><dt>Custo</dt><dd class="mono" id="v-custo">R$ {{ '%.2f'|format(conta.custo) if conta else '0,00' }}</dd></div>
+          <div class="destaque"><dt>Preço sugerido</dt><dd class="mono" id="v-preco">R$ {{ '%.2f'|format(conta.preco) if conta else '0,00' }}</dd></div>
+          <div><dt>Margem</dt><dd class="mono" id="v-margem">{{ conta.margem_pct if conta else 0 }}%</dd></div>
+          <div><dt>Por hora de mesa</dt><dd class="mono" id="v-hora">R$ {{ '%.2f'|format(conta.por_hora) if conta else '0,00' }}</dd></div>
+        </dl>
+        <p class="nota">Sugerido = piso R$ {{ '%.2f'|format(param.piso) }} + peso ×
+        R$ {{ '%.2f'|format(param.por_grama) }}/g, para cima de 5 em 5. É a mesma conta do
+        gerador de letreiros.</p>
+        <label class="campo"><span>Preço fixo (opcional)</span>
+          <input name="preco" type="number" step="0.01" min="0" placeholder="deixe vazio para usar o sugerido"
+                 value="{{ '%.2f'|format(atual.preco) if atual and atual.preco else '' }}">
+        </label>
+      </div>
+
+      <div class="cartao">
+        <h3 class="titulo-cartao">Insumos da peça</h3>
+        {% if insumos %}
+          <div class="lista-insumos">
+          {% for i in insumos %}
+            {% set vinculado = (atual.insumos | selectattr('id', 'equalto', i.id) | first) if atual else none %}
+            <label class="linha-insumo">
+              <input type="checkbox" name="insumo_id" value="{{ i.id }}"
+                     {{ 'checked' if vinculado }}>
+              <span class="cresce">{{ i.nome }} <span class="fraco">R$ {{ '%.2f'|format(i.valor_unit) }}/{{ i.unidade }}</span></span>
+              <input class="qtd" type="number" name="insumo_{{ i.id }}" step="0.01" min="0"
+                     value="{{ vinculado.quantidade if vinculado else 1 }}">
+            </label>
+          {% endfor %}
+          </div>
+          <p class="nota">Ao enviar para produção, o estoque destes insumos também tem baixa.</p>
+        {% else %}
+          <p class="nota">Nenhum insumo cadastrado ainda.
+          <a href="{{ url_for('editar_insumo') }}">Cadastrar um</a>.</p>
+        {% endif %}
+      </div>
+
+      <label class="marca-caixa">
+        <input type="checkbox" name="ativo" value="1" {{ 'checked' if not atual or atual.ativo }}>
+        Ativo
+      </label>
+      <div class="acoes">
+        <button class="botao" type="submit">Salvar</button>
+        <a class="botao vazado" href="{{ url_for('lista_produtos') }}">Voltar</a>
+      </div>
+    </div>
+  </form>
+</main>
+
+<script>
+// O arquivo vai para o servidor, o analisador de malha mede, e os campos se
+// preenchem. Nada de geometria aqui: esta pagina so mostra o que o analisador
+// respondeu -- inclusive quando ele reprova a malha.
+(function () {
+  const arq = document.getElementById("modelo");
+  const veredito = document.getElementById("veredito");
+  const preenche = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+  const money = n => "R$ " + Number(n).toFixed(2);
+
+  document.getElementById("escolher").addEventListener("click", () => arq.click());
+
+  arq.addEventListener("change", async () => {
+    if (!arq.files.length) return;
+    veredito.hidden = false;
+    veredito.className = "veredito";
+    veredito.textContent = "Medindo " + arq.files[0].name + "…";
+
+    const dados = new FormData();
+    dados.append("modelo", arq.files[0]);
+    const fil = document.getElementById("filamento").value;
+    if (fil) dados.append("filamento_id", fil);
+
+    let r;
+    try {
+      r = await fetch("{{ url_for('medir_arquivo') }}", {method: "POST", body: dados});
+    } catch (e) {
+      veredito.className = "veredito ruim";
+      veredito.textContent = "Não consegui enviar o arquivo. Confira a conexão.";
+      return;
+    }
+    const resposta = await r.json();
+    if (!r.ok) {
+      veredito.className = "veredito ruim";
+      veredito.textContent = resposta.erro || "Não consegui ler o arquivo.";
+      return;
+    }
+
+    const m = resposta.medida, c = resposta.conta;
+    preenche("gramas", m.gramas); preenche("horas", m.horas);
+    preenche("caixa_x", m.caixa_x); preenche("caixa_y", m.caixa_y); preenche("caixa_z", m.caixa_z);
+    preenche("arquivo", m.arquivo); preenche("malha_ok", m.malha_ok); preenche("malha_nota", m.malha_nota);
+
+    const alertas = [];
+    if (!m.fechada) alertas.push("malha ABERTA (" + m.arestas_abertas + " arestas sem par)");
+    if (m.partes_soltas > 1) alertas.push(m.partes_soltas + " partes soltas");
+    if (!m.cabe_na_mesa) alertas.push(m.cabe_girando ? "só cabe girada na mesa" : "NÃO cabe na mesa");
+    if (m.suporte && m.suporte !== "nenhum") alertas.push("suporte: " + m.suporte);
+
+    veredito.className = "veredito " + (m.malha_ok ? (alertas.length ? "atencao" : "bom") : "ruim");
+    veredito.textContent = m.resumo + (alertas.length ? " · " + alertas.join(" · ") : "");
+
+    document.getElementById("v-custo").textContent = money(c.custo);
+    document.getElementById("v-preco").textContent = money(c.preco);
+    document.getElementById("v-margem").textContent = c.margem_pct + "%";
+    document.getElementById("v-hora").textContent = money(c.por_hora);
+  });
+})();
+</script>
+{% endblock %}

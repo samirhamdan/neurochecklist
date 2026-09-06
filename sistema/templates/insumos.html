@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Insumos — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina">
+  <div class="cabecalho-lista">
+    <h2 class="secao">Insumos</h2>
+    <a class="botao" href="{{ url_for('editar_insumo') }}">Novo insumo</a>
+  </div>
+
+  {% if insumos %}
+  <div class="cartao"><div class="rolagem">
+    <table class="tabela">
+      <thead><tr>
+        <th>Insumo</th><th class="num">Estoque</th><th class="num">Mínimo</th>
+        <th class="num">Valor</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for i in insumos %}
+        <tr class="{{ 'inativo' if not i.ativo }}">
+          <td>
+            <a href="{{ url_for('editar_insumo', id_=i.id) }}">{{ i.nome }}</a>
+            {% if i.descricao %}<span class="fraco">{{ i.descricao }}</span>{% endif %}
+            {% if not i.ativo %}<span class="etiqueta cinza">inativo</span>{% endif %}
+          </td>
+          <td class="num mono {{ 'alerta' if i.minimo and i.quantidade <= i.minimo }}">
+            {{ i.quantidade|round(2) }} {{ i.unidade }}</td>
+          <td class="num mono fraco">{{ i.minimo|round(2) }}</td>
+          <td class="num mono">R$ {{ '%.2f'|format(i.valor_unit) }}</td>
+          <td class="num"><a href="{{ url_for('editar_insumo', id_=i.id) }}">editar</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  {% else %}
+  <div class="cartao cartao-vazio">
+    <b>Nenhum insumo cadastrado.</b>
+    <span>Parafuso, imã, embalagem, fita — o que entra na peça além do filamento e
+    some do estoque quando ela é produzida.</span>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

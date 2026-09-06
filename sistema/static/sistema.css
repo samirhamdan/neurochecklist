@@ -115,7 +115,7 @@ form.entrada h2{
   margin:0;font-size:21px;font-weight:600;letter-spacing:-.01em;
 }
 .campo{display:flex;flex-direction:column;gap:6px}
-.campo label{
+.campo label, .campo > span{
   font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--palco-suave);font-weight:500;
 }
@@ -215,7 +215,10 @@ h2.secao:first-child{margin-top:0}
   font-size:13px;font-weight:600;
 }
 .bolinha{
-  width:11px;height:11px;border-radius:50%;flex:none;
+  /* inline-block e nao so flex:none -- na tabela ela nao e item de flex,
+     e sem display virava um risco de 1px do lado do nome. */
+  display:inline-block;vertical-align:baseline;
+  width:11px;height:11px;border-radius:50%;flex:none;margin-right:7px;
   border:1px solid rgba(0,0,0,.18);
 }
 .cor-titulo .qtd{
@@ -288,3 +291,131 @@ a.atalho span{font-size:14px;color:var(--suave);line-height:1.4}
 }
 
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+
+/* ===================== cadastros: listas e formularios ===================== */
+/* Um vocabulario so para as seis telas novas. As cores vem da marca: azul
+   e acao (o que se clica), laranja e atencao (o que precisa de olho). */
+
+.pagina.estreita{max-width:760px}
+.cabecalho-lista{
+  display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
+  margin:34px 0 12px;
+}
+.cabecalho-lista h2.secao{margin:0;flex:1 1 auto}
+
+.botao{
+  font:inherit;font-size:15px;font-weight:600;padding:9px 16px;
+  background:var(--azul);color:#fff;border:1px solid var(--azul);border-radius:4px;
+  cursor:pointer;text-decoration:none;display:inline-block;line-height:1.2;
+}
+.botao:hover{background:var(--azul-escuro);border-color:var(--azul-escuro)}
+.botao.vazado{background:none;color:var(--azul)}
+.botao.vazado:hover{background:var(--azul);color:#fff}
+
+.cartao{
+  background:var(--mesa);border:1px solid var(--linha);border-radius:6px;
+  padding:18px 20px;
+}
+.titulo-cartao{
+  font-size:12px;letter-spacing:.11em;text-transform:uppercase;color:var(--suave);
+  font-weight:600;margin:0 0 12px;
+}
+.titulo-cartao + *{margin-top:0}
+.formulario .titulo-cartao{margin-top:26px}
+.formulario > .titulo-cartao:first-child{margin-top:0}
+.cartao-vazio{display:flex;flex-direction:column;gap:5px}
+.cartao-vazio b{font-size:17px}
+.cartao-vazio span{color:var(--suave);max-width:60ch}
+.nota{font-size:13.5px;color:var(--suave);margin:10px 0 0;max-width:64ch;line-height:1.45}
+
+.rolagem{overflow-x:auto;margin:-4px -4px}
+table.tabela{border-collapse:collapse;width:100%;font-size:14.5px;min-width:560px}
+table.tabela th{
+  font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--suave);
+  font-weight:600;text-align:left;padding:4px 12px 8px 4px;
+  border-bottom:1px solid var(--linha-forte);white-space:nowrap;
+}
+table.tabela td{
+  padding:9px 12px 9px 4px;border-bottom:1px solid var(--linha);vertical-align:baseline;
+}
+table.tabela tr:last-child td{border-bottom:none}
+table.tabela .num{text-align:right;white-space:nowrap}
+table.tabela a{color:var(--tinta);font-weight:500;text-decoration:none}
+table.tabela a:hover{color:var(--azul);text-decoration:underline}
+table.tabela .forte{font-weight:600}
+tr.inativo td{opacity:.55}
+.fraco{color:var(--suave);font-size:13px;margin-left:7px}
+.alerta{color:var(--laranja-escuro);font-weight:600}
+.etiqueta.cinza{background:var(--bancada);color:var(--suave);border:1px solid var(--linha)}
+.etiqueta.vermelha{background:var(--vermelho-fundo);color:var(--vermelho)}
+
+/* ---------- formularios ---------- */
+.formulario{display:flex;flex-direction:column;gap:14px}
+.linha{display:flex;gap:14px;flex-wrap:wrap}
+.linha > .campo{flex:0 0 auto;min-width:130px}
+.linha > .campo.cresce{flex:1 1 220px}
+.formulario .campo input, .formulario .campo select,
+.coluna-lado .campo input{
+  font:inherit;font-size:15.5px;padding:9px 11px;border-radius:4px;
+  background:var(--mesa);border:1px solid var(--linha-forte);color:var(--tinta);
+  width:100%;
+}
+.formulario .campo input:focus, .formulario .campo select:focus,
+.coluna-lado .campo input:focus{border-color:var(--azul);outline:none}
+.marca-caixa{display:flex;align-items:center;gap:9px;font-size:15px;cursor:pointer}
+.acoes{display:flex;gap:10px;align-items:center;margin-top:4px}
+
+.duas-colunas{display:grid;gap:18px;align-items:start}
+@media(min-width:900px){.duas-colunas{grid-template-columns:1fr 360px}}
+.coluna-lado{display:flex;flex-direction:column;gap:16px}
+
+/* ---------- o arquivo 3D ---------- */
+.solte{
+  border:1.5px dashed var(--linha-forte);border-radius:6px;padding:16px;
+  display:flex;flex-direction:column;gap:9px;align-items:flex-start;
+  background:var(--mesa-2);
+}
+.solte .fraco{margin-left:0}
+.veredito{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;line-height:1.5;
+  padding:9px 11px;border-radius:4px;width:100%;
+  background:var(--bancada);color:var(--suave);border-left:3px solid var(--linha-forte);
+}
+.veredito.bom{background:var(--verde-fundo);color:var(--verde);border-left-color:var(--verde)}
+.veredito.atencao{background:#FDF3E7;color:var(--ambar);border-left-color:var(--laranja)}
+.veredito.ruim{background:var(--vermelho-fundo);color:var(--vermelho);border-left-color:var(--vermelho)}
+
+/* ---------- custo e preco ---------- */
+dl.numeros{margin:0;display:flex;flex-direction:column;gap:0}
+dl.numeros > div{
+  display:flex;justify-content:space-between;gap:14px;align-items:baseline;
+  padding:6px 0;border-bottom:1px solid var(--linha);
+}
+dl.numeros > div:last-child{border-bottom:none}
+dl.numeros dt{color:var(--suave);font-size:14px}
+dl.numeros dd{margin:0;font-size:14.5px;font-variant-numeric:tabular-nums}
+dl.numeros .somado{border-top:1px solid var(--linha-forte);border-bottom:none}
+dl.numeros .somado dt, dl.numeros .somado dd{font-weight:600;color:var(--tinta)}
+dl.numeros .destaque dd{font-size:20px;font-weight:600;color:var(--azul)}
+
+.lista-insumos{display:flex;flex-direction:column;gap:2px}
+.linha-insumo{
+  display:flex;align-items:center;gap:10px;padding:6px 0;
+  border-bottom:1px solid var(--linha);font-size:14.5px;cursor:pointer;
+}
+.linha-insumo:last-child{border-bottom:none}
+.linha-insumo .cresce{flex:1 1 auto}
+.linha-insumo .qtd{
+  width:72px;font:inherit;font-size:14px;padding:5px 7px;text-align:right;
+  border:1px solid var(--linha-forte);border-radius:4px;
+  background:var(--mesa);color:var(--tinta);
+}
+.recado.erro{
+  border-left:3px solid var(--vermelho);background:var(--vermelho-fundo);
+  color:var(--vermelho);padding:11px 14px;border-radius:0 4px 4px 0;margin-bottom:14px;
+}
+.topo nav a.aqui{background:var(--bancada);color:var(--azul);font-weight:600}
+.topo .logo{text-decoration:none;color:var(--tinta)}
+/* A nota explica o numero de cima; o campo abaixo e outro assunto. */
+.nota + .campo{margin-top:16px}

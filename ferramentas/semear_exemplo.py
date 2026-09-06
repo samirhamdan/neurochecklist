@@ -48,7 +48,7 @@ def main() -> int:
     with conectar() as conn:
         conn.execute("DELETE FROM pecas")
         conn.execute("DELETE FROM pedidos")
-        conn.execute("DELETE FROM filamento")
+        conn.execute("DELETE FROM filamentos")
         if limpar:
             print(f"Banco esvaziado: {caminho_banco()}")
             return 0
@@ -68,8 +68,10 @@ def main() -> int:
             )
         for cor, gramas, minimo in FILAMENTO:
             conn.execute(
-                "INSERT INTO filamento (cor, gramas, minimo) VALUES (?, ?, ?)",
-                (cor, gramas, minimo),
+                "INSERT INTO filamentos (nome, tipo, cor, gramas, minimo, preco_kg,"
+                " criado_em, criado_por)"
+                " VALUES (?, 'PLA', ?, ?, ?, 120.0, ?, 'exemplo')",
+                (f"PLA {cor}", cor, gramas, minimo, agora()),
             )
 
     print(f"{len(PEDIDOS)} pedidos e {len(PECAS)} pecas de EXEMPLO em {caminho_banco()}")
