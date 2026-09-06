@@ -23,19 +23,21 @@ from . import auth, dados
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-# O logotipo entra como arquivo em sistema/static/. Enquanto ele nao
-# estiver la, as telas escrevem o nome no lugar -- em vez de mostrar uma
-# imagem quebrada, que e o que <img> faz com arquivo que nao existe.
-# Confere a cada pagina, e nao na subida: assim basta soltar o arquivo na
-# pasta, sem depender de reiniciar o servico para ele aparecer.
-MARCAS = ("marca.svg", "marca.png", "marca.webp")
+# O logotipo entra como arquivo em sistema/static/, gerado por
+# ferramentas/preparar_marca.py a partir de marca/morumbi3d-original.png.
+#
+# Enquanto o arquivo nao estiver la, as telas mostram so o nome escrito,
+# em vez do icone de imagem quebrada que <img> exibe para arquivo
+# inexistente. Confere a cada pagina, e nao na subida: assim basta soltar
+# o arquivo na pasta, sem depender de reiniciar o servico.
+FORMATOS = (".svg", ".webp", ".png")
+ESTATICOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 
-def arquivo_da_marca() -> str:
-    pasta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-    for nome in MARCAS:
-        if os.path.exists(os.path.join(pasta, nome)):
-            return nome
+def arquivo_da_marca(base: str) -> str:
+    for ext in FORMATOS:
+        if os.path.exists(os.path.join(ESTATICOS, base + ext)):
+            return base + ext
     return ""
 
 
@@ -59,7 +61,7 @@ def criar_app() -> Flask:
         return {
             "com_senha": bool(auth.SENHA),
             "usuario": session.get("usuario", ""),
-            "marca": arquivo_da_marca(),
+            "marca_simbolo": arquivo_da_marca("marca-simbolo"),
         }
 
     # ---------------------------------------------------------------- telas

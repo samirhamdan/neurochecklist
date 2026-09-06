@@ -76,6 +76,32 @@ A faxina passou a olhar só pasta com nome de sessão (12 dígitos hexadecimais)
 — o banco e a chave são arquivos e já escapavam, mas depender disso é frágil
 demais para uma rotina que apaga em silêncio.
 
+## A marca
+
+O original fica em [`marca/morumbi3d-original.png`](../marca/) e os arquivos
+que o navegador recebe saem dele:
+
+```bash
+python3 ferramentas/preparar_marca.py
+```
+
+Duas decisões que esse script registra, para não serem redescobertas:
+
+- **O original tem um halo de alfa 1–8 na imagem inteira.** Ele não aparece
+  na tela, mas engana o `getbbox()` do Pillow, que corta em alfa > 0: o M
+  saía com 1135 de largura em vez de 693 — proporção 1,84 no lugar de 1,16,
+  um M esticado. Não dá erro em lugar nenhum; só sai torto. O script zera o
+  que não se vê antes de cortar, e confere a proporção no fim.
+- **Só o M vai para a tela.** Na trava inteira, "MORUMBI" e as palavras
+  "QUE" e "FORMA" do lema são grafite escuro: elas somem no fundo escuro da
+  entrada, porque o logotipo foi desenhado para papel branco. O nome e o
+  lema entram como texto, que se lê nos dois fundos — com o 3 laranja e o D
+  azul, as cores que eles têm no logotipo.
+
+As cores da paleta foram **medidas no arquivo**, não estimadas: o azul
+`#0040F0` é o do "IDEIAS" do lema (70% dos pixels daquele bloco) e o laranja
+`#F03000` é o do "GANHAM".
+
 ## Autenticação
 
 Usa as mesmas variáveis que o gerador de logo já usa — `MORUMBI_USUARIO` e

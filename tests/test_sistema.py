@@ -522,6 +522,11 @@ class TesteMarca(unittest.TestCase):
     <img> com arquivo inexistente nao falha: mostra o icone de imagem
     quebrada, que numa tela de entrada e pior do que nao ter logotipo.
     Entao as telas escrevem o nome quando o arquivo falta.
+
+    Cada teste aponta o modulo para uma pasta propria. A primeira versao
+    olhava a pasta de verdade e passou enquanto ela estava vazia; no dia
+    em que o arquivo chegou, o teste quebrou sem que nada estivesse
+    errado -- ele estava medindo o repositorio, e nao o comportamento.
     """
 
     def setUp(self):
@@ -536,37 +541,92 @@ class TesteMarca(unittest.TestCase):
         from sistema import app as modulo
         importlib.reload(modulo)
         self.modulo = modulo
+
+        self.estaticos = tempfile.mkdtemp(prefix="morumbi-static-")
+        modulo.ESTATICOS = self.estaticos
         self.app = modulo.criar_app()
         self.app.config["TESTING"] = True
         self.cliente = self.app.test_client()
 
+    def _por_arquivo(self, nome):
+        with open(os.path.join(self.estaticos, nome), "wb") as f:
+            f.write(b"x")
+
     def test_sem_arquivo_escreve_o_nome(self):
         corpo = self.cliente.get("/entrar").get_data(as_text=True)
-        self.assertNotIn("<img class=\"simbolo\"", corpo)
-        self.assertIn('class="tres">3<', corpo)
-        self.assertIn('class="de">D<', corpo)
+        self.assertTrue('class="simbolo"' not in corpo, "mostrou <img> sem arquivo")
+        self.assertTrue('class="tres">3<' in corpo, "faltou o 3 laranja")
+        self.assertTrue('class="de">D<' in corpo, "faltou o D azul")
 
     def test_com_arquivo_usa_a_imagem(self):
-        pasta = os.path.join(os.path.dirname(os.path.abspath(self.modulo.__file__)), "static")
-        alvo = os.path.join(pasta, "marca.svg")
-        criei = not os.path.exists(alvo)
-        if criei:
-            with open(alvo, "w") as f:
-                f.write('<svg xmlns="http://www.w3.org/2000/svg"/>')
-            self.addCleanup(os.remove, alvo)
+        self._por_arquivo("marca-simbolo.webp")
         corpo = self.cliente.get("/entrar").get_data(as_text=True)
-        self.assertIn("marca.svg", corpo)
-        self.assertIn('alt="Morumbi 3D"', corpo)
+        self.assertTrue("marca-simbolo.webp" in corpo, "nao usou o arquivo que existe")
+        # O nome vem escrito logo abaixo, entao o simbolo e decorativo: um
+        # alt repetindo "Morumbi 3D" faria o leitor de tela dizer duas vezes.
+        self.assertTrue('class="simbolo" src' in corpo and 'alt=""' in corpo,
+                        "o simbolo precisa de alt vazio, e nao repetido")
+        # O nome e o lema ficam em texto sempre: na trava inteira eles sao
+        # grafite escuro e sumiriam neste fundo.
+        self.assertTrue('class="nome"' in corpo, "sumiu o nome escrito")
+        self.assertTrue('class="lema"' in corpo, "sumiu o lema escrito")
 
-    def test_procura_sem_reiniciar(self):
+    def test_prefere_svg_a_bitmap(self):
+        self._por_arquivo("marca-simbolo.png")
+        self._por_arquivo("marca-simbolo.svg")
+        self.assertEqual(self.modulo.arquivo_da_marca("marca-simbolo"),
+                         "marca-simbolo.svg")
+
+    def test_aparece_sem_reiniciar(self):
         """Basta soltar o arquivo na pasta; nao pode exigir restart."""
-        self.assertEqual(self.modulo.arquivo_da_marca.__module__, "sistema.app")
-        chamadas = []
-        original = os.path.exists
+        corpo = self.cliente.get("/entrar").get_data(as_text=True)
+        self.assertTrue("marca-simbolo" not in corpo)
+        self._por_arquivo("marca-simbolo.webp")
+        corpo = self.cliente.get("/entrar").get_data(as_text=True)
+        self.assertTrue("marca-simbolo.webp" in corpo,
+                        "so achou a marca depois de reiniciar o servico")
+
+
+class TestePreparoDaMarca(unittest.TestCase):
+    """O recorte do M depende de um detalhe do arquivo original.
+
+    Ele tem um halo de alfa 1..8 na imagem inteira. O getbbox() do Pillow
+    corta em alfa>0, entao sem limpar o halo o M sai com 1135 de largura em
+    vez de 693 -- proporcao 1,84 no lugar de 1,16, um M esticado. Isso nao
+    da erro em lugar nenhum: so sai torto na tela.
+    """
+
+    def setUp(self):
         try:
-            os.path.exists = lambda p: (chamadas.append(p), original(p))[1]
-            self.cliente.get("/entrar")
-        finally:
-            os.path.exists = original
-        self.assertTrue(any("marca." in c for c in chamadas),
-                        "a marca foi resolvida na subida, nao a cada pagina")
+            import numpy  # noqa: F401
+            from PIL import Image  # noqa: F401
+        except ImportError:
+            self.skipTest("preparar_marca precisa de Pillow e numpy")
+        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.original = os.path.join(raiz, "marca", "morumbi3d-original.png")
+        if not os.path.exists(self.original):
+            self.skipTest("o original da marca nao esta no repositorio")
+        import importlib.util
+        caminho = os.path.join(raiz, "ferramentas", "preparar_marca.py")
+        spec = importlib.util.spec_from_file_location("preparar_marca", caminho)
+        self.mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.mod)
+
+    def _simbolo(self, limpar):
+        from PIL import Image
+        img = Image.open(self.original)
+        if limpar:
+            img = self.mod.sem_halo(img)
+        return self.mod.apara(img.crop((0, 0, img.width, self.mod.FIM_DO_SIMBOLO)))
+
+    def test_o_M_sai_na_proporcao_certa(self):
+        s = self._simbolo(limpar=True)
+        prop = s.width / s.height
+        self.assertAlmostEqual(prop, 1.16, delta=0.04,
+                               msg=f"o M saiu {s.width}x{s.height} (proporcao {prop:.2f})")
+
+    def test_sem_limpar_o_halo_o_M_sai_esticado(self):
+        """Se este teste parar de falhar, o halo sumiu do original."""
+        s = self._simbolo(limpar=False)
+        self.assertGreater(s.width / s.height, 1.5,
+                           "o halo nao esta mais no original: sem_halo() virou opcional")

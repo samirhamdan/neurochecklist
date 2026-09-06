@@ -5,15 +5,17 @@
 <div class="caixa">
 
   <div class="marca">
-    {% if marca %}
-      {# O logotipo ja traz "IDEIAS QUE GANHAM FORMA" dentro dele. Repetir
-         o lema em texto aqui seria dizer a mesma coisa duas vezes. #}
-      <img class="simbolo" src="{{ url_for('static', filename=marca) }}"
-           alt="Morumbi 3D" width="340">
-    {% else %}
-      <p class="nome">Morumbi <span class="tres">3</span><span class="de">D</span></p>
-      <p class="lema"><span class="a">Ideias</span> que <span class="b">ganham</span> forma</p>
+    {# Aqui entra o M sozinho, e nao a trava inteira. Na trava, "MORUMBI" e
+       as palavras "QUE" e "FORMA" do lema sao grafite escuro: elas somem
+       neste fundo, porque o logotipo foi desenhado para papel branco. O
+       simbolo e a parte colorida, e nele o fundo escuro nao atrapalha --
+       o nome e o lema vem logo abaixo, em texto que da para ler. #}
+    {% if marca_simbolo %}
+      <img class="simbolo" src="{{ url_for('static', filename=marca_simbolo) }}"
+           alt="" width="150" height="130">
     {% endif %}
+    <p class="nome">Morumbi <span class="tres">3</span><span class="de">D</span></p>
+    <p class="lema"><span class="a">Ideias</span> que <span class="b">ganham</span> forma</p>
     <h1 class="chamada">Gestão inteligente de impressão 3D</h1>
     <p class="diz">Pedido, fila de produção e custo real no mesmo lugar.</p>
     <div class="rodape mono">

@@ -18,8 +18,12 @@
    e suja o botao. */
 
 :root{
-  --azul:#1266E0;    --azul-claro:#3FA9F5;  --azul-escuro:#0B3FA8;
-  --laranja:#F4621A; --laranja-claro:#FF8A1F; --laranja-escuro:#D8410A;
+  /* Medidas no proprio arquivo da marca, e nao estimadas de olho: o azul
+     e o do "IDEIAS" do lema (70% dos pixels daquele bloco), o laranja e o
+     do "GANHAM". Os claros vem das facetas de cima do M, os escuros da
+     assinatura 3D. */
+  --azul:#0040F0;    --azul-claro:#00A0F0;  --azul-escuro:#0030B0;
+  --laranja:#F03000; --laranja-claro:#F08000; --laranja-escuro:#C02600;
   --grafite:#15191D;
 
   --verde:#1F7A4D;  --verde-fundo:#E7F3EC;
@@ -70,7 +74,7 @@ body.palco::before{
 
 .marca{display:flex;flex-direction:column;gap:18px;align-items:flex-start}
 .marca .simbolo{
-  width:min(340px,72%);height:auto;display:block;margin-bottom:4px;
+  width:150px;height:auto;display:block;margin-bottom:2px;
 }
 .marca .nome{
   font-size:clamp(38px,6vw,58px);font-weight:700;line-height:1;
@@ -145,10 +149,13 @@ body.bancada{background:var(--bancada);color:var(--tinta)}
   max-width:1180px;margin:0 auto;display:flex;align-items:center;
   gap:20px;min-height:60px;flex-wrap:wrap;
 }
-/* Sem display:flex aqui: ele transforma "Morumbi " num item de flex e
-   descarta o espaco do fim, colando as duas palavras em "Morumbi3D". */
-.topo .logo{font-weight:700;letter-spacing:-.02em;font-size:19px;line-height:1}
-.topo .logo img{height:32px;width:auto;display:block}
+/* O nome fica dentro de um <span> proprio, e nao solto: como item de flex
+   solto, "Morumbi " perde o espaco do fim e vira "Morumbi3D". */
+.topo .logo{
+  font-weight:700;letter-spacing:-.02em;font-size:19px;line-height:1;
+  display:flex;align-items:center;gap:9px;
+}
+.topo .logo img{height:30px;width:auto;display:block}
 .topo .logo .tres{color:var(--laranja-escuro)}
 .topo .logo .de{color:var(--azul)}
 .topo nav{display:flex;gap:4px;margin-left:auto;align-items:center}
