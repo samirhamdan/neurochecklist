@@ -80,7 +80,8 @@ mensagem para sempre.
 
 **Entra:** cliente (nome, WhatsApp, canal, observações); pedido (cliente,
 itens, quantidade, valor, prazo); canal por pedido, herdado do cliente e
-editável; orçamento é o pedido antes de aprovar.
+editável; orçamento é o pedido antes de aprovar. **Todo registro grava quem
+o criou e quando** — hoje é sempre você, mas o campo já nasce.
 
 **Eu testo:** pedido novo entra na fila agrupado pela cor certa · prazo
 vencido marca atrasado e o grupo sobe na fila · aprovar orçamento não
@@ -97,10 +98,12 @@ registramos hoje: a peça que deu errado.
 
 **Entra:** quadro kanban com as cinco etapas, arrastando a peça · lista com
 seleção múltipla na mesma tela · entrar em produção baixa filamento e
-insumo · registrar refugo (gramas e motivo).
+insumo · registrar refugo (gramas e motivo) · **histórico de quem moveu cada
+peça, para qual etapa e quando**.
 
 **Eu testo:** mover a peça baixa exatamente o peso dela · voltar uma etapa
-devolve o estoque · refugo não baixa o mesmo filamento duas vezes.
+devolve o estoque · refugo não baixa o mesmo filamento duas vezes · cada
+movimento aparece no histórico com autor e hora.
 
 **Você confere:** arraste uma peça para "em produção" e olhe o estoque
 antes e depois; a diferença tem que ser o peso da peça mais a purga.
@@ -189,7 +192,7 @@ uma vez só.
 
 ---
 
-## Duas decisões já tomadas
+## Três decisões já tomadas
 
 - **O cartão nunca passa pelo servidor.** A loja manda o cliente para o
   checkout do meio de pagamento e recebe o aviso de volta. Guardar cartão
@@ -198,14 +201,21 @@ uma vez só.
 - **A precificação continua sendo a nossa.** A deles multiplica hora por
   valor e soma margem. A nossa já calcula casca, preenchimento, suporte e
   purga por troca de cor, com piso de R$ 18 + R$ 0,60/g arredondado a R$ 5.
+- **Quem fez fica gravado desde já; quem pode fazer o quê fica para depois.**
+  O Samir administra sozinho hoje, e haverá colaboradores em atendimento e
+  outros departamentos mais adiante. As duas metades disso têm custos muito
+  diferentes: *quem fez* é irreversível — sem o campo desde a primeira linha,
+  o histórico nunca saberá quem cadastrou o pedido ou moveu a peça, e não há
+  como preencher depois. *Quem pode fazer o quê* é barato a qualquer momento:
+  papéis e permissões entram sem tocar no que já existe. Então todo registro
+  grava autor e data agora, a autenticação continua a mesma (uma senha, no
+  serviço), e a tela de equipe só entra quando existir a segunda pessoa.
 
 ## Perguntas em aberto
 
-1. **Mais alguém opera o sistema?** Se sim, entra usuário por pessoa e
-   registro de quem moveu cada peça — muda o sprint 3.
-2. **Qual meio de pagamento na loja?** Mercado Pago é o caminho mais curto
+1. **Qual meio de pagamento na loja?** Mercado Pago é o caminho mais curto
    no Brasil (PIX, cartão, boleto, checkout hospedado).
-3. **A loja mostra preço para todo mundo?** Catálogo tem preço; peça sob
+2. **A loja mostra preço para todo mundo?** Catálogo tem preço; peça sob
    medida pode ser preço na hora, se o gerador calcular, ou orçamento.
-4. **Entrega ou retirada?** Com entrega, o pedido precisa de endereço e
+3. **Entrega ou retirada?** Com entrega, o pedido precisa de endereço e
    frete — muda o sprint 8.
