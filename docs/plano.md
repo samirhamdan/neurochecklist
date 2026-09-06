@@ -1,8 +1,15 @@
 # Plano de construção — do gerador de peça ao controle da oficina
 
-Oito sprints numerados **por dependência**, não por preferência: cada um só
-pode existir depois do anterior. Cada um entrega algo usável no mesmo dia,
-e traz o que eu testo e o que você confere.
+Duas trilhas, numeradas **por dependência** e não por preferência.
+
+- **Gestão (1 a 9)** — o que registra: cadastros, pedidos, produção,
+  financeiro, loja, marketplace.
+- **Criação (C1 a C4)** — o que gera: a plataforma de geradores e os
+  produtos personalizáveis que nascem dela.
+
+As duas se encontram em dois pontos, e só neles: o **produto** (sprint 1) e
+a **loja** (sprint 8). Fora disso, avançam independentes — e você escolhe
+qual anda primeiro.
 
 Versão em página: publicada como artefato, mesma matéria deste arquivo.
 Este arquivo é a fonte da verdade; a página é a leitura.
@@ -237,6 +244,146 @@ nosso alcance. Os dois exigem conta de desenvolvedor aprovada, e as regras e
 taxas deles mudam sem avisar. Antes de começar, você vai precisar criar as
 duas contas e me passar as credenciais.
 
+---
+
+# Trilha de Criação — a plataforma de geradores
+
+## A descoberta que barateia tudo
+
+Antes de planejar, fui olhar o que já existe. O núcleo do gerador de
+letreiros exporta isto:
+
+```js
+const M = { Gerador, alturaAuto, stlBinario, caixa, analisar,
+            grupos, MESA, SIZE, PRODUTOS };
+```
+
+Ali já estão geometria, exportação de STL, caixa envolvente, **análise de
+malha rodando no navegador**, agrupamento por cor e as constantes da mesa.
+A plataforma não precisa ser inventada: ela existe pela metade, presa dentro
+de um arquivo de 8 mil linhas que só sabe fazer letreiro.
+
+Então C1 não é *construir* uma plataforma. É **soltar a que já está lá**.
+
+## O corte: plataforma × peça
+
+Todo gerador — letreiro, logo, topo de bolo, chaveiro, vaso, cortador — faz
+a mesma sequência. Só um passo dela é diferente em cada um.
+
+| Passo | De quem é |
+| --- | --- |
+| Formulário de parâmetros | Plataforma |
+| Texto vira geometria | Plataforma (o gerador de letreiro já faz) |
+| **Desenhar a peça** | **Da peça — é a única parte que muda** |
+| Validar a malha: fechada, espessura mínima, cabe na mesa | Plataforma |
+| Prévia 3D | Plataforma |
+| Estimar gramas, horas, custo e preço | Plataforma |
+| Nome de arquivo padronizado | Plataforma |
+| Guardar a configuração | Plataforma |
+
+Sete oitavos são escritos uma vez. Um gerador novo passa a ser **um módulo
+de geometria mais um punhado de templates** — e herda de graça a validação
+que já pegou junta em T, malha aberta e erro de preço de 9×.
+
+## O que eu acrescento ao seu documento
+
+Seu documento de topo de bolo está completo — mais do que a maioria das
+especificações que recebo prontas. Duas coisas eu acrescento, e uma delas
+mexe numa decisão sua.
+
+**1. O filtro de marca vale para o texto do cliente, não só para o template.**
+Seu §18 trata da origem de cada template, e está certo. Mas a exposição maior
+é a outra ponta: o cliente digita "Homem Aranha" no campo de nome de um topo
+que **você** vende. O `brands.py` da curadoria já detecta termos de marca,
+time, personagem e franquia, com lista que você amplia sem mexer em código.
+Ligar os dois é quase de graça, e é a diferença entre uma regra escrita e uma
+regra que funciona sozinha às onze da noite de sábado.
+
+**2. Peça de template pode ter preço na hora — e não "sob consulta".**
+Você decidiu que personalizado é sob consulta. Para trabalho realmente sob
+medida, continua certo. Mas topo de bolo de template **não é** sob medida: o
+gerador desenha a peça, o analisador pesa, e o preço sai na hora, pelo mesmo
+cálculo do balcão. Deixar "sob consulta" numa peça que o sistema sabe
+precificar é perder venda por conversa que não precisava existir. Minha
+sugestão: **template tem preço; sob consulta fica para o que não tem
+template** — um logo novo, um projeto de fato único.
+
+## Sprint C1 — Soltar o núcleo
+**Tamanho M · sem dependência · pode andar em paralelo com a trilha de gestão**
+
+**Entra:** o núcleo vira módulo de verdade, fora do HTML do letreiro ·
+formulário de parâmetros declarado por gerador · validação de malha
+obrigatória antes de qualquer download · prévia 3D · estimativa de gramas,
+horas e preço · nome de arquivo padronizado · configuração salva, para
+reimprimir sem procurar arquivo antigo.
+
+**Eu testo:** **os três geradores de hoje continuam produzindo o mesmo STL,
+byte a byte, depois da extração** — é assim que se prova que uma extração não
+quebrou nada · malha reprovada não gera download, nunca · a mesma
+configuração gera o mesmo arquivo duas vezes.
+
+**Você confere:** gere um letreiro que você já gerou antes e compare o
+arquivo com o antigo. Tem que ser idêntico.
+
+## Sprint C2 — Gerador de topo de bolo
+**Tamanho G · depende do C1 · o gargalo não é código**
+
+O MVP do seu documento: 10 templates, nome, idade, tamanho, prévia, preço,
+pedido.
+
+**Entra:** os campos do seu §5 · presets de 12, 15, 18 e 20 cm · fontes
+testadas · limites de caracteres e área segura por template · haste e base
+padronizadas · saída em 3MF, com STL quando o modelo não exigir mais
+informação · nomenclatura `M3D-TB-001_MARIA_5_18CM.3mf`.
+
+**Eu testo:** nome longo demais é barrado antes de gerar, e não depois ·
+espessura mínima e conexões respeitadas em toda combinação · a peça cabe na
+mesa em todos os presets · malha fechada em todos os 10 templates, com todos
+os nomes de teste · termo de marca no nome do cliente levanta alerta.
+
+**Você confere:** o seu §16, que é o critério certo — **imprimir os 10**.
+Abre no Bambu Studio, fatia sem erro, o texto continua legível depois de
+impresso, e a peça aguenta ser manuseada.
+
+**O gargalo é a impressora, não o código.** Dez templates, com as revisões
+que sempre aparecem depois da primeira impressão, são semanas de mesa
+ocupada. O código vai ficar pronto antes dos templates — e é o seu §6 que
+manda: *todo template deve ser testado fisicamente antes de venda*.
+
+## Sprint C3 — Catálogo de templates no painel
+**Tamanho M · depende do C2**
+
+Seu §12. Sem esta tela, cada template novo depende de mim mexer no código.
+
+**Entra:** cadastrar e editar template (SKU, modelo, categoria, campos,
+tamanhos, fontes, cores, licença) · ativar e desativar · **separar em teste
+dos publicados**, como pede seu §10 · preço por template · acompanhar
+gerações e baixar os arquivos.
+
+**Eu testo:** template em teste não aparece na loja, em nenhuma rota ·
+desativar template não quebra pedido antigo que o usou · licença em branco
+impede publicar.
+
+**Você confere:** cadastre um template do zero, deixe em teste, confirme que
+ele não aparece na vitrine, publique e confirme que aparece.
+
+## Sprint C4 — Os geradores seguintes
+**Tamanho variável · depende do C1**
+
+Chaveiro, placa, display, lembrancinha, caixa, organizador, vaso, cortador,
+lithophane, mapa. Cada um é **um módulo de geometria mais templates** — a
+plataforma não muda.
+
+A ordem não decido eu: sai pela demanda que você vê no balcão e pelo que a
+Morumbi Festas puxa junto. O seu §20 já aponta o caminho — a família coerente
+de produtos para a mesma ocasião.
+
+**Regra que vale para todos:** nenhum gerador vai à loja sem passar pelo seu
+§6 e §16. Malha validada pela plataforma e template impresso e aprovado por
+você.
+
+---
+
 ## Quatro decisões já tomadas
 
 - **O cartão nunca passa pelo servidor.** A loja manda o cliente para o
@@ -272,3 +419,4 @@ duas contas e me passar as credenciais.
 | Preço na vitrine | Catálogo com preço; personalizado sob consulta | Sprints 6 e 8 |
 | Entrega | Entrega via Melhor Envio, e retirada | Sprints 1 e 8 |
 | Marketplace | Preparar para Shopee e Mercado Livre | Campos no sprint 2; integração no 9 |
+| Geradores | Plataforma de personalização, começando por topo de bolo | Trilha de Criação, C1 a C4 |
