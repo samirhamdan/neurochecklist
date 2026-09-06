@@ -328,3 +328,14 @@ class TesteTelas(unittest.TestCase):
         }, content_type="multipart/form-data")
         self.assertEqual(r.status_code, 400)
         self.assertIn("Formato", r.get_json()["erro"])
+
+    def test_campo_vazio_no_banco_nao_vira_a_palavra_None(self):
+        """SKU aceita nulo, e nulo no Jinja vira o texto "None".
+
+        Visto na tela do Samir: o campo SKU de um produto sem SKU aparecia
+        preenchido com "None" -- e salvar dali gravaria o SKU "None".
+        """
+        pid = self.dados.salvar_produto({"nome": "Topo de Bolo Isabel"}, "samir")
+        corpo = self.cliente.get(f"/produtos/{pid}").get_data(as_text=True)
+        self.assertNotIn('value="None"', corpo)
+        self.assertNotIn(">None<", corpo)

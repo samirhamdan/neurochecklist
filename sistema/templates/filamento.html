@@ -10,17 +10,17 @@
     <div class="linha">
       <label class="campo cresce"><span>Nome</span>
         <input name="nome" required maxlength="80" placeholder="Ex: PLA Basic Preto"
-               value="{{ atual.nome if atual else '' }}">
+               value="{{ (atual and atual.nome) or '' }}">
       </label>
       <label class="campo"><span>Marca</span>
         <input name="marca" maxlength="40" placeholder="Bambu"
-               value="{{ atual.marca if atual else '' }}">
+               value="{{ (atual and atual.marca) or '' }}">
       </label>
     </div>
     <div class="linha">
       <label class="campo"><span>Tipo</span>
         <input name="tipo" maxlength="20" placeholder="PLA"
-               value="{{ atual.tipo if atual else 'PLA' }}">
+               value="{{ (atual and atual.tipo) or 'PLA' }}">
       </label>
       <label class="campo cresce"><span>Cor</span>
         <select name="cor" required>

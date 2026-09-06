@@ -13,17 +13,17 @@
       <div class="linha">
         <label class="campo cresce"><span>Nome</span>
           <input name="nome" required maxlength="90" placeholder="Ex: Topo de bolo ANA 18 cm"
-                 value="{{ atual.nome if atual else '' }}">
+                 value="{{ (atual and atual.nome) or '' }}">
         </label>
         <label class="campo"><span>SKU</span>
           <input name="sku" maxlength="30" placeholder="M3D-TB-001"
-                 value="{{ atual.sku if atual else '' }}">
+                 value="{{ (atual and atual.sku) or '' }}">
         </label>
       </div>
       <div class="linha">
         <label class="campo"><span>Categoria</span>
           <input name="categoria" maxlength="40" placeholder="Topo de bolo"
-                 value="{{ atual.categoria if atual else '' }}">
+                 value="{{ (atual and atual.categoria) or '' }}">
         </label>
         <label class="campo cresce"><span>Filamento</span>
           <select name="filamento_id" id="filamento">
@@ -39,7 +39,7 @@
       <label class="campo"><span>Observação</span>
         <input name="observacao" maxlength="200"
                placeholder="Acabamento, montagem, o que lembrar na hora de imprimir"
-               value="{{ atual.observacao if atual else '' }}">
+               value="{{ (atual and atual.observacao) or '' }}">
       </label>
 
       <h3 class="titulo-cartao">Medidas</h3>
@@ -49,7 +49,7 @@
         <span class="fraco">STL, 3MF ou OBJ — o peso, o tempo e a caixa vêm dele</span>
         <div id="veredito" class="veredito" hidden></div>
       </div>
-      <input type="hidden" name="arquivo" id="arquivo" value="{{ atual.arquivo if atual else '' }}">
+      <input type="hidden" name="arquivo" id="arquivo" value="{{ (atual and atual.arquivo) or '' }}">
       <input type="hidden" name="malha_ok" id="malha_ok" value="{{ atual.malha_ok if atual and atual.malha_ok is not none else '' }}">
       <input type="hidden" name="malha_nota" id="malha_nota" value="{{ atual.malha_nota if atual and atual.malha_nota else '' }}">
       <div class="linha">

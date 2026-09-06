@@ -10,11 +10,11 @@
     <div class="linha">
       <label class="campo cresce"><span>Nome</span>
         <input name="nome" required maxlength="80" placeholder="Ex: Imã 8 mm"
-               value="{{ atual.nome if atual else '' }}">
+               value="{{ (atual and atual.nome) or '' }}">
       </label>
       <label class="campo"><span>Unidade</span>
         <input name="unidade" maxlength="10" placeholder="un"
-               value="{{ atual.unidade if atual else 'un' }}">
+               value="{{ (atual and atual.unidade) or 'un' }}">
       </label>
     </div>
     <div class="linha">
@@ -33,7 +33,7 @@
     </div>
     <label class="campo"><span>Descrição</span>
       <input name="descricao" maxlength="120" placeholder="Padrão de compra, fornecedor, observação"
-             value="{{ atual.descricao if atual else '' }}">
+             value="{{ (atual and atual.descricao) or '' }}">
     </label>
     <label class="marca-caixa">
       <input type="checkbox" name="ativo" value="1" {{ 'checked' if not atual or atual.ativo }}>
