@@ -4,8 +4,15 @@
 Sao DUAS contas que respondem perguntas diferentes, e mistura-las e como o
 negocio perde dinheiro sem perceber:
 
-  CUSTO   quanto sai do bolso: filamento + hora de maquina + insumos, mais
-          uma reserva para a peca que falha e precisa ser reimpressa.
+  CUSTO   quanto sai do bolso, e sao DOIS TEMPOS diferentes:
+            - a impressora trabalhando SOZINHA, que custa pouco por hora
+              (depreciacao + energia + manutencao);
+            - as MAOS, que custam caro por hora mas entram por minutos --
+              preparar a mesa, tirar a peca, tirar suporte, colar, embalar.
+          A primeira versao tinha uma linha so, e multiplicava o valor da
+          hora de trabalho pelas horas da MAQUINA. Com a hora a R$ 25, um
+          topo de bolo de 5,77 h aparecia com R$ 96 de prejuizo -- cobrado
+          por horas em que ninguem estava trabalhando.
   PRECO   quanto se cobra. E a regra comercial que o gerador de letreiros ja
           usa na tela todo dia: piso + gramas x valor por grama, arredondado
           para cima de 5 em 5 reais.
@@ -31,6 +38,7 @@ class Conta:
     horas: float
     custo_filamento: float
     custo_maquina: float
+    custo_pessoa: float
     custo_insumos: float
     custo_falha: float
     custo: float
@@ -80,7 +88,8 @@ def preco_comercial(gramas: float, piso: float, por_grama: float) -> float:
 
 
 def calcular(gramas: float, horas: float, preco_kg: float | None,
-             insumos: float = 0.0, *, param: dict[str, float]) -> Conta:
+             insumos: float = 0.0, minutos: float | None = None, *,
+             param: dict[str, float]) -> Conta:
     """Custo e preco de uma peca ja medida.
 
     `preco_kg` vem do filamento cadastrado. Sem ele nao da para custear, e o
@@ -92,17 +101,22 @@ def calcular(gramas: float, horas: float, preco_kg: float | None,
 
     custo_filamento = gramas / 1000.0 * float(preco_kg) if preco_kg else 0.0
     custo_maquina = horas * float(param["custo_hora_maquina"])
+    if minutos is None:
+        minutos = param["minutos_acabamento"]
+    custo_pessoa = max(float(minutos), 0.0) / 60.0 * float(param["valor_hora_pessoa"])
     custo_insumos = max(float(insumos or 0), 0.0)
-    # A reserva incide sobre o que se perde ao refugar: filamento e hora de
-    # maquina. Insumo de peca refugada costuma sobrar, entao fica de fora.
-    custo_falha = (custo_filamento + custo_maquina) * float(param["taxa_falha"])
-    custo = custo_filamento + custo_maquina + custo_insumos + custo_falha
+    # A reserva incide sobre o que se perde ao refugar: filamento, hora de
+    # maquina e o acabamento que foi feito na peca perdida. Insumo de peca
+    # refugada costuma sobrar, entao fica de fora.
+    custo_falha = (custo_filamento + custo_maquina + custo_pessoa) * float(param["taxa_falha"])
+    custo = custo_filamento + custo_maquina + custo_pessoa + custo_insumos + custo_falha
 
     return Conta(
         gramas=round(gramas, 1),
         horas=round(horas, 2),
         custo_filamento=round(custo_filamento, 2),
         custo_maquina=round(custo_maquina, 2),
+        custo_pessoa=round(custo_pessoa, 2),
         custo_insumos=round(custo_insumos, 2),
         custo_falha=round(custo_falha, 2),
         custo=round(custo, 2),

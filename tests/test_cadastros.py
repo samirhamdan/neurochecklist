@@ -339,3 +339,78 @@ class TesteTelas(unittest.TestCase):
         corpo = self.cliente.get(f"/produtos/{pid}").get_data(as_text=True)
         self.assertNotIn('value="None"', corpo)
         self.assertNotIn(">None<", corpo)
+
+
+class TesteDoisTempos(unittest.TestCase):
+    """A impressora trabalha sozinha; as maos entram por minutos.
+
+    A primeira versao tinha uma linha de tempo so e multiplicava o valor da
+    hora de trabalho pelas horas da MAQUINA. Com a hora do Samir a R$ 25, o
+    topo de bolo de 5,77 h aparecia com R$ 96 de PREJUIZO -- cobrado por
+    horas em que ninguem estava trabalhando. Estes testes existem para essa
+    confusao nao voltar.
+    """
+
+    def setUp(self):
+        os.environ["MORUMBI_DADOS"] = tempfile.mkdtemp(prefix="morumbi-tempos-")
+        from sistema import custo, dados
+        importlib.reload(dados)
+        self.custo, self.dados = custo, dados
+        self.param = dados.PADROES
+
+    def test_a_hora_da_pessoa_nao_multiplica_as_horas_da_maquina(self):
+        """Dobrar o tempo de IMPRESSAO nao pode dobrar o custo de mao de obra."""
+        curto = self.custo.calcular(80, 2.0, 80.0, minutos=30, param=self.param)
+        longo = self.custo.calcular(80, 8.0, 80.0, minutos=30, param=self.param)
+        self.assertEqual(curto.custo_pessoa, longo.custo_pessoa)
+        self.assertGreater(longo.custo_maquina, curto.custo_maquina)
+
+    def test_o_topo_de_bolo_real_nao_da_prejuizo(self):
+        """83,7 g, 5,77 h, 30 min de maos, vendido a R$ 70."""
+        c = self.custo.calcular(83.7, 5.77, 80.0, minutos=30, param=self.param)
+        self.assertAlmostEqual(c.custo_pessoa, 12.50, places=2)
+        self.assertLess(c.custo, 70.0, "a peca que ele vende nao pode custar mais que o preco")
+        self.assertGreater(c.margem_pct, 40)
+
+    def test_sem_minutos_no_produto_usa_o_padrao(self):
+        padrao = self.custo.calcular(80, 3, 80.0, param=self.param)
+        igual = self.custo.calcular(80, 3, 80.0, minutos=self.param["minutos_acabamento"],
+                                    param=self.param)
+        self.assertEqual(padrao.custo_pessoa, igual.custo_pessoa)
+
+    def test_menos_acabamento_custa_menos(self):
+        """E o que o gerador de topo de bolo vale, em dinheiro."""
+        trinta = self.custo.calcular(83.7, 5.77, 80.0, minutos=30, param=self.param)
+        dez = self.custo.calcular(83.7, 5.77, 80.0, minutos=10, param=self.param)
+        economia = trinta.custo - dez.custo
+        self.assertGreater(economia, 9.0)
+        self.assertLess(economia, 10.0)
+
+    def test_a_reserva_de_falha_cobre_o_acabamento_perdido(self):
+        """Peca refugada leva junto o acabamento que ja tinha sido feito."""
+        sem = self.custo.calcular(80, 3, 80.0, minutos=0, param=self.param)
+        com = self.custo.calcular(80, 3, 80.0, minutos=60, param=self.param)
+        self.assertGreater(com.custo_falha, sem.custo_falha)
+
+    def test_migracao_corrige_a_hora_de_maquina_antiga(self):
+        """A versao anterior gravou 3,50, que misturava maquina com mao de obra."""
+        with self.dados.conectar() as conn:
+            conn.execute("UPDATE parametros SET valor = 3.50 WHERE chave = 'custo_hora_maquina'")
+            conn.commit()
+        self.assertEqual(self.dados.parametros()["custo_hora_maquina"],
+                         self.dados.PADROES["custo_hora_maquina"])
+
+    def test_migracao_respeita_valor_ja_ajustado(self):
+        """Se alguem escolheu um numero, a escolha da pessoa vale mais."""
+        with self.dados.conectar() as conn:
+            conn.execute("UPDATE parametros SET valor = 4.20 WHERE chave = 'custo_hora_maquina'")
+            conn.commit()
+        self.assertEqual(self.dados.parametros()["custo_hora_maquina"], 4.20)
+
+    def test_produto_guarda_os_minutos_dele(self):
+        fil = self.dados.salvar_filamento(
+            {"nome": "PLA Preto", "cor": "Preto", "preco_kg": 80}, "samir")
+        pid = self.dados.salvar_produto(
+            {"nome": "Chaveiro", "gramas": 9, "horas": 0.4, "minutos": 5,
+             "filamento_id": fil}, "samir")
+        self.assertEqual(self.dados.produto(pid)["minutos"], 5.0)

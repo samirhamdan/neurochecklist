@@ -120,7 +120,8 @@ def criar_app() -> Flask:
     def _conta_do_produto(prod: dict, param: dict) -> custo.Conta:
         insumos = sum(v["quantidade"] * v["valor_unit"] for v in prod.get("insumos", []))
         return custo.calcular(prod.get("gramas") or 0, prod.get("horas") or 0,
-                              prod.get("filamento_preco_kg"), insumos, param=param)
+                              prod.get("filamento_preco_kg"), insumos,
+                              prod.get("minutos"), param=param)
 
     @app.route("/filamentos")
     @auth.exige_login
@@ -175,7 +176,8 @@ def criar_app() -> Flask:
         itens = dados.produtos(False)
         for p in itens:
             p["conta"] = custo.calcular(p.get("gramas") or 0, p.get("horas") or 0,
-                                        p.get("filamento_preco_kg"), param=param)
+                                        p.get("filamento_preco_kg"),
+                                        minutos=p.get("minutos"), param=param)
         return render_template("produtos.html", aba="produtos", produtos=itens,
                                cores=dados.CORES)
 
@@ -225,7 +227,9 @@ def criar_app() -> Flask:
         if request.form.get("filamento_id"):
             fil = dados.filamento(int(request.form["filamento_id"]))
             preco_kg = fil["preco_kg"] if fil else None
-        conta = custo.calcular(medida["gramas"], medida["horas"], preco_kg, param=param)
+        minutos = request.form.get("minutos")
+        conta = custo.calcular(medida["gramas"], medida["horas"], preco_kg,
+                               minutos=float(minutos) if minutos else None, param=param)
         return {"medida": medida, "conta": conta.como_dict()}, 200
 
     # ------------------------------------------------------------ ferramentas

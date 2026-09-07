@@ -53,6 +53,11 @@
       <input type="hidden" name="malha_ok" id="malha_ok" value="{{ atual.malha_ok if atual and atual.malha_ok is not none else '' }}">
       <input type="hidden" name="malha_nota" id="malha_nota" value="{{ atual.malha_nota if atual and atual.malha_nota else '' }}">
       <div class="linha">
+        <label class="campo"><span>Acabamento (min)</span>
+          <input name="minutos" id="minutos" type="number" step="1" min="0"
+                 placeholder="{{ param.minutos_acabamento|round|int }}"
+                 value="{{ atual.minutos|round|int if atual and atual.minutos else '' }}">
+        </label>
         <label class="campo"><span>Peso (g)</span>
           <input name="gramas" id="gramas" type="number" step="0.1" min="0"
                  value="{{ atual.gramas|round(1) if atual and atual.gramas else '' }}">
@@ -78,6 +83,10 @@
       </div>
       <p class="nota">A caixa é o que o Melhor Envio vai pedir para cotar o frete. Some a
       folga da embalagem depois — esta é a peça nua.</p>
+      <p class="nota"><b>Acabamento</b> são os minutos das <i>suas mãos</i>: preparar a mesa,
+      tirar a peça, tirar suporte, colar, embalar. Não são as horas de impressão — nelas a
+      máquina trabalha sozinha. Vazio usa o padrão de
+      {{ param.minutos_acabamento|round|int }} min.</p>
     </div>
 
     <div class="coluna-lado">
@@ -85,7 +94,8 @@
         <h3 class="titulo-cartao">Custo e preço</h3>
         <dl class="numeros" id="numeros">
           <div><dt>Filamento</dt><dd class="mono">R$ {{ '%.2f'|format(conta.custo_filamento) if conta else '0,00' }}</dd></div>
-          <div><dt>Máquina</dt><dd class="mono">R$ {{ '%.2f'|format(conta.custo_maquina) if conta else '0,00' }}</dd></div>
+          <div><dt>Máquina <span class="fraco">sozinha</span></dt><dd class="mono">R$ {{ '%.2f'|format(conta.custo_maquina) if conta else '0,00' }}</dd></div>
+          <div><dt>Suas mãos</dt><dd class="mono" id="v-pessoa">R$ {{ '%.2f'|format(conta.custo_pessoa) if conta else '0,00' }}</dd></div>
           <div><dt>Insumos</dt><dd class="mono">R$ {{ '%.2f'|format(conta.custo_insumos) if conta else '0,00' }}</dd></div>
           <div><dt>Reserva de falha</dt><dd class="mono">R$ {{ '%.2f'|format(conta.custo_falha) if conta else '0,00' }}</dd></div>
           <div class="somado"><dt>Custo</dt><dd class="mono" id="v-custo">R$ {{ '%.2f'|format(conta.custo) if conta else '0,00' }}</dd></div>
@@ -95,7 +105,9 @@
         </dl>
         <p class="nota">Sugerido = piso R$ {{ '%.2f'|format(param.piso) }} + peso ×
         R$ {{ '%.2f'|format(param.por_grama) }}/g, para cima de 5 em 5. É a mesma conta do
-        gerador de letreiros.</p>
+        gerador de letreiros.<br>
+        Máquina a R$ {{ '%.2f'|format(param.custo_hora_maquina) }}/h (a impressora sozinha) e
+        suas mãos a R$ {{ '%.2f'|format(param.valor_hora_pessoa) }}/h.</p>
         <label class="campo"><span>Preço fixo (opcional)</span>
           <input name="preco" type="number" step="0.01" min="0" placeholder="deixe vazio para usar o sugerido"
                  value="{{ '%.2f'|format(atual.preco) if atual and atual.preco else '' }}">
@@ -158,6 +170,8 @@
     dados.append("modelo", arq.files[0]);
     const fil = document.getElementById("filamento").value;
     if (fil) dados.append("filamento_id", fil);
+    const min = document.getElementById("minutos").value;
+    if (min) dados.append("minutos", min);
 
     let r;
     try {
@@ -188,6 +202,7 @@
     veredito.className = "veredito " + (m.malha_ok ? (alertas.length ? "atencao" : "bom") : "ruim");
     veredito.textContent = m.resumo + (alertas.length ? " · " + alertas.join(" · ") : "");
 
+    document.getElementById("v-pessoa").textContent = money(c.custo_pessoa);
     document.getElementById("v-custo").textContent = money(c.custo);
     document.getElementById("v-preco").textContent = money(c.preco);
     document.getElementById("v-margem").textContent = c.margem_pct + "%";

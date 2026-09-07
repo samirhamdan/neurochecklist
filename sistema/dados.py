@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS produtos (
     caixa_x      REAL,
     caixa_y      REAL,
     caixa_z      REAL,
+    minutos      REAL,
     filamento_id INTEGER REFERENCES filamentos (id),
     arquivo      TEXT NOT NULL DEFAULT '',
     malha_ok     INTEGER,
@@ -116,7 +117,12 @@ CREATE TABLE IF NOT EXISTS parametros (
 PADROES = {
     "piso": 18.0,
     "por_grama": 0.60,
-    "custo_hora_maquina": 3.50,
+    # Duas linhas de tempo, nao uma. A impressora trabalha sozinha 6 horas;
+    # as maos do Samir entram por minutos, antes e depois. Cobrar a hora
+    # dele pelas horas DA MAQUINA fazia todo o catalogo dar prejuizo.
+    "custo_hora_maquina": 2.39,   # R$ 6.000 / 3.000 h + energia + manutencao
+    "valor_hora_pessoa": 25.00,   # o que a hora do Samir vale
+    "minutos_acabamento": 30.0,   # padrao por peca; o produto pode ter o seu
     "taxa_falha": 0.10,
 }
 
@@ -164,6 +170,19 @@ def _migrar(conn: sqlite3.Connection) -> None:
             " SELECT 'PLA ' || cor, 'PLA', cor, gramas, minimo, ?, 'migracao' FROM filamento",
             (agora(),))
         conn.execute("DROP TABLE filamento")
+
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
+    if "minutos" not in colunas:
+        conn.execute("ALTER TABLE produtos ADD COLUMN minutos REAL")
+
+    # A primeira versao gravou custo_hora_maquina = 3,50, que era chute meu e
+    # misturava maquina com mao de obra. So corrige se ainda estiver no valor
+    # antigo -- se alguem ja ajustou, a escolha da pessoa vale mais.
+    antigo = conn.execute(
+        "SELECT valor FROM parametros WHERE chave = 'custo_hora_maquina'").fetchone()
+    if antigo and abs(antigo["valor"] - 3.50) < 1e-9:
+        conn.execute("UPDATE parametros SET valor = ? WHERE chave = 'custo_hora_maquina'",
+                     (PADROES["custo_hora_maquina"],))
 
     faltando = [(c, v) for c, v in PADROES.items() if not conn.execute(
         "SELECT 1 FROM parametros WHERE chave = ?", (c,)).fetchone()]
@@ -409,6 +428,7 @@ def campos_produto(dados: dict) -> dict:
         caixa_x=_numero(dados.get("caixa_x")) or None,
         caixa_y=_numero(dados.get("caixa_y")) or None,
         caixa_z=_numero(dados.get("caixa_z")) or None,
+        minutos=_numero(dados.get("minutos")) if _limpo(dados.get("minutos")) else None,
         filamento_id=int(dados["filamento_id"]) if _limpo(dados.get("filamento_id")) else None,
         arquivo=_limpo(dados.get("arquivo")),
         malha_ok=int(dados["malha_ok"]) if dados.get("malha_ok") not in (None, "") else None,
