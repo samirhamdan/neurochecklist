@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Pedido' if atual and atual.id else 'Novo pedido' }} — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina">
+  <div class="cabecalho-lista">
+    <h2 class="secao">{{ 'Pedido nº %s'|format(atual.id) if atual and atual.id else 'Novo pedido' }}</h2>
+    {% if atual and atual.id %}
+      <span class="etiqueta {{ 'azul' if atual.status == 'aprovado' else 'cinza' }}">{{ atual.status }}</span>
+    {% endif %}
+  </div>
+  {% if erro %}<div class="recado erro">{{ erro }}</div>{% endif %}
+
+  <form class="duas-colunas" method="post">
+    <div class="cartao formulario">
+      <h3 class="titulo-cartao">Quem e quando</h3>
+      <div class="linha">
+        <label class="campo cresce"><span>Cliente</span>
+          <select name="cliente_id" id="cliente" required>
+            <option value="">Selecione</option>
+            {% for c in clientes %}
+            <option value="{{ c.id }}" data-canal="{{ c.canal }}"
+                    {{ 'selected' if atual and atual.cliente_id|int == c.id }}>{{ c.nome }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="campo"><span>Prazo</span>
+          <input name="prazo" type="date" value="{{ (atual and atual.prazo) or '' }}">
+        </label>
+      </div>
+      <p class="nota" style="margin-top:0">Cliente novo?
+        <a href="{{ url_for('editar_cliente') }}">Cadastre aqui</a> e volte.</p>
+
+      <div class="linha">
+        <label class="campo cresce"><span>Canal deste pedido</span>
+          <select name="canal" id="canal">
+            <option value="">Herdar do cliente</option>
+            {% for c in canais %}
+            <option value="{{ c.nome }}" data-comissao="{{ c.comissao }}"
+                    {{ 'selected' if atual and atual.canal == c.nome }}>{{ c.nome }}{% if c.comissao %} — {{ '%.1f'|format(c.comissao) }}%{% endif %}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="campo"><span>Nº no canal</span>
+          <input name="id_no_canal" maxlength="40" placeholder="pedido da Shopee"
+                 value="{{ (atual and atual.id_no_canal) or '' }}">
+        </label>
+        <label class="campo"><span>Comissão %</span>
+          <input name="comissao" type="number" step="0.1" min="0" max="100"
+                 placeholder="do canal"
+                 value="{{ '%.1f'|format(atual.comissao) if atual and atual.comissao else '' }}">
+        </label>
+      </div>
+      <label class="campo"><span>Observação</span>
+        <input name="observacao" maxlength="200" placeholder="Combinado com o cliente, entrega, detalhe da arte"
+               value="{{ (atual and atual.observacao) or '' }}">
+      </label>
+
+      <h3 class="titulo-cartao">Itens</h3>
+      <div class="rolagem">
+      <table class="tabela itens" id="itens">
+        <thead><tr>
+          <th style="width:34%">Produto</th><th>Descrição</th><th style="width:110px">Cor</th>
+          <th class="num" style="width:70px">Qtd</th><th class="num" style="width:100px">R$ un.</th><th></th>
+        </tr></thead>
+        <tbody id="corpo-itens">
+        {% for i in (atual.itens if atual and atual.itens else []) %}
+          <tr>
+            <td><select name="item_produto" class="prod">
+              <option value="">Livre</option>
+              {% for pr in produtos %}
+              <option value="{{ pr.id }}" data-nome="{{ pr.nome }}" data-valor="{{ pr.preco or '' }}"
+                      data-cor="{{ pr.filamento_cor or '' }}"
+                      {{ 'selected' if i.produto_id == pr.id }}>{{ pr.nome }}</option>
+              {% endfor %}
+            </select></td>
+            <td><input name="item_descricao" value="{{ i.descricao }}" placeholder="o que é a peça"></td>
+            <td><select name="item_cor">
+              <option value="">—</option>
+              {% for cor in cores %}
+              <option value="{{ cor }}" {{ 'selected' if i.cor == cor }}>{{ cor }}</option>
+              {% endfor %}
+            </select></td>
+            <td><input name="item_qtd" type="number" step="1" min="1" class="num" value="{{ i.quantidade|round|int }}"></td>
+            <td><input name="item_valor" type="number" step="0.01" min="0" class="num" value="{{ '%.2f'|format(i.valor_unit or 0) }}"></td>
+            <td><button type="button" class="tirar" title="Remover">×</button></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      <div class="acoes">
+        <button type="button" class="botao vazado" id="mais">+ Item</button>
+        <span class="fraco" id="total">Total R$ 0,00</span>
+      </div>
+      <p class="nota">Escolher um <b>produto</b> traz peso, tempo e cor do catálogo — e é
+      o que faz a peça entrar na fila com o peso certo. <b>Livre</b> serve para o que
+      ainda não tem cadastro.</p>
+    </div>
+
+    <div class="coluna-lado">
+      <div class="cartao">
+        <h3 class="titulo-cartao">Situação</h3>
+        {% if atual and atual.id %}
+          <p class="nota" style="margin-top:0">Aprovar põe as peças <b>na fila de
+          produção</b>. Enquanto for orçamento, elas não ocupam a mesa.</p>
+        {% else %}
+          <p class="nota" style="margin-top:0">O pedido nasce como <b>orçamento</b>. Depois
+          de salvar, dá para aprovar.</p>
+        {% endif %}
+        <input type="hidden" name="status" value="{{ (atual and atual.status) or 'orcamento' }}">
+        <div class="acoes">
+          <button class="botao" type="submit">Salvar</button>
+          <a class="botao vazado" href="{{ url_for('lista_pedidos') }}">Voltar</a>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  {% if atual and atual.id %}
+  <div class="cartao" style="margin-top:16px">
+    <h3 class="titulo-cartao">Mudar situação</h3>
+    <div class="acoes">
+      {% for destino, rotulo in (('aprovado','Aprovar e mandar para a fila'),
+                                 ('entregue','Marcar como entregue'),
+                                 ('cancelado','Cancelar')) %}
+        {% if atual.status != destino %}
+        <form method="post" action="{{ url_for('mudar_situacao_pedido', id_=atual.id) }}">
+          <input type="hidden" name="situacao" value="{{ destino }}">
+          <button class="botao {{ 'vazado' if destino != 'aprovado' }}" type="submit">{{ rotulo }}</button>
+        </form>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</main>
+
+<script>
+(function () {
+  const corpo = document.getElementById("corpo-itens");
+  const total = document.getElementById("total");
+  const money = n => "R$ " + Number(n).toFixed(2);
+
+  function somar() {
+    let t = 0;
+    corpo.querySelectorAll("tr").forEach(tr => {
+      const q = +tr.querySelector("[name=item_qtd]").value || 0;
+      const v = +tr.querySelector("[name=item_valor]").value || 0;
+      t += q * v;
+    });
+    total.textContent = "Total " + money(t);
+  }
+
+  function ligar(tr) {
+    tr.querySelector(".tirar").addEventListener("click", () => { tr.remove(); somar(); });
+    tr.querySelectorAll("[name=item_qtd],[name=item_valor]").forEach(
+      e => e.addEventListener("input", somar));
+    // Escolher o produto traz nome, cor e preco do catalogo. O peso e o tempo
+    // vem no servidor, do cadastro -- aqui e so o que a pessoa ve.
+    tr.querySelector(".prod").addEventListener("change", ev => {
+      const op = ev.target.selectedOptions[0];
+      if (!op || !op.value) return;
+      const desc = tr.querySelector("[name=item_descricao]");
+      if (!desc.value) desc.value = op.dataset.nome || "";
+      const cor = tr.querySelector("[name=item_cor]");
+      if (!cor.value && op.dataset.cor) cor.value = op.dataset.cor;
+      const val = tr.querySelector("[name=item_valor]");
+      if (!(+val.value) && op.dataset.valor) val.value = op.dataset.valor;
+      somar();
+    });
+  }
+
+  document.getElementById("mais").addEventListener("click", () => {
+    const base = corpo.querySelector("tr");
+    let tr;
+    if (base) {
+      tr = base.cloneNode(true);
+      tr.querySelectorAll("input").forEach(e => { e.value = e.name === "item_qtd" ? 1 : ""; });
+      tr.querySelectorAll("select").forEach(e => { e.selectedIndex = 0; });
+    } else {
+      tr = document.getElementById("modelo-item").content.firstElementChild.cloneNode(true);
+    }
+    corpo.appendChild(tr); ligar(tr); somar();
+  });
+
+  corpo.querySelectorAll("tr").forEach(ligar);
+  somar();
+  if (!corpo.querySelector("tr")) document.getElementById("mais").click();
+})();
+</script>
+
+<template id="modelo-item">
+  <tr>
+    <td><select name="item_produto" class="prod">
+      <option value="">Livre</option>
+      {% for pr in produtos %}
+      <option value="{{ pr.id }}" data-nome="{{ pr.nome }}" data-valor="{{ pr.preco or '' }}"
+              data-cor="{{ pr.filamento_cor or '' }}">{{ pr.nome }}</option>
+      {% endfor %}
+    </select></td>
+    <td><input name="item_descricao" placeholder="o que é a peça"></td>
+    <td><select name="item_cor">
+      <option value="">—</option>
+      {% for cor in cores %}<option value="{{ cor }}">{{ cor }}</option>{% endfor %}
+    </select></td>
+    <td><input name="item_qtd" type="number" step="1" min="1" class="num" value="1"></td>
+    <td><input name="item_valor" type="number" step="0.01" min="0" class="num"></td>
+    <td><button type="button" class="tirar" title="Remover">×</button></td>
+  </tr>
+</template>
+{% endblock %}

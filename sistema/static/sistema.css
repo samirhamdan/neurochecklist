@@ -25,6 +25,7 @@
   --azul:#0040F0;    --azul-claro:#00A0F0;  --azul-escuro:#0030B0;
   --laranja:#F03000; --laranja-claro:#F08000; --laranja-escuro:#C02600;
   --grafite:#15191D;
+  --azul-fundo:#E8EEFF;
 
   --verde:#1F7A4D;  --verde-fundo:#E7F3EC;
   --ambar:#8A5A00;  --ambar-fundo:#FAF0DC;
@@ -419,3 +420,32 @@ dl.numeros .destaque dd{font-size:20px;font-weight:600;color:var(--azul)}
 .topo .logo{text-decoration:none;color:var(--tinta)}
 /* A nota explica o numero de cima; o campo abaixo e outro assunto. */
 .nota + .campo{margin-top:16px}
+
+/* ---------- pedidos ---------- */
+.abas{display:flex;gap:3px;font-size:14px}
+.abas a{
+  color:var(--suave);text-decoration:none;padding:5px 11px;border-radius:4px;
+}
+.abas a.aqui{background:var(--mesa);color:var(--azul);font-weight:600;
+  border:1px solid var(--linha)}
+.etiqueta{
+  display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;padding:2px 7px;border-radius:3px;white-space:nowrap;
+}
+.etiqueta.azul{background:var(--azul-fundo);color:var(--azul)}
+.etiqueta.ambar{background:var(--ambar-fundo);color:var(--ambar)}
+
+table.itens td{padding:5px 6px 5px 0;vertical-align:middle}
+table.itens input, table.itens select{
+  font:inherit;font-size:14px;padding:6px 8px;width:100%;
+  border:1px solid var(--linha-forte);border-radius:4px;
+  background:var(--mesa);color:var(--tinta);
+}
+table.itens input.num{text-align:right}
+table.itens input:focus, table.itens select:focus{border-color:var(--azul);outline:none}
+.tirar{
+  font:inherit;font-size:17px;line-height:1;width:28px;height:28px;cursor:pointer;
+  background:none;border:1px solid var(--linha-forte);border-radius:4px;color:var(--suave);
+}
+.tirar:hover{border-color:var(--vermelho);color:var(--vermelho)}
+.acoes form{margin:0}

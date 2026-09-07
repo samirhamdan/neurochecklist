@@ -232,6 +232,107 @@ def criar_app() -> Flask:
                                minutos=float(minutos) if minutos else None, param=param)
         return {"medida": medida, "conta": conta.como_dict()}, 200
 
+    # -------------------------------------------------------------- clientes
+    @app.route("/clientes")
+    @auth.exige_login
+    def lista_clientes():
+        return render_template("clientes.html", aba="clientes",
+                               clientes=dados.clientes(False))
+
+    @app.route("/clientes/novo", methods=["GET", "POST"])
+    @app.route("/clientes/<int:id_>", methods=["GET", "POST"])
+    @auth.exige_login
+    def editar_cliente(id_=None):
+        atual = dados.cliente(id_) if id_ else None
+        if id_ and not atual:
+            abort(404)
+        if request.method == "POST":
+            try:
+                dados.salvar_cliente(request.form, session.get("usuario", ""), id_)
+            except ValueError as erro:
+                return render_template("cliente.html", aba="clientes", erro=str(erro),
+                                       atual=dados.campos_cliente(request.form),
+                                       canais=dados.CANAIS), 400
+            return redirect(url_for("lista_clientes"))
+        return render_template("cliente.html", aba="clientes", atual=atual,
+                               canais=dados.CANAIS)
+
+    # --------------------------------------------------------------- pedidos
+    def _itens_do_formulario(form) -> list[dict]:
+        """Le as linhas de item. Linha sem descricao nem produto e descartada."""
+        catalogo = {p["id"]: p for p in dados.produtos(False)}
+        itens = []
+        for i, produto_id in enumerate(form.getlist("item_produto")):
+            descricao = (form.getlist("item_descricao")[i] or "").strip()
+            prod = catalogo.get(int(produto_id)) if produto_id else None
+            if not descricao and not prod:
+                continue
+            qtd = dados._numero(form.getlist("item_qtd")[i], 1) or 1
+            itens.append({
+                "produto_id": prod["id"] if prod else None,
+                "descricao": descricao or (prod["nome"] if prod else ""),
+                "cor": (form.getlist("item_cor")[i] or "").strip(),
+                "quantidade": qtd,
+                "valor_unit": dados._numero(form.getlist("item_valor")[i]),
+                # Peso e tempo sao POR PECA no catalogo; a fila precisa do
+                # total, senao seis chaveiros ocupam a mesa de um.
+                "gramas": (prod["gramas"] or 0) * qtd if prod else None,
+                "horas": (prod["horas"] or 0) * qtd if prod else None,
+            })
+        return itens
+
+    @app.route("/pedidos")
+    @auth.exige_login
+    def lista_pedidos():
+        ver = request.args.get("ver", "abertos")
+        situacoes = dados.SITUACOES if ver == "todos" else dados.ABERTOS
+        return render_template("pedidos.html", aba="pedidos", ver=ver,
+                               pedidos=dados.pedidos(situacoes))
+
+    @app.route("/pedidos/novo", methods=["GET", "POST"])
+    @app.route("/pedidos/<int:id_>", methods=["GET", "POST"])
+    @auth.exige_login
+    def editar_pedido(id_=None):
+        atual = dados.pedido(id_) if id_ else None
+        if id_ and not atual:
+            abort(404)
+        contexto = dict(aba="pedidos", clientes=dados.clientes(), canais=dados.canais(),
+                        produtos=dados.produtos(), cores=dados.CORES)
+        if request.method == "POST":
+            itens = _itens_do_formulario(request.form)
+            try:
+                novo_id = dados.salvar_pedido(request.form, session.get("usuario", ""),
+                                              id_, itens)
+            except ValueError as erro:
+                return render_template("pedido.html", erro=str(erro),
+                                       atual=dict(request.form, itens=itens, id=id_),
+                                       **contexto), 400
+            return redirect(url_for("editar_pedido", id_=novo_id))
+        return render_template("pedido.html", atual=atual, **contexto)
+
+    @app.route("/pedidos/<int:id_>/situacao", methods=["POST"])
+    @auth.exige_login
+    def mudar_situacao_pedido(id_):
+        if not dados.pedido(id_):
+            abort(404)
+        try:
+            dados.mudar_situacao(id_, request.form.get("situacao", ""),
+                                 session.get("usuario", ""))
+        except ValueError:
+            abort(400)
+        return redirect(url_for("editar_pedido", id_=id_))
+
+    @app.route("/canais", methods=["GET", "POST"])
+    @auth.exige_login
+    def editar_canais():
+        if request.method == "POST":
+            for canal in dados.canais(False):
+                enviado = request.form.get(f"comissao_{canal['nome']}")
+                if enviado is not None:
+                    dados.salvar_comissao(canal["nome"], dados._numero(enviado))
+            return redirect(url_for("editar_canais"))
+        return render_template("canais.html", aba="pedidos", canais=dados.canais(False))
+
     # ------------------------------------------------------------ ferramentas
     @app.route("/letreiros")
     @auth.exige_login

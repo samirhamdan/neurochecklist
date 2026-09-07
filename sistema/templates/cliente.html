@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar' if atual and atual.id else 'Novo' }} cliente — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina estreita">
+  <h2 class="secao">{{ 'Editar cliente' if atual and atual.id else 'Novo cliente' }}</h2>
+  {% if erro %}<div class="recado erro">{{ erro }}</div>{% endif %}
+  <form class="cartao formulario" method="post">
+    <div class="linha">
+      <label class="campo cresce"><span>Nome</span>
+        <input name="nome" required maxlength="90" placeholder="Ex: Ana Paula Ribeiro"
+               value="{{ (atual and atual.nome) or '' }}">
+      </label>
+      <label class="campo"><span>WhatsApp</span>
+        <input name="whatsapp" maxlength="24" placeholder="(67) 99999-0000"
+               value="{{ (atual and atual.whatsapp) or '' }}">
+      </label>
+    </div>
+    <label class="campo"><span>Canal de origem</span>
+      <select name="canal">
+        <option value="">Não informado</option>
+        {% for c in canais %}
+        <option value="{{ c }}" {{ 'selected' if atual and atual.canal == c }}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="campo"><span>Observação</span>
+      <input name="observacao" maxlength="200"
+             placeholder="Preferências, endereço, o que lembrar na próxima"
+             value="{{ (atual and atual.observacao) or '' }}">
+    </label>
+    <label class="marca-caixa">
+      <input type="checkbox" name="ativo" value="1" {{ 'checked' if not atual or atual.ativo }}>
+      Ativo
+    </label>
+    <div class="acoes">
+      <button class="botao" type="submit">Salvar</button>
+      <a class="botao vazado" href="{{ url_for('lista_clientes') }}">Cancelar</a>
+    </div>
+  </form>
+</main>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block titulo %}Clientes — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina">
+  <div class="cabecalho-lista">
+    <h2 class="secao">Clientes</h2>
+    <a class="botao" href="{{ url_for('editar_cliente') }}">Novo cliente</a>
+  </div>
+  {% if clientes %}
+  <div class="cartao"><div class="rolagem">
+    <table class="tabela">
+      <thead><tr><th>Nome</th><th>WhatsApp</th><th>Canal</th><th>Observação</th><th></th></tr></thead>
+      <tbody>
+        {% for c in clientes %}
+        <tr class="{{ 'inativo' if not c.ativo }}">
+          <td><a href="{{ url_for('editar_cliente', id_=c.id) }}">{{ c.nome }}</a>
+            {% if not c.ativo %}<span class="etiqueta cinza">inativo</span>{% endif %}</td>
+          <td class="mono">{{ c.whatsapp or '—' }}</td>
+          <td>{{ c.canal or '—' }}</td>
+          <td class="fraco" style="margin:0">{{ c.observacao|truncate(60) }}</td>
+          <td class="num"><a href="{{ url_for('editar_cliente', id_=c.id) }}">editar</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  <p class="nota">O <b>canal</b> é o que responde de onde vêm seus pedidos — e essa resposta
+  decide onde vale a pena investir. Ele entra no cliente e é herdado pelo pedido, onde pode
+  ser trocado caso a caso.</p>
+  {% else %}
+  <div class="cartao cartao-vazio">
+    <b>Nenhum cliente cadastrado.</b>
+    <span>Comece pelo último cliente que te chamou no WhatsApp.</span>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

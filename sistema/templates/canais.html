@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titulo %}Canais — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina estreita">
+  <h2 class="secao">Comissão por canal</h2>
+  <form class="cartao formulario" method="post">
+    <p class="nota" style="margin-top:0">Quanto o canal fica de cada venda. O
+    <b>valor líquido</b> do pedido sai daqui — e é ele, não o preço anunciado, que diz
+    quanto entrou de verdade. Vender na Shopee pelo preço do balcão é vender no prejuízo,
+    porque a comissão sai do seu bolso.</p>
+    <div class="lista-insumos">
+      {% for c in canais %}
+      <label class="linha-insumo">
+        <span class="cresce">{{ c.nome }}</span>
+        <input class="qtd" type="number" step="0.1" min="0" max="100"
+               name="comissao_{{ c.nome }}" value="{{ '%.1f'|format(c.comissao) }}">
+        <span class="fraco">%</span>
+      </label>
+      {% endfor %}
+    </div>
+    <p class="nota">Deixei tudo em <b>zero</b> de propósito: as taxas de Shopee e Mercado
+    Livre mudam e variam por categoria, e um número chutado aqui vira número errado no
+    relatório de vendas — que é pior do que número nenhum. Preencha com o que eles
+    realmente descontam de você.</p>
+    <div class="acoes"><button class="botao" type="submit">Salvar</button></div>
+  </form>
+</main>
+{% endblock %}

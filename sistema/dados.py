@@ -103,6 +103,24 @@ CREATE TABLE IF NOT EXISTS produto_insumos (
     PRIMARY KEY (produto_id, insumo_id)
 );
 
+CREATE TABLE IF NOT EXISTS clientes (
+    id         INTEGER PRIMARY KEY,
+    nome       TEXT NOT NULL,
+    whatsapp   TEXT NOT NULL DEFAULT '',
+    canal      TEXT NOT NULL DEFAULT '',
+    observacao TEXT NOT NULL DEFAULT '',
+    ativo      INTEGER NOT NULL DEFAULT 1,
+    criado_em  TEXT NOT NULL,
+    criado_por TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS ix_clientes_nome ON clientes (ativo, nome);
+
+CREATE TABLE IF NOT EXISTS canais (
+    nome     TEXT PRIMARY KEY,
+    comissao REAL NOT NULL DEFAULT 0,
+    ativo    INTEGER NOT NULL DEFAULT 1
+);
+
 CREATE TABLE IF NOT EXISTS parametros (
     chave  TEXT PRIMARY KEY,
     valor  REAL NOT NULL
@@ -128,6 +146,18 @@ PADROES = {
 
 # Estados de peca que ocupam a impressora, na ordem em que acontecem.
 EM_PRODUCAO = ("na fila", "imprimindo", "acabamento")
+
+# O PEDIDO tem situacao comercial; a PECA tem etapa de producao. Sao coisas
+# diferentes e estavam misturadas: o semeador gravava pedido com status
+# "imprimindo", que e etapa de peca. Um pedido de 5 pecas tem pecas em
+# etapas diferentes ao mesmo tempo -- por isso a etapa nao cabe no pedido.
+SITUACOES = ("orcamento", "aprovado", "entregue", "cancelado")
+ABERTOS = ("orcamento", "aprovado")
+
+# De onde vem o pedido. Os quatro primeiros sao o balcao e as redes; os tres
+# ultimos entram sozinhos, pela loja e pelos marketplaces (sprints 8 e 9).
+CANAIS = ("Balcão", "Instagram", "WhatsApp", "Indicação", "Morumbi Festas",
+          "Loja", "Shopee", "Mercado Livre")
 
 # As mesmas 11 cores do gerador de letreiros: catalogo e estoque falam a
 # mesma lingua, senao a fila agrupa por um nome e o estoque por outro.
@@ -174,6 +204,54 @@ def _migrar(conn: sqlite3.Connection) -> None:
     colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
     if "minutos" not in colunas:
         conn.execute("ALTER TABLE produtos ADD COLUMN minutos REAL")
+
+    # O pedido nasce sem saber de onde veio. Quatro colunas que um pedido
+    # antigo nunca mais teria de onde tirar -- e sem valor_liquido o
+    # relatorio de vendas mente, porque a comissao do marketplace sai do
+    # bolso do Samir e nao do cliente.
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(pedidos)")}
+    for coluna, tipo in (("cliente_id", "INTEGER"), ("id_no_canal", "TEXT"),
+                         ("comissao", "REAL"), ("valor_liquido", "REAL"),
+                         ("criado_por", "TEXT")):
+        if coluna not in colunas:
+            conn.execute(f"ALTER TABLE pedidos ADD COLUMN {coluna} {tipo}")
+
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(pecas)")}
+    for coluna, tipo in (("produto_id", "INTEGER"), ("quantidade", "REAL"),
+                         ("valor_unit", "REAL"), ("criado_por", "TEXT")):
+        if coluna not in colunas:
+            conn.execute(f"ALTER TABLE pecas ADD COLUMN {coluna} {tipo}")
+    conn.execute("UPDATE pecas SET quantidade = 1 WHERE quantidade IS NULL")
+
+    # Situacao de pedido que na verdade era etapa de peca. "novo" virou
+    # orcamento; "na fila"/"imprimindo"/"acabamento" eram producao, e
+    # producao so acontece em pedido aprovado.
+    conn.execute("UPDATE pedidos SET status = 'orcamento' WHERE status = 'novo'")
+    conn.execute(
+        f"UPDATE pedidos SET status = 'aprovado' WHERE status IN"
+        f" ({', '.join('?' for _ in EM_PRODUCAO)})", EM_PRODUCAO)
+
+    # Cliente era texto solto no pedido. Vira cadastro, e o texto continua
+    # no pedido como historico: se o cliente trocar de nome depois, o pedido
+    # antigo tem que continuar dizendo com quem foi feito.
+    if not conn.execute("SELECT 1 FROM clientes LIMIT 1").fetchone():
+        antigos = conn.execute(
+            "SELECT DISTINCT cliente, canal FROM pedidos WHERE cliente <> ''").fetchall()
+        for linha in antigos:
+            cur = conn.execute(
+                "INSERT INTO clientes (nome, canal, criado_em, criado_por)"
+                " VALUES (?, ?, ?, 'migracao')",
+                (linha["cliente"], linha["canal"] or "", agora()))
+            conn.execute("UPDATE pedidos SET cliente_id = ? WHERE cliente = ?",
+                         (cur.lastrowid, linha["cliente"]))
+
+    novos = [(c,) for c in CANAIS if not conn.execute(
+        "SELECT 1 FROM canais WHERE nome = ?", (c,)).fetchone()]
+    if novos:
+        # Comissao fica em ZERO ate o Samir informar. As taxas de Shopee e
+        # Mercado Livre mudam e variam por categoria: chutar aqui viraria
+        # numero errado no relatorio de vendas, que e pior que numero nenhum.
+        conn.executemany("INSERT INTO canais (nome, comissao) VALUES (?, 0)", novos)
 
     # A primeira versao gravou custo_hora_maquina = 3,50, que era chute meu e
     # misturava maquina com mao de obra. So corrige se ainda estiver no valor
@@ -463,3 +541,180 @@ def salvar_produto(dados: dict, autor: str, id_: int | None = None,
                 " VALUES (?, ?, ?)", [(id_, i, q) for i, q in vinculos if q > 0])
         conn.commit()
     return id_
+
+
+# ------------------------------------------------------------ clientes
+def clientes(so_ativos: bool = True) -> list[dict]:
+    with conectar() as conn:
+        onde = "WHERE ativo = 1" if so_ativos else ""
+        return [dict(l) for l in conn.execute(
+            f"SELECT * FROM clientes {onde} ORDER BY nome")]
+
+
+def cliente(id_: int) -> dict | None:
+    with conectar() as conn:
+        linha = conn.execute("SELECT * FROM clientes WHERE id = ?", (id_,)).fetchone()
+    return dict(linha) if linha else None
+
+
+def campos_cliente(dados: dict) -> dict:
+    return dict(
+        nome=_limpo(dados.get("nome")),
+        whatsapp=_limpo(dados.get("whatsapp")),
+        canal=_limpo(dados.get("canal")),
+        observacao=_limpo(dados.get("observacao")),
+        ativo=1 if dados.get("ativo", "1") in (1, "1", True, "on") else 0,
+    )
+
+
+def salvar_cliente(dados: dict, autor: str, id_: int | None = None) -> int:
+    campos = campos_cliente(dados)
+    if not campos["nome"]:
+        raise ValueError("cliente precisa de nome")
+    with conectar() as conn:
+        if id_:
+            conn.execute(
+                "UPDATE clientes SET nome=:nome, whatsapp=:whatsapp, canal=:canal,"
+                " observacao=:observacao, ativo=:ativo WHERE id=:id", {**campos, "id": id_})
+            conn.commit()
+            return id_
+        cur = conn.execute(
+            "INSERT INTO clientes (nome, whatsapp, canal, observacao, ativo, criado_em,"
+            " criado_por) VALUES (:nome, :whatsapp, :canal, :observacao, :ativo,"
+            " :criado_em, :criado_por)",
+            {**campos, "criado_em": agora(), "criado_por": autor})
+        conn.commit()
+        return int(cur.lastrowid)
+
+
+def canais(so_ativos: bool = True) -> list[dict]:
+    with conectar() as conn:
+        onde = "WHERE ativo = 1" if so_ativos else ""
+        return [dict(l) for l in conn.execute(f"SELECT * FROM canais {onde} ORDER BY nome")]
+
+
+def salvar_comissao(nome: str, comissao: float) -> None:
+    with conectar() as conn:
+        conn.execute("UPDATE canais SET comissao = ? WHERE nome = ?",
+                     (max(float(comissao), 0.0), nome))
+        conn.commit()
+
+
+# ------------------------------------------------------------- pedidos
+def pedidos(situacoes: tuple[str, ...] = ABERTOS) -> list[dict]:
+    marcadores = ", ".join("?" for _ in situacoes)
+    with conectar() as conn:
+        linhas = conn.execute(
+            f"SELECT d.*, (SELECT COUNT(*) FROM pecas WHERE pedido_id = d.id) AS itens"
+            f" FROM pedidos d WHERE d.status IN ({marcadores})"
+            f" ORDER BY d.prazo IS NULL, d.prazo, d.id DESC", situacoes).fetchall()
+    return [dict(l, dias=_dias_ate(l["prazo"])) for l in linhas]
+
+
+def pedido(id_: int) -> dict | None:
+    with conectar() as conn:
+        linha = conn.execute("SELECT * FROM pedidos WHERE id = ?", (id_,)).fetchone()
+        if not linha:
+            return None
+        itens = conn.execute(
+            "SELECT p.*, pr.nome AS produto_nome FROM pecas p"
+            " LEFT JOIN produtos pr ON pr.id = p.produto_id"
+            " WHERE p.pedido_id = ? ORDER BY p.id", (id_,)).fetchall()
+    dados = dict(linha, dias=_dias_ate(linha["prazo"]))
+    dados["itens"] = [dict(i) for i in itens]
+    return dados
+
+
+def _comissao_do_canal(conn, canal: str) -> float:
+    linha = conn.execute("SELECT comissao FROM canais WHERE nome = ?", (canal,)).fetchone()
+    return float(linha["comissao"]) if linha else 0.0
+
+
+def salvar_pedido(dados: dict, autor: str, id_: int | None = None,
+                  itens: list[dict] | None = None) -> int:
+    """Grava o pedido e seus itens.
+
+    `valor` e `valor_liquido` sao GRAVADOS, e nao calculados na leitura. A
+    comissao do canal muda com o tempo; um pedido de marco tem que continuar
+    dizendo quanto sobrou em marco, e nao quanto sobraria com a taxa de hoje.
+    """
+    cliente_id = int(dados["cliente_id"]) if _limpo(dados.get("cliente_id")) else None
+    nome = _limpo(dados.get("cliente"))
+    canal = _limpo(dados.get("canal"))
+    with conectar() as conn:
+        if cliente_id:
+            linha = conn.execute("SELECT nome, canal FROM clientes WHERE id = ?",
+                                 (cliente_id,)).fetchone()
+            if linha:
+                nome = linha["nome"]
+                canal = canal or (linha["canal"] or "")
+        if not nome:
+            raise ValueError("pedido precisa de cliente")
+
+        situacao = _limpo(dados.get("status"), "orcamento")
+        if situacao not in SITUACOES:
+            raise ValueError(f"situacao desconhecida: {situacao}")
+
+        itens = itens or []
+        valor = round(sum(i["quantidade"] * i["valor_unit"] for i in itens), 2)
+        comissao = (_numero(dados.get("comissao")) if _limpo(dados.get("comissao"))
+                    else _comissao_do_canal(conn, canal))
+        campos = dict(
+            cliente=nome, cliente_id=cliente_id, canal=canal,
+            id_no_canal=_limpo(dados.get("id_no_canal")) or None,
+            comissao=comissao,
+            valor=valor, valor_liquido=round(valor * (1 - comissao / 100.0), 2),
+            prazo=_limpo(dados.get("prazo")) or None,
+            status=situacao, observacao=_limpo(dados.get("observacao")),
+        )
+        if campos["id_no_canal"]:
+            # O mesmo pedido chegando duas vezes da loja ou do marketplace nao
+            # pode virar dois. E a falha classica de aviso reenviado.
+            ja = conn.execute(
+                "SELECT id FROM pedidos WHERE canal = ? AND id_no_canal = ? AND id <> ?",
+                (canal, campos["id_no_canal"], id_ or -1)).fetchone()
+            if ja:
+                raise ValueError(
+                    f"o pedido {campos['id_no_canal']} de {canal} ja entrou (nº {ja['id']})")
+
+        if id_:
+            colunas = ", ".join(f"{c}=:{c}" for c in campos)
+            conn.execute(f"UPDATE pedidos SET {colunas} WHERE id=:id", {**campos, "id": id_})
+        else:
+            nomes = ", ".join(campos)
+            marcas = ", ".join(f":{c}" for c in campos)
+            cur = conn.execute(
+                f"INSERT INTO pedidos ({nomes}, criado_em, criado_por)"
+                f" VALUES ({marcas}, :criado_em, :criado_por)",
+                {**campos, "criado_em": agora(), "criado_por": autor})
+            id_ = int(cur.lastrowid)
+
+        conn.execute("DELETE FROM pecas WHERE pedido_id = ?", (id_,))
+        for i in itens:
+            conn.execute(
+                "INSERT INTO pecas (pedido_id, produto_id, descricao, cor, quantidade,"
+                " valor_unit, gramas_est, horas_est, status, criado_em, criado_por)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (id_, i.get("produto_id"), i["descricao"], i.get("cor", ""),
+                 i["quantidade"], i["valor_unit"], i.get("gramas"), i.get("horas"),
+                 "na fila" if situacao == "aprovado" else "orcamento", agora(), autor))
+        conn.commit()
+    return id_
+
+
+def mudar_situacao(id_: int, situacao: str, autor: str) -> None:
+    """Aprovar poe as pecas na fila; cancelar as tira."""
+    if situacao not in SITUACOES:
+        raise ValueError(f"situacao desconhecida: {situacao}")
+    with conectar() as conn:
+        conn.execute("UPDATE pedidos SET status = ? WHERE id = ?", (situacao, id_))
+        if situacao == "aprovado":
+            conn.execute(
+                "UPDATE pecas SET status = 'na fila' WHERE pedido_id = ? AND status = 'orcamento'",
+                (id_,))
+        elif situacao in ("cancelado", "entregue"):
+            alvo = "cancelado" if situacao == "cancelado" else "entregue"
+            conn.execute(
+                f"UPDATE pecas SET status = '{alvo}' WHERE pedido_id = ?"
+                f" AND status IN ({', '.join('?' for _ in EM_PRODUCAO)})", (id_, *EM_PRODUCAO))
+        conn.commit()

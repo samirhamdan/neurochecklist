@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block titulo %}Pedidos — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina">
+  <div class="cabecalho-lista">
+    <h2 class="secao">Pedidos</h2>
+    <span class="abas">
+      <a href="{{ url_for('lista_pedidos') }}" class="{{ 'aqui' if ver != 'todos' }}">Abertos</a>
+      <a href="{{ url_for('lista_pedidos', ver='todos') }}" class="{{ 'aqui' if ver == 'todos' }}">Todos</a>
+    </span>
+    <a class="botao vazado" href="{{ url_for('editar_canais') }}">Comissões</a>
+    <a class="botao" href="{{ url_for('editar_pedido') }}">Novo pedido</a>
+  </div>
+
+  {% if pedidos %}
+  <div class="cartao"><div class="rolagem">
+    <table class="tabela">
+      <thead><tr>
+        <th>Cliente</th><th>Canal</th><th>Situação</th><th>Prazo</th>
+        <th class="num">Itens</th><th class="num">Valor</th><th class="num">Líquido</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for p in pedidos %}
+        <tr>
+          <td>
+            <a href="{{ url_for('editar_pedido', id_=p.id) }}">{{ p.cliente }}</a>
+            {% if p.id_no_canal %}<span class="fraco mono">#{{ p.id_no_canal }}</span>{% endif %}
+          </td>
+          <td>{{ p.canal or '—' }}{% if p.comissao %}<span class="fraco">{{ '%.1f'|format(p.comissao) }}%</span>{% endif %}</td>
+          <td><span class="etiqueta {{ 'azul' if p.status == 'aprovado' else 'cinza' }}">{{ p.status }}</span></td>
+          <td>
+            {%- if p.dias is none %}<span class="fraco">sem prazo</span>
+            {%- elif p.dias < 0 %}<span class="etiqueta vermelha">{{ -p.dias }} d atrasado</span>
+            {%- elif p.dias == 0 %}<span class="etiqueta ambar">hoje</span>
+            {%- else %}em {{ p.dias }} d{% endif -%}
+          </td>
+          <td class="num mono">{{ p.itens }}</td>
+          <td class="num mono">R$ {{ '%.2f'|format(p.valor or 0) }}</td>
+          <td class="num mono {{ 'forte' if p.comissao }}">R$ {{ '%.2f'|format(p.valor_liquido if p.valor_liquido is not none else (p.valor or 0)) }}</td>
+          <td class="num"><a href="{{ url_for('editar_pedido', id_=p.id) }}">abrir</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  {% else %}
+  <div class="cartao cartao-vazio">
+    <b>Nenhum pedido {{ 'aberto' if ver != 'todos' }}.</b>
+    <span>Cadastre o último pedido que chegou. É ele que faz a fila de produção do painel
+    sair do lugar.</span>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

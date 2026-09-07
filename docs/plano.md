@@ -61,7 +61,7 @@ filamento e insumo; sair como **entregue** gera a conta a receber.
 
 ---
 
-## Sprint 1 — Cadastros e custo da peça
+## Sprint 1 — Cadastros e custo da peça ✅ FEITO
 **Tamanho M · sem dependência**
 
 Sem produto não existe pedido; sem filamento o produto não tem custo.
@@ -84,8 +84,15 @@ mínimo aparece no painel · caixa calculada cabe a peça girada, e não só ret
 gerador já produz; peso e custo têm que aparecer sozinhos e bater com a
 balança depois de imprimir.
 
-## Sprint 2 — Clientes e pedidos
+## Sprint 2 — Clientes e pedidos ✅ FEITO
 **Tamanho M · depende do 1**
+
+**Uma distinção que só apareceu ao construir:** o **pedido** tem *situação
+comercial* (orçamento → aprovado → entregue → cancelado) e a **peça** tem
+*etapa de produção* (na fila → imprimindo → acabamento). Estavam misturadas:
+o semeador gravava pedido com status "imprimindo", que é etapa de peça. Um
+pedido de cinco peças tem peças em etapas diferentes ao mesmo tempo — por
+isso a etapa não cabe no pedido. O kanban do sprint 3 move **peças**.
 
 O buraco de hoje. Sem tela de cadastrar pedido, o painel repete a mesma
 mensagem para sempre.
