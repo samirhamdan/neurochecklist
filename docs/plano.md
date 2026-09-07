@@ -147,19 +147,31 @@ movimento aparece no histórico com autor e hora.
 **Você confere:** arraste uma peça para "em produção" e olhe o estoque
 antes e depois; a diferença tem que ser o peso da peça mais a purga.
 
-## Sprint 4 — Compras: o custo vira real
+## Sprint 4 — Compras: o custo vira real ✅ FEITO
 **Tamanho P · depende do 1**
 
 Pequeno e vale muito. Enquanto o preço do filamento for digitado uma vez e
 esquecido, o custo é ficção.
 
-**Entra:** compra (fornecedor, item, quantidade, valor pago, data) · entrada
-no estoque e no último valor de compra · custo do produto passa a usar o
-preço pago de verdade.
+**A decisão de fundo:** o preço em uso passa a ter **dois donos possíveis**, e
+por isso mora em duas colunas. O da **última compra** manda; o **digitado à
+mão** é reserva, e só vale enquanto não houver nota daquele item. Com uma
+coluna só, apagar uma compra deixava na tela o preço dela — número de um
+registro que não existe mais, com cara de número conferido. A entrada de
+estoque passa pelo mesmo livro de movimentos da sprint 3: compra não é uma
+porta lateral para mexer no saldo.
+
+**Entra:** compra (fornecedor, nota, data, vários itens) · entrada no estoque
+e no último valor de compra · custo do produto passa a usar o preço pago de
+verdade · a ficha do filamento mostra qual preço está valendo e de onde ele
+veio.
 
 **Eu testo:** compra nova muda o custo de todo produto que usa aquele
 filamento · compra não some do histórico quando o preço muda · estoque
-somado das compras bate com o saldo do painel.
+somado das compras bate com o saldo do painel · editar a compra não soma
+duas vezes · apagar volta ao preço anterior, e depois ao digitado · salvar a
+ficha do filamento não rouba o preço da compra · o preço que você digitou
+sobrevive à atualização da VPS.
 
 **Você confere:** lance a última compra de PLA preto com o valor da nota; o
 custo do letreiro preto tem que mudar na hora.

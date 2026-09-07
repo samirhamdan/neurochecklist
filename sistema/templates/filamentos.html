@@ -28,7 +28,9 @@
           <td>{{ f.tipo }}</td>
           <td class="num mono {{ 'alerta' if f.gramas <= f.minimo }}">{{ f.gramas|round|int }} g</td>
           <td class="num mono fraco">{{ f.minimo|round|int }} g</td>
-          <td class="num mono">{{ 'R$ %.2f'|format(f.preco_kg) if f.preco_kg else '—' }}</td>
+          <td class="num mono">{{ 'R$ %.2f'|format(f.preco_kg) if f.preco_kg else '—' }}
+            {% if f.veio_de_compra %}<span class="etiqueta" title="Preço da última compra lançada">nota</span>{% endif %}
+          </td>
           <td class="num"><a href="{{ url_for('editar_filamento', id_=f.id) }}">editar</a></td>
         </tr>
         {% endfor %}

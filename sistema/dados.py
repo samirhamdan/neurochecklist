@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS filamentos (
     gramas     REAL NOT NULL DEFAULT 0,
     minimo     REAL NOT NULL DEFAULT 300,
     preco_kg   REAL,
+    preco_manual REAL,
     ativo      INTEGER NOT NULL DEFAULT 1,
     criado_em  TEXT NOT NULL,
     criado_por TEXT NOT NULL DEFAULT ''
@@ -68,6 +69,7 @@ CREATE TABLE IF NOT EXISTS insumos (
     quantidade REAL NOT NULL DEFAULT 0,
     minimo     REAL NOT NULL DEFAULT 0,
     valor_unit REAL NOT NULL DEFAULT 0,
+    valor_manual REAL,
     descricao  TEXT NOT NULL DEFAULT '',
     ativo      INTEGER NOT NULL DEFAULT 1,
     criado_em  TEXT NOT NULL,
@@ -103,6 +105,28 @@ CREATE TABLE IF NOT EXISTS produto_insumos (
     PRIMARY KEY (produto_id, insumo_id)
 );
 
+CREATE TABLE IF NOT EXISTS compras (
+    id         INTEGER PRIMARY KEY,
+    data       TEXT NOT NULL,
+    fornecedor TEXT NOT NULL DEFAULT '',
+    nota       TEXT NOT NULL DEFAULT '',
+    observacao TEXT NOT NULL DEFAULT '',
+    valor      REAL NOT NULL DEFAULT 0,
+    criado_em  TEXT NOT NULL,
+    criado_por TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS ix_compras_data ON compras (data DESC, id DESC);
+
+CREATE TABLE IF NOT EXISTS compra_itens (
+    id         INTEGER PRIMARY KEY,
+    compra_id  INTEGER NOT NULL REFERENCES compras (id) ON DELETE CASCADE,
+    tipo       TEXT NOT NULL,
+    alvo_id    INTEGER NOT NULL,
+    quantidade REAL NOT NULL,
+    valor      REAL NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS ix_compra_itens ON compra_itens (tipo, alvo_id, compra_id);
+
 CREATE TABLE IF NOT EXISTS movimentos (
     id         INTEGER PRIMARY KEY,
     tipo       TEXT NOT NULL,
@@ -110,6 +134,7 @@ CREATE TABLE IF NOT EXISTS movimentos (
     quantidade REAL NOT NULL,
     motivo     TEXT NOT NULL,
     peca_id    INTEGER,
+    compra_id  INTEGER,
     observacao TEXT NOT NULL DEFAULT '',
     criado_em  TEXT NOT NULL,
     criado_por TEXT NOT NULL DEFAULT ''
@@ -260,6 +285,18 @@ def _migrar(conn: sqlite3.Connection) -> None:
                          ("criado_por", "TEXT")):
         if coluna not in colunas:
             conn.execute(f"ALTER TABLE pedidos ADD COLUMN {coluna} {tipo}")
+
+    for tabela, coluna in (("filamentos", "preco_manual"), ("insumos", "valor_manual")):
+        colunas = {r[1] for r in conn.execute(f"PRAGMA table_info({tabela})")}
+        if colunas and coluna not in colunas:
+            conn.execute(f"ALTER TABLE {tabela} ADD COLUMN {coluna} REAL")
+            # O que ja estava la foi digitado a mao: e esse o valor de reserva.
+            origem = "preco_kg" if tabela == "filamentos" else "valor_unit"
+            conn.execute(f"UPDATE {tabela} SET {coluna} = {origem}")
+
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(movimentos)")}
+    if colunas and "compra_id" not in colunas:
+        conn.execute("ALTER TABLE movimentos ADD COLUMN compra_id INTEGER")
 
     colunas = {r[1] for r in conn.execute("PRAGMA table_info(pecas)")}
     for coluna, tipo in (("produto_id", "INTEGER"), ("quantidade", "REAL"),
@@ -436,12 +473,15 @@ def filamentos(so_ativos: bool = True) -> list[dict]:
     with conectar() as conn:
         onde = "WHERE ativo = 1" if so_ativos else ""
         return [dict(l) for l in conn.execute(
-            f"SELECT * FROM filamentos {onde} ORDER BY gramas <= minimo DESC, cor, nome")]
+            f"SELECT *, {VEIO_DE_COMPRA.format(t='filamento', tab='filamentos')}"
+            f" FROM filamentos {onde} ORDER BY gramas <= minimo DESC, cor, nome")]
 
 
 def filamento(id_: int) -> dict | None:
     with conectar() as conn:
-        linha = conn.execute("SELECT * FROM filamentos WHERE id = ?", (id_,)).fetchone()
+        linha = conn.execute(
+            f"SELECT *, {VEIO_DE_COMPRA.format(t='filamento', tab='filamentos')}"
+            f" FROM filamentos WHERE id = ?", (id_,)).fetchone()
     return dict(linha) if linha else None
 
 
@@ -460,7 +500,12 @@ def campos_filamento(dados: dict) -> dict:
         cor=_limpo(dados.get("cor")),
         gramas=_numero(dados.get("gramas")),
         minimo=_numero(dados.get("minimo"), 300.0),
-        preco_kg=_numero(dados.get("preco_kg")) or None,
+        # So o MANUAL vem da tela. O preco em uso (`preco_kg`) e derivado por
+        # _atualizar_preco: compra mais recente, e o digitado so na falta dela.
+        # Deixar a tela escrever os dois apagava o numero do dono quando a
+        # pessoa salvava a ficha sem mexer no preco -- o valor da compra, que
+        # o campo estava exibindo, virava o "digitado".
+        preco_manual=_numero(dados.get("preco_kg")) or None,
         ativo=1 if dados.get("ativo", "1") in (1, "1", True, "on") else 0,
     )
 
@@ -482,18 +527,20 @@ def salvar_filamento(dados: dict, autor: str, id_: int | None = None) -> int:
             # 2000.
             conn.execute(
                 "UPDATE filamentos SET nome=:nome, marca=:marca, tipo=:tipo, cor=:cor,"
-                " minimo=:minimo, preco_kg=:preco_kg, ativo=:ativo"
-                " WHERE id=:id", {**campos, "id": id_})
+                " minimo=:minimo, preco_manual=:preco_manual,"
+                " ativo=:ativo WHERE id=:id", {**campos, "id": id_})
+            _atualizar_preco(conn, "filamento", id_)
             if antes and abs(campos["gramas"] - antes["gramas"]) > 1e-9:
                 _lancar(conn, "filamento", id_, campos["gramas"] - antes["gramas"],
                         "ajuste", autor)
             conn.commit()
             return id_
         cur = conn.execute(
-            "INSERT INTO filamentos (nome, marca, tipo, cor, gramas, minimo, preco_kg,"
-            " ativo, criado_em, criado_por) VALUES (:nome, :marca, :tipo, :cor, :gramas,"
-            " :minimo, :preco_kg, :ativo, :criado_em, :criado_por)",
+            "INSERT INTO filamentos (nome, marca, tipo, cor, gramas, minimo,"
+            " preco_manual, ativo, criado_em, criado_por) VALUES (:nome, :marca, :tipo,"
+            " :cor, :gramas, :minimo, :preco_manual, :ativo, :criado_em, :criado_por)",
             {**campos, "criado_em": agora(), "criado_por": autor})
+        _atualizar_preco(conn, "filamento", int(cur.lastrowid))
         _lancar(conn, "filamento", int(cur.lastrowid), campos["gramas"], "inicial", autor)
         conn.commit()
         return int(cur.lastrowid)
@@ -503,12 +550,15 @@ def insumos(so_ativos: bool = True) -> list[dict]:
     with conectar() as conn:
         onde = "WHERE ativo = 1" if so_ativos else ""
         return [dict(l) for l in conn.execute(
-            f"SELECT * FROM insumos {onde} ORDER BY quantidade <= minimo DESC, nome")]
+            f"SELECT *, {VEIO_DE_COMPRA.format(t='insumo', tab='insumos')}"
+            f" FROM insumos {onde} ORDER BY quantidade <= minimo DESC, nome")]
 
 
 def insumo(id_: int) -> dict | None:
     with conectar() as conn:
-        linha = conn.execute("SELECT * FROM insumos WHERE id = ?", (id_,)).fetchone()
+        linha = conn.execute(
+            f"SELECT *, {VEIO_DE_COMPRA.format(t='insumo', tab='insumos')}"
+            f" FROM insumos WHERE id = ?", (id_,)).fetchone()
     return dict(linha) if linha else None
 
 
@@ -518,7 +568,7 @@ def campos_insumo(dados: dict) -> dict:
         unidade=_limpo(dados.get("unidade"), "un"),
         quantidade=_numero(dados.get("quantidade")),
         minimo=_numero(dados.get("minimo")),
-        valor_unit=_numero(dados.get("valor_unit")),
+        valor_manual=_numero(dados.get("valor_unit")) or None,   # ver campos_filamento
         descricao=_limpo(dados.get("descricao")),
         ativo=1 if dados.get("ativo", "1") in (1, "1", True, "on") else 0,
     )
@@ -534,19 +584,22 @@ def salvar_insumo(dados: dict, autor: str, id_: int | None = None) -> int:
                                  (id_,)).fetchone()
             # Mesma razao do filamento: quantidade so muda por movimento.
             conn.execute(
-                "UPDATE insumos SET nome=:nome, unidade=:unidade,"
-                " minimo=:minimo, valor_unit=:valor_unit, descricao=:descricao, ativo=:ativo"
-                " WHERE id=:id", {**campos, "id": id_})
+                "UPDATE insumos SET nome=:nome, unidade=:unidade, minimo=:minimo,"
+                " valor_manual=:valor_manual,"
+                " descricao=:descricao, ativo=:ativo WHERE id=:id", {**campos, "id": id_})
+            _atualizar_preco(conn, "insumo", id_)
             if antes and abs(campos["quantidade"] - antes["quantidade"]) > 1e-9:
                 _lancar(conn, "insumo", id_, campos["quantidade"] - antes["quantidade"],
                         "ajuste", autor)
             conn.commit()
             return id_
         cur = conn.execute(
-            "INSERT INTO insumos (nome, unidade, quantidade, minimo, valor_unit, descricao,"
-            " ativo, criado_em, criado_por) VALUES (:nome, :unidade, :quantidade, :minimo,"
-            " :valor_unit, :descricao, :ativo, :criado_em, :criado_por)",
+            "INSERT INTO insumos (nome, unidade, quantidade, minimo,"
+            " valor_manual, descricao, ativo, criado_em, criado_por)"
+            " VALUES (:nome, :unidade, :quantidade, :minimo, :valor_manual,"
+            " :descricao, :ativo, :criado_em, :criado_por)",
             {**campos, "criado_em": agora(), "criado_por": autor})
+        _atualizar_preco(conn, "insumo", int(cur.lastrowid))
         _lancar(conn, "insumo", int(cur.lastrowid), campos["quantidade"], "inicial", autor)
         conn.commit()
         return int(cur.lastrowid)
@@ -817,12 +870,13 @@ CAMPO_SALDO = {"filamento": ("filamentos", "gramas"), "insumo": ("insumos", "qua
 
 
 def _lancar(conn, tipo: str, alvo_id: int, quantidade: float, motivo: str,
-            autor: str, peca_id: int | None = None, observacao: str = "") -> None:
+            autor: str, peca_id: int | None = None, observacao: str = "",
+            compra_id: int | None = None) -> None:
     """Grava o movimento e move o saldo junto, na mesma transacao."""
     conn.execute(
-        "INSERT INTO movimentos (tipo, alvo_id, quantidade, motivo, peca_id, observacao,"
-        " criado_em, criado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (tipo, alvo_id, quantidade, motivo, peca_id, observacao, agora(), autor))
+        "INSERT INTO movimentos (tipo, alvo_id, quantidade, motivo, peca_id, compra_id,"
+        " observacao, criado_em, criado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (tipo, alvo_id, quantidade, motivo, peca_id, compra_id, observacao, agora(), autor))
     if motivo != "inicial":
         tabela, coluna = CAMPO_SALDO[tipo]
         conn.execute(f"UPDATE {tabela} SET {coluna} = {coluna} + ? WHERE id = ?",
@@ -977,3 +1031,137 @@ def historico_da_peca(peca_id: int) -> list[dict]:
     with conectar() as conn:
         return [dict(l) for l in conn.execute(
             "SELECT * FROM historico WHERE peca_id = ? ORDER BY id", (peca_id,))]
+
+
+# -------------------------------------------------------------- compras
+#
+# E aqui que o custo deixa de ser ficcao. Enquanto o preco do filamento for
+# digitado uma vez e esquecido, o custo de toda peca e um chute com cara de
+# numero. Lancando a compra, o preco passa a ser o que foi PAGO -- e o custo
+# de todo produto que usa aquele filamento se corrige sozinho.
+
+VEIO_DE_COMPRA = ("EXISTS (SELECT 1 FROM compra_itens i WHERE i.tipo = '{t}'"
+                  " AND i.alvo_id = {tab}.id AND i.quantidade > 0) AS veio_de_compra")
+
+
+def _preco_da_ultima_compra(conn, tipo: str, alvo_id: int) -> float | None:
+    """O preco por unidade da compra mais recente. None se nunca comprou."""
+    linha = conn.execute(
+        "SELECT i.quantidade, i.valor FROM compra_itens i"
+        " JOIN compras c ON c.id = i.compra_id"
+        " WHERE i.tipo = ? AND i.alvo_id = ? AND i.quantidade > 0"
+        " ORDER BY c.data DESC, c.id DESC LIMIT 1", (tipo, alvo_id)).fetchone()
+    if not linha:
+        return None
+    # Filamento e comprado em gramas e custeado por quilo.
+    divisor = linha["quantidade"] / 1000.0 if tipo == "filamento" else linha["quantidade"]
+    return round(linha["valor"] / divisor, 4) if divisor else None
+
+
+def _atualizar_preco(conn, tipo: str, alvo_id: int) -> None:
+    """O preco em uso e o da ULTIMA COMPRA; sem compra, o digitado a mao.
+
+    Sao dois donos e por isso duas colunas. Com uma so, apagar uma compra
+    deixava na tela o preco dela -- fantasma de um registro que nao existe
+    mais, com cara de numero conferido.
+    """
+    preco = _preco_da_ultima_compra(conn, tipo, alvo_id)
+    if tipo == "filamento":
+        conn.execute(
+            "UPDATE filamentos SET preco_kg = COALESCE(?, preco_manual) WHERE id = ?",
+            (preco, alvo_id))
+    else:
+        conn.execute(
+            "UPDATE insumos SET valor_unit = COALESCE(?, valor_manual, 0) WHERE id = ?",
+            (preco, alvo_id))
+
+
+def compras(limite: int = 100) -> list[dict]:
+    with conectar() as conn:
+        linhas = conn.execute(
+            "SELECT c.*, (SELECT COUNT(*) FROM compra_itens WHERE compra_id = c.id) AS itens"
+            " FROM compras c ORDER BY c.data DESC, c.id DESC LIMIT ?", (limite,)).fetchall()
+    return [dict(l) for l in linhas]
+
+
+def compra(id_: int) -> dict | None:
+    with conectar() as conn:
+        linha = conn.execute("SELECT * FROM compras WHERE id = ?", (id_,)).fetchone()
+        if not linha:
+            return None
+        itens = conn.execute(
+            "SELECT i.*, COALESCE(f.nome, s.nome) AS nome,"
+            " COALESCE(f.cor, '') AS cor, COALESCE(s.unidade, 'g') AS unidade"
+            " FROM compra_itens i"
+            " LEFT JOIN filamentos f ON i.tipo = 'filamento' AND f.id = i.alvo_id"
+            " LEFT JOIN insumos s ON i.tipo = 'insumo' AND s.id = i.alvo_id"
+            " WHERE i.compra_id = ? ORDER BY i.id", (id_,)).fetchall()
+    dados = dict(linha)
+    dados["itens"] = [dict(i) for i in itens]
+    return dados
+
+
+def _desfazer_compra(conn, id_: int) -> set[tuple[str, int]]:
+    """Tira do estoque o que a compra tinha posto. Devolve o que foi tocado."""
+    tocados = set()
+    for m in conn.execute("SELECT * FROM movimentos WHERE compra_id = ?", (id_,)).fetchall():
+        tabela, coluna = CAMPO_SALDO[m["tipo"]]
+        conn.execute(f"UPDATE {tabela} SET {coluna} = {coluna} - ? WHERE id = ?",
+                     (m["quantidade"], m["alvo_id"]))
+        tocados.add((m["tipo"], m["alvo_id"]))
+    conn.execute("DELETE FROM movimentos WHERE compra_id = ?", (id_,))
+    conn.execute("DELETE FROM compra_itens WHERE compra_id = ?", (id_,))
+    return tocados
+
+
+def salvar_compra(dados: dict, autor: str, id_: int | None = None,
+                  itens: list[dict] | None = None) -> int:
+    itens = [i for i in (itens or []) if i.get("alvo_id") and i.get("quantidade")]
+    if not itens:
+        raise ValueError("a compra precisa de pelo menos um item")
+    campos = dict(
+        data=_limpo(dados.get("data")) or agora()[:10],
+        fornecedor=_limpo(dados.get("fornecedor")),
+        nota=_limpo(dados.get("nota")),
+        observacao=_limpo(dados.get("observacao")),
+        valor=round(sum(float(i["valor"]) for i in itens), 2),
+    )
+    with conectar() as conn:
+        tocados = set()
+        if id_:
+            if not conn.execute("SELECT 1 FROM compras WHERE id = ?", (id_,)).fetchone():
+                raise ValueError("compra nao encontrada")
+            tocados |= _desfazer_compra(conn, id_)
+            conn.execute(
+                "UPDATE compras SET data=:data, fornecedor=:fornecedor, nota=:nota,"
+                " observacao=:observacao, valor=:valor WHERE id=:id", {**campos, "id": id_})
+        else:
+            cur = conn.execute(
+                "INSERT INTO compras (data, fornecedor, nota, observacao, valor, criado_em,"
+                " criado_por) VALUES (:data, :fornecedor, :nota, :observacao, :valor,"
+                " :criado_em, :criado_por)",
+                {**campos, "criado_em": agora(), "criado_por": autor})
+            id_ = int(cur.lastrowid)
+
+        for i in itens:
+            conn.execute(
+                "INSERT INTO compra_itens (compra_id, tipo, alvo_id, quantidade, valor)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (id_, i["tipo"], int(i["alvo_id"]), float(i["quantidade"]), float(i["valor"])))
+            _lancar(conn, i["tipo"], int(i["alvo_id"]), float(i["quantidade"]), "compra",
+                    autor, observacao=campos["fornecedor"], compra_id=id_)
+            tocados.add((i["tipo"], int(i["alvo_id"])))
+
+        for tipo, alvo in tocados:
+            _atualizar_preco(conn, tipo, alvo)
+        conn.commit()
+    return id_
+
+
+def apagar_compra(id_: int) -> None:
+    with conectar() as conn:
+        tocados = _desfazer_compra(conn, id_)
+        conn.execute("DELETE FROM compras WHERE id = ?", (id_,))
+        for tipo, alvo in tocados:
+            _atualizar_preco(conn, tipo, alvo)
+        conn.commit()

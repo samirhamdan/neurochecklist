@@ -377,6 +377,55 @@ def criar_app() -> Flask:
     def historico_peca(peca_id):
         return {"historico": dados.historico_da_peca(peca_id)}, 200
 
+    # --------------------------------------------------------------- compras
+    def _itens_da_compra(form) -> list[dict]:
+        itens = []
+        for i, alvo in enumerate(form.getlist("item_alvo")):
+            if not alvo or ":" not in alvo:
+                continue
+            tipo, _, alvo_id = alvo.partition(":")
+            qtd = dados._numero(form.getlist("item_qtd")[i])
+            if qtd <= 0:
+                continue
+            itens.append({"tipo": tipo, "alvo_id": int(alvo_id), "quantidade": qtd,
+                          "valor": dados._numero(form.getlist("item_valor")[i])})
+        return itens
+
+    @app.route("/compras")
+    @auth.exige_login
+    def lista_compras():
+        return render_template("compras.html", aba="compras", compras=dados.compras())
+
+    @app.route("/compras/nova", methods=["GET", "POST"])
+    @app.route("/compras/<int:id_>", methods=["GET", "POST"])
+    @auth.exige_login
+    def editar_compra(id_=None):
+        atual = dados.compra(id_) if id_ else None
+        if id_ and not atual:
+            abort(404)
+        contexto = dict(aba="compras", filamentos=dados.filamentos(),
+                        insumos=dados.insumos(), cores=dados.CORES)
+        if request.method == "POST":
+            itens = _itens_da_compra(request.form)
+            try:
+                novo_id = dados.salvar_compra(request.form, session.get("usuario", ""),
+                                              id_, itens)
+            except ValueError as erro:
+                return render_template("compra.html", erro=str(erro),
+                                       atual=dict(request.form, itens=itens, id=id_),
+                                       **contexto), 400
+            return redirect(url_for("editar_compra", id_=novo_id))
+        return render_template("compra.html", atual=atual, hoje=dados.agora()[:10],
+                               **contexto)
+
+    @app.route("/compras/<int:id_>/apagar", methods=["POST"])
+    @auth.exige_login
+    def apagar_compra_rota(id_):
+        if not dados.compra(id_):
+            abort(404)
+        dados.apagar_compra(id_)
+        return redirect(url_for("lista_compras"))
+
     # ------------------------------------------------------------ ferramentas
     @app.route("/letreiros")
     @auth.exige_login

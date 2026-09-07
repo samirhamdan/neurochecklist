@@ -42,9 +42,14 @@
       </label>
       <label class="campo"><span>Preço por kg</span>
         <input name="preco_kg" type="number" step="0.01" min="0" placeholder="120,00"
-               value="{{ '%.2f'|format(atual.preco_kg) if atual and atual.preco_kg else '' }}">
+               value="{{ '%.2f'|format(atual.preco_manual) if atual and atual.preco_manual else '' }}">
       </label>
     </div>
+    {% if atual and atual.veio_de_compra %}
+    <p class="nota">Em uso hoje: <b>R$ {{ '%.2f'|format(atual.preco_kg) }}/kg</b>, da última
+    compra lançada — é ele que alimenta o custo. O campo acima é o preço de reserva: vale
+    enquanto não houver compra deste filamento.</p>
+    {% endif %}
     <label class="marca-caixa">
       <input type="checkbox" name="ativo" value="1" {{ 'checked' if not atual or atual.ativo }}>
       Ativo — aparece para escolher no produto

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titulo %}Compras — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina">
+  <div class="cabecalho-lista">
+    <h2 class="secao">Compras</h2>
+    <a class="botao" href="{{ url_for('editar_compra') }}">Nova compra</a>
+  </div>
+  {% if compras %}
+  <div class="cartao"><div class="rolagem">
+    <table class="tabela">
+      <thead><tr><th>Data</th><th>Fornecedor</th><th>Nota</th>
+        <th class="num">Itens</th><th class="num">Valor</th><th></th></tr></thead>
+      <tbody>
+        {% for c in compras %}
+        <tr>
+          <td class="mono">{{ c.data }}</td>
+          <td><a href="{{ url_for('editar_compra', id_=c.id) }}">{{ c.fornecedor or 'sem fornecedor' }}</a></td>
+          <td class="mono fraco" style="margin:0">{{ c.nota or '—' }}</td>
+          <td class="num mono">{{ c.itens }}</td>
+          <td class="num mono forte">R$ {{ '%.2f'|format(c.valor) }}</td>
+          <td class="num"><a href="{{ url_for('editar_compra', id_=c.id) }}">abrir</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  <p class="nota">É esta tela que faz o custo deixar de ser chute. O preço por kg de cada
+  filamento passa a ser o da <b>última compra</b> — e o custo de todo produto que usa aquele
+  filamento se corrige sozinho.</p>
+  {% else %}
+  <div class="cartao cartao-vazio">
+    <b>Nenhuma compra lançada.</b>
+    <span>Lance a última compra de filamento com o valor real da nota. O custo de todo
+    produto que usa aquele filamento vai mudar na hora — e se não mudar, o cálculo está
+    errado.</span>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}
