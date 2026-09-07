@@ -120,8 +120,17 @@ duplica o pedido · o mesmo `id_no_canal` não entra duas vezes.
 **Você confere:** cadastre um pedido real vindo do Instagram; o painel tem
 que sair do vazio e mostrar a peça na cor certa.
 
-## Sprint 3 — Produção numa tela só
+## Sprint 3 — Produção numa tela só ✅ FEITO
 **Tamanho G · depende do 2**
+
+**A decisão de fundo:** o estoque não é alterado direto. Cada mudança vira um
+**movimento**, e o saldo é a soma deles — a coluna `gramas` do filamento é só
+um cache, com teste provando que os dois batem. Três coisas vêm de graça:
+voltar a peça uma etapa devolve o material sem precisar adivinhar quanto
+saiu; o relatório de filamento gasto (sprint 7) sai da própria tabela; e dá
+para *provar* que o saldo não desandou, em vez de torcer. Uma peça só tem
+uma baixa de produção, e quem garante isso é um **índice único no banco** —
+não a ordem em que as telas chamam.
 
 A anotação do Samir vira código. Entra também o que nem eles nem nós
 registramos hoje: a peça que deu errado.

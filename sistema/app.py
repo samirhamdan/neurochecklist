@@ -333,6 +333,50 @@ def criar_app() -> Flask:
             return redirect(url_for("editar_canais"))
         return render_template("canais.html", aba="pedidos", canais=dados.canais(False))
 
+    # -------------------------------------------------------------- producao
+    @app.route("/producao")
+    @auth.exige_login
+    def producao():
+        return render_template("producao.html", aba="producao", **dados.quadro())
+
+    @app.route("/producao/mover", methods=["POST"])
+    @auth.exige_login
+    def mover_pecas():
+        """Uma peca do quadro ou varias da lista -- a mesma rota.
+
+        Devolve JSON para o arrastar, e redireciona para o formulario da
+        lista. A tela e uma so; o jeito de mexer nela e que muda.
+        """
+        para = request.form.get("para", "")
+        ids = [int(i) for i in request.form.getlist("peca") if str(i).isdigit()]
+        autor = session.get("usuario", "")
+        erros = []
+        for peca_id in ids:
+            try:
+                dados.mover_peca(peca_id, para, autor)
+            except ValueError as erro:
+                erros.append(str(erro))
+        if request.form.get("json"):
+            return ({"ok": not erros, "erros": erros, "movidas": len(ids) - len(erros)},
+                    200 if not erros else 400)
+        return redirect(url_for("producao"))
+
+    @app.route("/producao/refugo", methods=["POST"])
+    @auth.exige_login
+    def refugar_peca():
+        try:
+            dados.registrar_refugo(int(request.form["peca"]),
+                                   session.get("usuario", ""),
+                                   request.form.get("motivo", "").strip())
+        except (ValueError, KeyError):
+            abort(400)
+        return redirect(url_for("producao"))
+
+    @app.route("/producao/<int:peca_id>/historico")
+    @auth.exige_login
+    def historico_peca(peca_id):
+        return {"historico": dados.historico_da_peca(peca_id)}, 200
+
     # ------------------------------------------------------------ ferramentas
     @app.route("/letreiros")
     @auth.exige_login

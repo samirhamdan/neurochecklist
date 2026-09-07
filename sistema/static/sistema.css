@@ -449,3 +449,52 @@ table.itens input:focus, table.itens select:focus{border-color:var(--azul);outli
 }
 .tirar:hover{border-color:var(--vermelho);color:var(--vermelho)}
 .acoes form{margin:0}
+
+/* ---------- quadro de producao ---------- */
+.pagina.larga{max-width:1400px}
+.quadro{display:grid;gap:12px;grid-template-columns:repeat(5,minmax(180px,1fr));align-items:start}
+@media(max-width:1100px){.quadro{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.quadro{grid-template-columns:1fr}}
+.quadro .coluna{background:var(--mesa);border:1px solid var(--linha);border-radius:6px;padding:10px}
+.quadro .coluna header{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.quadro .coluna h3{
+  margin:0;font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--suave);font-weight:600;flex:1 1 auto;
+}
+.quadro .conta{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--suave);
+  background:var(--bancada);border-radius:10px;padding:1px 8px;
+}
+.pilha{display:flex;flex-direction:column;gap:8px;min-height:70px;border-radius:5px}
+.pilha.alvo{background:var(--azul-fundo);outline:2px dashed var(--azul);outline-offset:2px}
+.ficha{
+  background:var(--mesa-2);border:1px solid var(--linha);border-left:3px solid var(--linha-forte);
+  border-radius:5px;padding:9px 10px;cursor:grab;position:relative;
+}
+.ficha:active{cursor:grabbing}
+.ficha.indo{opacity:.4}
+.ficha-topo{display:flex;align-items:baseline;gap:2px;font-size:14.5px;line-height:1.3}
+.ficha-topo b{font-weight:600}
+.vezes{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--laranja);margin-left:4px}
+.ficha-pe{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:12.5px;
+  color:var(--suave);margin-top:5px}
+.ficha-nums{font-size:11.5px;color:var(--suave);margin-top:4px}
+.refugar{
+  position:absolute;top:7px;right:7px;font:inherit;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;background:none;border:1px solid var(--linha-forte);
+  border-radius:3px;color:var(--suave);padding:1px 5px;cursor:pointer;opacity:0;
+}
+.ficha:hover .refugar{opacity:1}
+.refugar:hover{border-color:var(--vermelho);color:var(--vermelho)}
+.barra-selecao{
+  position:sticky;bottom:0;background:var(--mesa);border:1px solid var(--linha);
+  border-radius:6px;padding:10px 14px;margin-top:12px;gap:12px;
+}
+.barra-selecao .cresce{flex:1 1 auto}
+.barra-selecao .campo{margin:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+dialog{
+  border:1px solid var(--linha-forte);border-radius:8px;padding:20px 22px;
+  max-width:440px;background:var(--mesa);color:var(--tinta);
+}
+dialog::backdrop{background:rgba(21,25,29,.45)}

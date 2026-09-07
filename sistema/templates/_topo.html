@@ -11,6 +11,7 @@
     </a>
     <nav>
       <a href="{{ url_for('painel') }}" {{ 'class=aqui' if aba == 'painel' }}>Painel</a>
+      <a href="{{ url_for('producao') }}" {{ 'class=aqui' if aba == 'producao' }}>Produção</a>
       <a href="{{ url_for('lista_pedidos') }}" {{ 'class=aqui' if aba == 'pedidos' }}>Pedidos</a>
       <a href="{{ url_for('lista_clientes') }}" {{ 'class=aqui' if aba == 'clientes' }}>Clientes</a>
       <a href="{{ url_for('lista_produtos') }}" {{ 'class=aqui' if aba == 'produtos' }}>Produtos</a>

@@ -103,6 +103,37 @@ CREATE TABLE IF NOT EXISTS produto_insumos (
     PRIMARY KEY (produto_id, insumo_id)
 );
 
+CREATE TABLE IF NOT EXISTS movimentos (
+    id         INTEGER PRIMARY KEY,
+    tipo       TEXT NOT NULL,
+    alvo_id    INTEGER NOT NULL,
+    quantidade REAL NOT NULL,
+    motivo     TEXT NOT NULL,
+    peca_id    INTEGER,
+    observacao TEXT NOT NULL DEFAULT '',
+    criado_em  TEXT NOT NULL,
+    criado_por TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS ix_mov_alvo ON movimentos (tipo, alvo_id, criado_em);
+-- Uma baixa de producao por peca, garantida pelo BANCO e nao pelo cuidado
+-- de quem escreve a consulta. Mover a peca duas vezes para "imprimindo" nao
+-- tem como tirar o filamento duas vezes. Refugo fica de fora do indice de
+-- proposito: uma peca pode falhar mais de uma vez.
+CREATE UNIQUE INDEX IF NOT EXISTS ix_mov_producao
+    ON movimentos (peca_id, tipo, alvo_id)
+    WHERE peca_id IS NOT NULL AND motivo = 'producao';
+
+CREATE TABLE IF NOT EXISTS historico (
+    id         INTEGER PRIMARY KEY,
+    peca_id    INTEGER NOT NULL REFERENCES pecas (id) ON DELETE CASCADE,
+    de         TEXT NOT NULL DEFAULT '',
+    para       TEXT NOT NULL,
+    observacao TEXT NOT NULL DEFAULT '',
+    criado_em  TEXT NOT NULL,
+    criado_por TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS ix_hist_peca ON historico (peca_id, id);
+
 CREATE TABLE IF NOT EXISTS clientes (
     id         INTEGER PRIMARY KEY,
     nome       TEXT NOT NULL,
@@ -144,8 +175,22 @@ PADROES = {
     "taxa_falha": 0.10,
 }
 
-# Estados de peca que ocupam a impressora, na ordem em que acontecem.
-EM_PRODUCAO = ("na fila", "imprimindo", "acabamento")
+# As cinco etapas da peca, no vocabulario do Sistema3D -- que e o que o
+# Samir ja usa. O quadro do painel de producao move PECAS por elas.
+ETAPAS = ("aguardando", "imprimindo", "montagem", "a entregar", "entregue")
+
+ROTULOS = {
+    "aguardando": "Aguardando", "imprimindo": "Em produção",
+    "montagem": "Montagem", "a entregar": "À entregar", "entregue": "Entregue",
+    "orcamento": "Orçamento", "refugada": "Refugada",
+}
+
+# Etapas que ocupam a bancada. "A entregar" ja saiu da impressora, entao a
+# fila do painel -- que conta horas e trocas de cor -- para antes dela.
+EM_PRODUCAO = ("aguardando", "imprimindo", "montagem")
+
+# Entrar nesta etapa e o que consome filamento e insumo.
+ETAPA_QUE_CONSOME = "imprimindo"
 
 # O PEDIDO tem situacao comercial; a PECA tem etapa de producao. Sao coisas
 # diferentes e estavam misturadas: o semeador gravava pedido com status
@@ -226,10 +271,30 @@ def _migrar(conn: sqlite3.Connection) -> None:
     # Situacao de pedido que na verdade era etapa de peca. "novo" virou
     # orcamento; "na fila"/"imprimindo"/"acabamento" eram producao, e
     # producao so acontece em pedido aprovado.
+    # Etapas renomeadas para o vocabulario do Samir (o do Sistema3D).
+    for antigo, novo in (("na fila", "aguardando"), ("acabamento", "montagem")):
+        conn.execute("UPDATE pecas SET status = ? WHERE status = ?", (novo, antigo))
+
     conn.execute("UPDATE pedidos SET status = 'orcamento' WHERE status = 'novo'")
     conn.execute(
-        f"UPDATE pedidos SET status = 'aprovado' WHERE status IN"
-        f" ({', '.join('?' for _ in EM_PRODUCAO)})", EM_PRODUCAO)
+        "UPDATE pedidos SET status = 'aprovado' WHERE status IN"
+        " ('na fila', 'imprimindo', 'acabamento', 'aguardando', 'montagem')")
+
+    # O estoque inicial vira o primeiro movimento. Assim o saldo e a soma dos
+    # movimentos, sempre -- e da para provar que a coluna `gramas` nao
+    # desandou, em vez de torcer para nao ter desandado.
+    for tabela, tipo, coluna in (("filamentos", "filamento", "gramas"),
+                                 ("insumos", "insumo", "quantidade")):
+        sem_inicial = conn.execute(
+            f"SELECT id, {coluna} AS q, criado_em, criado_por FROM {tabela} t"
+            f" WHERE NOT EXISTS (SELECT 1 FROM movimentos m WHERE m.tipo = ?"
+            f" AND m.alvo_id = t.id AND m.motivo = 'inicial')", (tipo,)).fetchall()
+        for linha in sem_inicial:
+            conn.execute(
+                "INSERT INTO movimentos (tipo, alvo_id, quantidade, motivo, criado_em,"
+                " criado_por) VALUES (?, ?, ?, 'inicial', ?, ?)",
+                (tipo, linha["id"], linha["q"] or 0, linha["criado_em"] or agora(),
+                 linha["criado_por"] or "migracao"))
 
     # Cliente era texto solto no pedido. Vira cadastro, e o texto continua
     # no pedido como historico: se o cliente trocar de nome depois, o pedido
@@ -406,10 +471,22 @@ def salvar_filamento(dados: dict, autor: str, id_: int | None = None) -> int:
         raise ValueError("filamento precisa de nome e de uma das cores do catalogo")
     with conectar() as conn:
         if id_:
+            # Mexer no estoque pela tela e um evento como qualquer outro. Sem
+            # registrar, o saldo deixa de ser a soma dos movimentos e o
+            # relatorio de filamento gasto passa a mentir em silencio.
+            antes = conn.execute("SELECT gramas FROM filamentos WHERE id = ?",
+                                 (id_,)).fetchone()
+            # `gramas` fica DE FORA do UPDATE de proposito: o saldo so muda
+            # por movimento. Escrever o valor absoluto aqui e depois somar a
+            # diferenca aplicava a mudanca duas vezes -- 1000 para 1500 virava
+            # 2000.
             conn.execute(
                 "UPDATE filamentos SET nome=:nome, marca=:marca, tipo=:tipo, cor=:cor,"
-                " gramas=:gramas, minimo=:minimo, preco_kg=:preco_kg, ativo=:ativo"
+                " minimo=:minimo, preco_kg=:preco_kg, ativo=:ativo"
                 " WHERE id=:id", {**campos, "id": id_})
+            if antes and abs(campos["gramas"] - antes["gramas"]) > 1e-9:
+                _lancar(conn, "filamento", id_, campos["gramas"] - antes["gramas"],
+                        "ajuste", autor)
             conn.commit()
             return id_
         cur = conn.execute(
@@ -417,6 +494,7 @@ def salvar_filamento(dados: dict, autor: str, id_: int | None = None) -> int:
             " ativo, criado_em, criado_por) VALUES (:nome, :marca, :tipo, :cor, :gramas,"
             " :minimo, :preco_kg, :ativo, :criado_em, :criado_por)",
             {**campos, "criado_em": agora(), "criado_por": autor})
+        _lancar(conn, "filamento", int(cur.lastrowid), campos["gramas"], "inicial", autor)
         conn.commit()
         return int(cur.lastrowid)
 
@@ -452,10 +530,16 @@ def salvar_insumo(dados: dict, autor: str, id_: int | None = None) -> int:
         raise ValueError("insumo precisa de nome")
     with conectar() as conn:
         if id_:
+            antes = conn.execute("SELECT quantidade FROM insumos WHERE id = ?",
+                                 (id_,)).fetchone()
+            # Mesma razao do filamento: quantidade so muda por movimento.
             conn.execute(
-                "UPDATE insumos SET nome=:nome, unidade=:unidade, quantidade=:quantidade,"
+                "UPDATE insumos SET nome=:nome, unidade=:unidade,"
                 " minimo=:minimo, valor_unit=:valor_unit, descricao=:descricao, ativo=:ativo"
                 " WHERE id=:id", {**campos, "id": id_})
+            if antes and abs(campos["quantidade"] - antes["quantidade"]) > 1e-9:
+                _lancar(conn, "insumo", id_, campos["quantidade"] - antes["quantidade"],
+                        "ajuste", autor)
             conn.commit()
             return id_
         cur = conn.execute(
@@ -463,6 +547,7 @@ def salvar_insumo(dados: dict, autor: str, id_: int | None = None) -> int:
             " ativo, criado_em, criado_por) VALUES (:nome, :unidade, :quantidade, :minimo,"
             " :valor_unit, :descricao, :ativo, :criado_em, :criado_por)",
             {**campos, "criado_em": agora(), "criado_por": autor})
+        _lancar(conn, "insumo", int(cur.lastrowid), campos["quantidade"], "inicial", autor)
         conn.commit()
         return int(cur.lastrowid)
 
@@ -718,3 +803,177 @@ def mudar_situacao(id_: int, situacao: str, autor: str) -> None:
                 f"UPDATE pecas SET status = '{alvo}' WHERE pedido_id = ?"
                 f" AND status IN ({', '.join('?' for _ in EM_PRODUCAO)})", (id_, *EM_PRODUCAO))
         conn.commit()
+
+
+# ------------------------------------------------------------- producao
+#
+# O estoque nao e alterado direto: cada mudanca vira um MOVIMENTO, e o saldo
+# e a soma deles. A coluna `gramas` do filamento e so um cache disso -- ha
+# teste provando que os dois batem. Assim, mover a peca de volta uma etapa
+# devolve o material sem precisar adivinhar quanto foi tirado, e o relatorio
+# de filamento gasto (sprint 7) sai de graca.
+
+CAMPO_SALDO = {"filamento": ("filamentos", "gramas"), "insumo": ("insumos", "quantidade")}
+
+
+def _lancar(conn, tipo: str, alvo_id: int, quantidade: float, motivo: str,
+            autor: str, peca_id: int | None = None, observacao: str = "") -> None:
+    """Grava o movimento e move o saldo junto, na mesma transacao."""
+    conn.execute(
+        "INSERT INTO movimentos (tipo, alvo_id, quantidade, motivo, peca_id, observacao,"
+        " criado_em, criado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (tipo, alvo_id, quantidade, motivo, peca_id, observacao, agora(), autor))
+    if motivo != "inicial":
+        tabela, coluna = CAMPO_SALDO[tipo]
+        conn.execute(f"UPDATE {tabela} SET {coluna} = {coluna} + ? WHERE id = ?",
+                     (quantidade, alvo_id))
+
+
+def saldo_pelos_movimentos(tipo: str, alvo_id: int) -> float:
+    """O saldo que os movimentos dizem. Existe para conferir o cache."""
+    with conectar() as conn:
+        linha = conn.execute(
+            "SELECT COALESCE(SUM(quantidade), 0) AS s FROM movimentos"
+            " WHERE tipo = ? AND alvo_id = ?", (tipo, alvo_id)).fetchone()
+    return round(float(linha["s"]), 4)
+
+
+def _filamento_da_peca(conn, peca) -> int | None:
+    """Qual rolo sai do estoque.
+
+    Pela COR da peca, que e o que o cliente pediu. Entre os rolos daquela
+    cor, o do produto tem preferencia; sem ele, o mais cheio -- que e o que
+    qualquer pessoa pegaria na bancada.
+    """
+    if not peca["cor"]:
+        return None
+    candidatos = conn.execute(
+        "SELECT id FROM filamentos WHERE ativo = 1 AND cor = ? ORDER BY gramas DESC",
+        (peca["cor"],)).fetchall()
+    if not candidatos:
+        return None
+    if peca["produto_id"]:
+        prod = conn.execute("SELECT filamento_id FROM produtos WHERE id = ?",
+                            (peca["produto_id"],)).fetchone()
+        if prod and prod["filamento_id"] in {c["id"] for c in candidatos}:
+            return prod["filamento_id"]
+    return candidatos[0]["id"]
+
+
+def _baixar(conn, peca, autor: str) -> None:
+    fil = _filamento_da_peca(conn, peca)
+    if fil and (peca["gramas_est"] or 0) > 0:
+        conn.execute("SAVEPOINT baixa")
+        try:
+            _lancar(conn, "filamento", fil, -float(peca["gramas_est"]), "producao",
+                    autor, peca["id"])
+        except sqlite3.IntegrityError:
+            # Ja havia baixa de producao para esta peca. O indice unico do
+            # banco e quem garante isso, e nao a ordem em que as telas chamam.
+            conn.execute("ROLLBACK TO baixa")
+        conn.execute("RELEASE baixa")
+    if peca["produto_id"]:
+        vinculos = conn.execute(
+            "SELECT insumo_id, quantidade FROM produto_insumos WHERE produto_id = ?",
+            (peca["produto_id"],)).fetchall()
+        for v in vinculos:
+            conn.execute("SAVEPOINT baixai")
+            try:
+                _lancar(conn, "insumo", v["insumo_id"],
+                        -float(v["quantidade"]) * float(peca["quantidade"] or 1),
+                        "producao", autor, peca["id"])
+            except sqlite3.IntegrityError:
+                conn.execute("ROLLBACK TO baixai")
+            conn.execute("RELEASE baixai")
+
+
+def _estornar(conn, peca_id: int, autor: str) -> None:
+    """Voltar uma etapa devolve o material. Apaga a baixa, nao lanca outra:
+    assim a peca pode ser baixada de novo depois, e o relatorio de gasto nao
+    conta uma ida e volta como consumo."""
+    baixas = conn.execute(
+        "SELECT * FROM movimentos WHERE peca_id = ? AND motivo = 'producao'",
+        (peca_id,)).fetchall()
+    for m in baixas:
+        tabela, coluna = CAMPO_SALDO[m["tipo"]]
+        conn.execute(f"UPDATE {tabela} SET {coluna} = {coluna} - ? WHERE id = ?",
+                     (m["quantidade"], m["alvo_id"]))
+        conn.execute("DELETE FROM movimentos WHERE id = ?", (m["id"],))
+
+
+def mover_peca(peca_id: int, para: str, autor: str, observacao: str = "") -> None:
+    if para not in ETAPAS:
+        raise ValueError(f"etapa desconhecida: {para}")
+    with conectar() as conn:
+        peca = conn.execute("SELECT * FROM pecas WHERE id = ?", (peca_id,)).fetchone()
+        if not peca:
+            raise ValueError("peca nao encontrada")
+        de = peca["status"]
+        if de == para:
+            return
+        indice = {e: i for i, e in enumerate(ETAPAS)}
+        passou = indice.get(de, -1) >= indice[ETAPA_QUE_CONSOME]
+        vai_passar = indice[para] >= indice[ETAPA_QUE_CONSOME]
+        if vai_passar and not passou:
+            _baixar(conn, peca, autor)
+        elif passou and not vai_passar:
+            _estornar(conn, peca_id, autor)
+        conn.execute("UPDATE pecas SET status = ? WHERE id = ?", (para, peca_id))
+        conn.execute(
+            "INSERT INTO historico (peca_id, de, para, observacao, criado_em, criado_por)"
+            " VALUES (?, ?, ?, ?, ?, ?)", (peca_id, de, para, observacao, agora(), autor))
+        conn.commit()
+
+
+def registrar_refugo(peca_id: int, autor: str, motivo: str = "") -> None:
+    """A peca falhou. O material ja saiu e nao volta: vira PERDA.
+
+    Converte a baixa de producao em refugo, em vez de lancar outra saida --
+    senao o filamento sairia duas vezes do estoque para a mesma impressao. A
+    peca volta para "aguardando", porque o cliente continua querendo a peca.
+    """
+    with conectar() as conn:
+        peca = conn.execute("SELECT * FROM pecas WHERE id = ?", (peca_id,)).fetchone()
+        if not peca:
+            raise ValueError("peca nao encontrada")
+        alterou = conn.execute(
+            "UPDATE movimentos SET motivo = 'refugo', observacao = ?"
+            " WHERE peca_id = ? AND motivo = 'producao'", (motivo, peca_id)).rowcount
+        if not alterou:
+            # Refugou antes de a peca ter passado pela producao: registra a
+            # perda mesmo assim, senao o relatorio nao veria o prejuizo.
+            fil = _filamento_da_peca(conn, peca)
+            if fil and (peca["gramas_est"] or 0) > 0:
+                _lancar(conn, "filamento", fil, -float(peca["gramas_est"]), "refugo",
+                        autor, peca["id"], motivo)
+        conn.execute("UPDATE pecas SET status = 'aguardando' WHERE id = ?", (peca_id,))
+        conn.execute(
+            "INSERT INTO historico (peca_id, de, para, observacao, criado_em, criado_por)"
+            " VALUES (?, ?, 'aguardando', ?, ?, ?)",
+            (peca_id, peca["status"], f"refugo: {motivo}" if motivo else "refugo",
+             agora(), autor))
+        conn.commit()
+
+
+def quadro() -> dict:
+    """As pecas por etapa, para o quadro e para a lista -- uma consulta so."""
+    with conectar() as conn:
+        linhas = conn.execute(
+            "SELECT p.*, d.cliente, d.prazo, d.id AS pedido FROM pecas p"
+            " LEFT JOIN pedidos d ON d.id = p.pedido_id"
+            " WHERE p.status IN ({}) ORDER BY d.prazo IS NULL, d.prazo, p.id".format(
+                ", ".join("?" for _ in ETAPAS)), ETAPAS).fetchall()
+    pecas = [dict(l, dias=_dias_ate(l["prazo"])) for l in linhas]
+    return {
+        "etapas": ETAPAS,
+        "rotulos": ROTULOS,
+        "por_etapa": {e: [p for p in pecas if p["status"] == e] for e in ETAPAS},
+        "pecas": pecas,
+        "cores": CORES,
+    }
+
+
+def historico_da_peca(peca_id: int) -> list[dict]:
+    with conectar() as conn:
+        return [dict(l) for l in conn.execute(
+            "SELECT * FROM historico WHERE peca_id = ? ORDER BY id", (peca_id,))]

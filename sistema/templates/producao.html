@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block titulo %}Produção — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina larga">
+  <div class="cabecalho-lista">
+    <h2 class="secao">Produção</h2>
+    <span class="abas" id="modos">
+      <a href="#" data-modo="quadro" class="aqui">Quadro</a>
+      <a href="#" data-modo="lista">Lista</a>
+    </span>
+  </div>
+
+  {% if not pecas %}
+    <div class="cartao cartao-vazio">
+      <b>Nenhuma peça em produção.</b>
+      <span>Peça entra aqui quando um <a href="{{ url_for('lista_pedidos') }}">pedido</a>
+      é aprovado. Enquanto for orçamento, ela não ocupa a mesa.</span>
+    </div>
+  {% else %}
+
+  <!-- ---------------------------------------------------- quadro -->
+  <div id="quadro" class="quadro">
+    {% for etapa in etapas %}
+    <section class="coluna" data-etapa="{{ etapa }}">
+      <header>
+        <h3>{{ rotulos[etapa] }}</h3>
+        <span class="conta">{{ por_etapa[etapa]|length }}</span>
+      </header>
+      <div class="pilha" data-etapa="{{ etapa }}">
+        {% for p in por_etapa[etapa] %}
+        <article class="ficha" draggable="true" data-peca="{{ p.id }}">
+          <div class="ficha-topo">
+            <span class="bolinha" style="background:{{ cores.get(p.cor, '#B9BEC4') }}"></span>
+            <b>{{ p.descricao }}</b>
+            {% if p.quantidade and p.quantidade > 1 %}<span class="vezes">×{{ p.quantidade|round|int }}</span>{% endif %}
+          </div>
+          <div class="ficha-pe">
+            <span>{{ p.cliente or 'sem pedido' }}</span>
+            {% if p.dias is not none %}
+              {% if p.dias < 0 %}<span class="etiqueta vermelha">{{ -p.dias }} d atrasado</span>
+              {% elif p.dias == 0 %}<span class="etiqueta ambar">hoje</span>
+              {% else %}<span class="fraco">em {{ p.dias }} d</span>{% endif %}
+            {% endif %}
+          </div>
+          <div class="ficha-nums mono">
+            {% if p.gramas_est %}{{ p.gramas_est|round|int }} g{% endif %}
+            {% if p.horas_est %} · {{ p.horas_est|round(1) }} h{% endif %}
+          </div>
+          <button type="button" class="refugar" data-peca="{{ p.id }}"
+                  data-nome="{{ p.descricao }}" title="Registrar refugo">refugo</button>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+
+  <!-- ---------------------------------------------------- lista -->
+  <form id="lista" method="post" action="{{ url_for('mover_pecas') }}" hidden>
+    <div class="cartao"><div class="rolagem">
+      <table class="tabela">
+        <thead><tr>
+          <th style="width:34px"><input type="checkbox" id="todas"></th>
+          <th>Peça</th><th>Cliente</th><th>Cor</th><th>Etapa</th>
+          <th class="num">Peso</th><th class="num">Tempo</th><th>Prazo</th>
+        </tr></thead>
+        <tbody>
+          {% for p in pecas %}
+          <tr>
+            <td><input type="checkbox" name="peca" value="{{ p.id }}" class="sel"></td>
+            <td>{{ p.descricao }}{% if p.quantidade and p.quantidade > 1 %}
+              <span class="fraco">×{{ p.quantidade|round|int }}</span>{% endif %}</td>
+            <td class="fraco" style="margin:0">{{ p.cliente or '—' }}</td>
+            <td><span class="bolinha" style="background:{{ cores.get(p.cor, '#B9BEC4') }}"></span>{{ p.cor or '—' }}</td>
+            <td><span class="etiqueta {{ 'azul' if p.status == 'imprimindo' else 'cinza' }}">{{ rotulos[p.status] }}</span></td>
+            <td class="num mono">{{ p.gramas_est|round|int if p.gramas_est else '—' }} g</td>
+            <td class="num mono">{{ p.horas_est|round(1) if p.horas_est else '—' }} h</td>
+            <td>
+              {%- if p.dias is none %}<span class="fraco">—</span>
+              {%- elif p.dias < 0 %}<span class="etiqueta vermelha">{{ -p.dias }} d</span>
+              {%- elif p.dias == 0 %}<span class="etiqueta ambar">hoje</span>
+              {%- else %}em {{ p.dias }} d{% endif -%}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+    <div class="acoes barra-selecao">
+      <span id="quantas" class="fraco">Nenhuma selecionada</span>
+      <span class="cresce"></span>
+      <label class="campo"><span class="sr">Mover para</span>
+        <select name="para" required>
+          <option value="">Mover selecionadas para…</option>
+          {% for e in etapas %}<option value="{{ e }}">{{ rotulos[e] }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="botao" type="submit">Mover</button>
+    </div>
+  </form>
+  {% endif %}
+</main>
+
+<dialog id="dlg-refugo">
+  <form method="post" action="{{ url_for('refugar_peca') }}" class="formulario">
+    <h3 class="titulo-cartao">Registrar refugo</h3>
+    <input type="hidden" name="peca" id="refugo-peca">
+    <p class="nota" style="margin-top:0">O material já saiu do estoque e não volta:
+    vira <b>perda</b>. A peça retorna para <i>aguardando</i>, porque o cliente continua
+    querendo ela — e a reimpressão vai consumir filamento de novo.</p>
+    <p><b id="refugo-nome"></b></p>
+    <label class="campo"><span>O que aconteceu</span>
+      <input name="motivo" maxlength="120" placeholder="Entupiu o bico, descolou da mesa, warp…">
+    </label>
+    <div class="acoes">
+      <button class="botao" type="submit">Registrar perda</button>
+      <button class="botao vazado" type="button" id="fechar-refugo">Cancelar</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  const quadro = document.getElementById("quadro");
+  const lista = document.getElementById("lista");
+  if (!quadro) return;
+
+  // --------- alternar quadro / lista, na mesma tela ---------
+  document.getElementById("modos").addEventListener("click", ev => {
+    const alvo = ev.target.closest("[data-modo]");
+    if (!alvo) return;
+    ev.preventDefault();
+    const eQuadro = alvo.dataset.modo === "quadro";
+    quadro.hidden = !eQuadro; lista.hidden = eQuadro;
+    document.querySelectorAll("#modos a").forEach(a => a.classList.toggle("aqui", a === alvo));
+  });
+
+  // --------- arrastar a ficha ---------
+  let arrastando = null;
+  quadro.addEventListener("dragstart", ev => {
+    const f = ev.target.closest(".ficha");
+    if (!f) return;
+    arrastando = f; f.classList.add("indo");
+    ev.dataTransfer.effectAllowed = "move";
+  });
+  quadro.addEventListener("dragend", () => {
+    if (arrastando) arrastando.classList.remove("indo");
+    arrastando = null;
+    document.querySelectorAll(".pilha.alvo").forEach(p => p.classList.remove("alvo"));
+  });
+  quadro.querySelectorAll(".pilha").forEach(pilha => {
+    pilha.addEventListener("dragover", ev => {
+      if (!arrastando) return;
+      ev.preventDefault(); pilha.classList.add("alvo");
+    });
+    pilha.addEventListener("dragleave", () => pilha.classList.remove("alvo"));
+    pilha.addEventListener("drop", async ev => {
+      ev.preventDefault(); pilha.classList.remove("alvo");
+      if (!arrastando) return;
+      const ficha = arrastando, para = pilha.dataset.etapa;
+      const dados = new FormData();
+      dados.append("peca", ficha.dataset.peca);
+      dados.append("para", para);
+      dados.append("json", "1");
+      // Move na tela primeiro, para a mao nao esperar; se o servidor
+      // recusar, a pagina recarrega e mostra o estado de verdade.
+      pilha.appendChild(ficha);
+      contar();
+      const r = await fetch("{{ url_for('mover_pecas') }}", {method: "POST", body: dados});
+      if (!r.ok) location.reload();
+      else atualizarEstoque();
+    });
+  });
+
+  function contar() {
+    quadro.querySelectorAll(".coluna").forEach(col => {
+      col.querySelector(".conta").textContent = col.querySelectorAll(".ficha").length;
+    });
+  }
+  // O estoque muda quando a peca entra em producao. Recarregar so o numero
+  // seria outra rota; recarregar a pagina inteira perde o lugar. Por ora,
+  // um aviso discreto de que o painel tem numero novo.
+  function atualizarEstoque() {
+    const aviso = document.getElementById("mudou");
+    if (aviso) aviso.hidden = false;
+  }
+
+  // --------- selecao multipla na lista ---------
+  const quantas = document.getElementById("quantas");
+  function contarSel() {
+    const n = lista.querySelectorAll(".sel:checked").length;
+    quantas.textContent = n ? `${n} selecionada${n > 1 ? "s" : ""}` : "Nenhuma selecionada";
+  }
+  lista.addEventListener("change", ev => {
+    if (ev.target.id === "todas") {
+      lista.querySelectorAll(".sel").forEach(c => { c.checked = ev.target.checked; });
+    }
+    contarSel();
+  });
+  contarSel();
+
+  // --------- refugo ---------
+  const dlg = document.getElementById("dlg-refugo");
+  document.addEventListener("click", ev => {
+    const b = ev.target.closest(".refugar");
+    if (!b) return;
+    document.getElementById("refugo-peca").value = b.dataset.peca;
+    document.getElementById("refugo-nome").textContent = b.dataset.nome;
+    dlg.showModal();
+  });
+  document.getElementById("fechar-refugo").addEventListener("click", () => dlg.close());
+})();
+</script>
+{% endblock %}
