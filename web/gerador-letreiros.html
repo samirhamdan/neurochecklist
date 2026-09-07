@@ -7809,550 +7809,53 @@ canvas{width:100%;height:auto;display:block;border-radius:6px}
 ;
 !function(t,n){"object"==typeof exports&&"undefined"!=typeof module?n(exports):"function"==typeof define&&define.amd?define(["exports"],n):n((t="undefined"!=typeof globalThis?globalThis:t||self).earcut={})}(this,function(t){"use strict";const n=new Set;let e=!1;function r(t,n,e,r,x){let o=null;if(x===G(t,n,e,r)>0)for(let x=n;x<e;x+=r)o=C(x/r|0,t[x],t[x+1],o);else for(let x=e-r;x>=n;x-=r)o=C(x/r|0,t[x],t[x+1],o);return o&&O(o,o.next)&&(D(o),o=o.next),o}function x(t,r=t){const x=r===t;let o,i=t;do{o=!1,i===i.next||0!==n.size&&n.has(i)||!O(i,i.next)&&0!==_(i.prev,i,i.next)?(x||i!==r)&&(i=i.next,o=!x):((x||i===r)&&(r=i.prev),e=!0,D(i),i=i.prev,o=!0)}while(o||i!==r);return r}function o(t,n,r,o,c){c&&function(t,n,e,r){let x=t,o=0;do{x.z=j(x.x,x.y,n,e,r),Z[o++]=x,x=x.next}while(x!==t);!function(t){if(t<=32){for(let n=1;n<t;n++){const t=Z[n],e=t.z;let r=n-1;for(;r>=0&&Z[r].z>e;)Z[r+1]=Z[r],r--;Z[r+1]=t}return}b.length<t&&(b=new Uint32Array(t),z=new Uint32Array(t),A=new Array(t));for(let n=0;n<t;n++)b[n]=Z[n].z;I(t,Z,b,A,z,0),I(t,A,z,Z,b,8),I(t,Z,b,A,z,16),I(t,A,z,Z,b,24)}(o);let i=null;for(let t=0;t<o;t++){const n=Z[t];n.prevZ=i,i&&(i.nextZ=n),i=n}i.nextZ=null}(t,r,o,c);let y=t,s=!1;for(;t.prev!==t.next;){const a=t.prev,h=t.next;if(_(a,t,h)<0&&(c?l(t,r,o,c):i(t)))n.push(a.i,t.i,h.i),D(t),t=h,y=h;else if((t=h)===y){if(e=!1,t=x(t),e){y=t;continue}if(!s){y=t=f(t,n),s=!0;continue}u(t,n,r,o,c);break}}}function i(t){const n=t.prev,e=t,r=t.next,x=n.x,o=e.x,i=r.x,l=n.y,f=e.y,u=r.y,c=Math.min(x,o,i),y=Math.min(l,f,u),s=Math.max(x,o,i),a=Math.max(l,f,u);let h=r.next;for(;h!==n;){if(h.x>=c&&h.x<=s&&h.y>=y&&h.y<=a&&(x!==h.x||l!==h.y)&&F(x,l,o,f,i,u,h.x,h.y)&&_(h.prev,h,h.next)>=0)return!1;h=h.next}return!0}function l(t,n,e,r){const x=t.prev,o=t,i=t.next,l=x.x,f=o.x,u=i.x,c=x.y,y=o.y,s=i.y,a=Math.min(l,f,u),h=Math.min(c,y,s),p=Math.max(l,f,u),v=Math.max(c,y,s),d=j(a,h,n,e,r),M=j(p,v,n,e,r);let w=t.prevZ;for(;w&&w.z>=d;){if(w.x>=a&&w.x<=p&&w.y>=h&&w.y<=v&&w!==i&&(l!==w.x||c!==w.y)&&F(l,c,f,y,u,s,w.x,w.y)&&_(w.prev,w,w.next)>=0)return!1;w=w.prevZ}let g=t.nextZ;for(;g&&g.z<=M;){if(g.x>=a&&g.x<=p&&g.y>=h&&g.y<=v&&g!==i&&(l!==g.x||c!==g.y)&&F(l,c,f,y,u,s,g.x,g.y)&&_(g.prev,g,g.next)>=0)return!1;g=g.nextZ}return!0}function f(t,n){let e=t,r=!1;do{const x=e.prev,o=e.next.next;P(x,e,e.next,o,!1)&&q(x,o)&&q(o,x)&&(n.push(x.i,e.i,o.i),D(e),D(e.next),e=t=o,r=!0),e=e.next}while(e!==t);return r?x(e):e}function u(t,n,e,r,i){let l=t;do{let t=l.next.next;for(;t!==l.prev;){if(l.i!==t.i&&T(l,t)){let f=B(l,t);return l=x(l,l.next),f=x(f,f.next),o(l,n,e,r,i),void o(f,n,e,r,i)}t=t.next}l=l.next}while(l!==t)}let c=!1;function y(t,n){return t.x-n.x||t.y-n.y||(t.next.y-t.y)/(t.next.x-t.x)-(n.next.y-n.y)/(n.next.x-n.x)}function s(t,n){const e=function(t,n){let e=n;const r=t.x,x=t.y;let o,i=-1/0;if(O(t,e))return e;for(let n=0,l=0;n<p;n++,l+=4){if(x<h[l+1]||x>h[l+3]||h[l]>r||h[l+2]<=i)continue;const f=w(n);e=g(n);do{if(e.prev.next===e){if(O(t,e.next))return e.next;if(x<=e.y&&x>=e.next.y&&e.next.y!==e.y){const t=e.x+(x-e.y)*(e.next.x-e.x)/(e.next.y-e.y);if(t<=r&&t>i&&(i=t,o=e.x<e.next.x?e:e.next,t===r))return o}}e=e.next}while(e!==f)}if(!o)return null;const l=o.x,f=o.y,u=Math.min(x,f),c=Math.max(x,f);let y=1/0;for(let n=0,s=0;n<p;n++,s+=4){if(h[s+2]<l||h[s]>r||h[s+3]<u||h[s+1]>c)continue;const a=w(n);e=g(n);do{if(e.prev.next===e&&r>=e.x&&e.x>=l&&r!==e.x&&F(x<f?r:i,x,l,f,x<f?i:r,x,e.x,e.y)){const n=Math.abs(x-e.y)/(r-e.x);(q(e,t)||e.y===x&&e.next.y===x&&e.next.x>r)&&(n<y||n===y&&(e.x>o.x||e.x===o.x&&m(o,e)))&&(o=e,y=n)}e=e.next}while(e!==a)}return o}(t,n);if(!e)return n;const r=B(e,t);return M(e,r.next.next),x(r,r.next),x(e,e.next)}const a=16;let h=new Float64Array(0),p=0;const v=[],d=[];function M(t,n){let e=t;do{const t=p++;v[t]=e;let r=1/0,x=1/0,o=-1/0,i=-1/0,l=0;do{const n=e.next;e.z=t,e.x<r&&(r=e.x),e.x>o&&(o=e.x),e.y<x&&(x=e.y),e.y>i&&(i=e.y),n.x<r&&(r=n.x),n.x>o&&(o=n.x),n.y<x&&(x=n.y),n.y>i&&(i=n.y),e=n}while(++l<a&&e!==n);d[t]=e;const f=4*t;h[f]=r,h[f+1]=x,h[f+2]=o,h[f+3]=i}while(e!==n)}function w(t){let n=d[t];for(;n.prev.next!==n;)n=n.next;return d[t]=n,n}function g(t){let n=v[t];for(;n.prev.next!==n;)n=n.next;return v[t]=n,n}function m(t,n){return _(t.prev,t,n.prev)<0&&_(n.next,t,t.next)<0}const Z=[];let A=[],b=new Uint32Array(0),z=new Uint32Array(0);const U=new Uint32Array(256);function I(t,n,e,r,x,o){U.fill(0);for(let n=0;n<t;n++)U[e[n]>>>o&255]++;let i=0;for(let t=0;t<256;t++){const n=U[t];U[t]=i,i+=n}for(let i=0;i<t;i++){const t=e[i],l=U[t>>>o&255]++;r[l]=n[i],x[l]=t}}function j(t,n,e,r,x){return(t=1431655765&((t=858993459&((t=252645135&((t=16711935&((t=(t-e)*x|0)|t<<8))|t<<4))|t<<2))|t<<1))|(n=1431655765&((n=858993459&((n=252645135&((n=16711935&((n=(n-r)*x|0)|n<<8))|n<<4))|n<<2))|n<<1))<<1}function k(t){let n=t,e=t;do{(n.x<e.x||n.x===e.x&&n.y<e.y)&&(e=n),n=n.next}while(n!==t);return e}function F(t,n,e,r,x,o,i,l){return(x-i)*(n-l)>=(t-i)*(o-l)&&(t-i)*(r-l)>=(e-i)*(n-l)&&(e-i)*(o-l)>=(x-i)*(r-l)}function T(t,n){const e=O(t,n)&&_(t.prev,t,t.next)>0&&_(n.prev,n,n.next)>0;return t.next.i!==n.i&&(e||q(t,n)&&q(n,t)&&(0!==_(t.prev,t,n.prev)||0!==_(t,n.prev,n)))&&!function(t,n){const e=Math.min(t.x,n.x),r=Math.max(t.x,n.x),x=Math.min(t.y,n.y),o=Math.max(t.y,n.y);let i=t;do{const l=i.next;if(i.x>r&&l.x>r||i.x<e&&l.x<e||i.y>o&&l.y>o||i.y<x&&l.y<x)i=l;else{if(i.i!==t.i&&l.i!==t.i&&i.i!==n.i&&l.i!==n.i&&P(i,l,t,n))return!0;i=l}}while(i!==t);return!1}(t,n)&&(e||function(t,n){let e=t,r=!1;const x=(t.x+n.x)/2,o=(t.y+n.y)/2;do{const t=e.next;e.y>o!=t.y>o&&x<(t.x-e.x)*(o-e.y)/(t.y-e.y)+e.x&&(r=!r),e=t}while(e!==t);return r}(t,n))}function _(t,n,e){return(n.y-t.y)*(e.x-n.x)-(n.x-t.x)*(e.y-n.y)}function O(t,n){return t.x===n.x&&t.y===n.y}function P(t,n,e,r,x=!0){const o=_(t,n,e),i=_(t,n,r),l=_(e,r,t),f=_(e,r,n);return(o>0&&i<0||o<0&&i>0)&&(l>0&&f<0||l<0&&f>0)||!!x&&(!(0!==o||!S(t,e,n))||(!(0!==i||!S(t,r,n))||(!(0!==l||!S(e,t,r))||!(0!==f||!S(e,n,r)))))}function S(t,n,e){return n.x<=Math.max(t.x,e.x)&&n.x>=Math.min(t.x,e.x)&&n.y<=Math.max(t.y,e.y)&&n.y>=Math.min(t.y,e.y)}function q(t,n){return _(t.prev,t,t.next)<0?_(t,n,t.next)>=0&&_(t,t.prev,n)>=0:_(t,n,t.prev)<0||_(t,t.next,n)<0}function B(t,n){const e=E(t.i,t.x,t.y),r=E(n.i,n.x,n.y),x=t.next,o=n.prev;return t.next=n,n.prev=t,e.next=x,x.prev=e,r.next=e,e.prev=r,o.next=r,r.prev=o,r}function C(t,n,e,r){const x=E(t,n,e);return r?(x.next=r.next,x.prev=r,r.next.prev=x,r.next=x):(x.prev=x,x.next=x),x}function D(t){t.next.prev=t.prev,t.prev.next=t.next,t.prevZ&&(t.prevZ.nextZ=t.nextZ),t.nextZ&&(t.nextZ.prevZ=t.prevZ),c&&function(t,n){const e=4*t.z;n.x<h[e]&&(h[e]=n.x),n.y<h[e+1]&&(h[e+1]=n.y),n.x>h[e+2]&&(h[e+2]=n.x),n.y>h[e+3]&&(h[e+3]=n.y)}(t.prev,t.next)}function E(t,n,e){return{i:t,x:n,y:e,prev:null,next:null,z:0,prevZ:null,nextZ:null}}function G(t,n,e,r){let x=0;for(let o=n,i=e-r;o<e;o+=r)x+=(t[i]-t[o])*(t[o+1]+t[i+1]),i=o;return x}let H,J,K,L,N,Q=0,R=0;function V(t,n,e,r,x,o){return(e-t)*(o-n)-(r-n)*(x-t)}function W(t,n,e,r,x,o,i,l){const f=t-i,u=n-l,c=e-i,y=r-l,s=x-i,a=o-l,h=f*f+u*u,p=c*c+y*y,v=s*s+a*a,d=h+p+v;return f*(y*v-p*a)-u*(c*v-p*s)+h*(c*a-y*s)<=1e-13*d*d}function X(t){return t-t%3+(t+1)%3}t.default=function(t,e,i=2){const l=e&&e.length,f=l?e[0]*i:t.length;n.size&&n.clear();let u=r(t,0,f,i,!0);const v=[];if(!u||u.next===u.prev)return v;let d=0,w=0,g=0;if(l&&(u=function(t,e,o,i){const l=[];for(let x=0,o=e.length;x<o;x++){const f=r(t,e[x]*i,x<o-1?e[x+1]*i:t.length,i,!1);f===f.next&&n.add(f),l.push(k(f))}l.sort(y),function(t,n){const e=Math.ceil((t+2*n)/a)+n+2;h.length<4*e&&(h=new Float64Array(4*e));p=0}(t.length/i,e.length),M(o,o),c=!0;for(let t=0;t<l.length;t++)o=s(l[t],o);return c=!1,x(o)}(t,e,u,i)),t.length>80*i){d=t[0],w=t[1];let n=d,e=w;for(let r=i;r<f;r+=i){const x=t[r],o=t[r+1];x<d&&(d=x),o<w&&(w=o),x>n&&(n=x),o>e&&(e=o)}g=Math.max(n-d,e-w),g=0!==g?32767/g:0}return o(u,v,d,w,g),v},t.deviation=function(t,n,e,r){const x=n&&n.length,o=x?n[0]*e:t.length;let i=Math.abs(G(t,0,o,e));if(x)for(let r=0,x=n.length;r<x;r++){const o=n[r]*e,l=r<x-1?n[r+1]*e:t.length;i-=Math.abs(G(t,o,l,e))}let l=0;for(let n=0;n<r.length;n+=3){const x=r[n]*e,o=r[n+1]*e,i=r[n+2]*e;l+=Math.abs((t[x]-t[i])*(t[o+1]-t[x+1])-(t[x]-t[o])*(t[i+1]-t[x+1]))}return 0===i&&0===l?0:Math.abs((l-i)/i)},t.flatten=function(t){const n=[],e=[],r=t[0][0].length;let x=0,o=0;for(const i of t){for(const t of i)for(let e=0;e<r;e++)n.push(t[e]);o&&(x+=o,e.push(x)),o=i.length}return{vertices:n,holes:e,dimensions:r}},t.refine=function(t,n,e=2){const r=t,x=r.length;if(x<6)return;!function(t){(!H||H.length<t)&&(H=new Int32Array(t));(!J||J.length<t)&&(J=new Int32Array(t));(!N||N.length<t)&&(N=new Uint8Array(t));let n=1;for(;n<4*t;)n<<=1;(!K||K.length<n)&&(K=new Int32Array(n),L=new Uint32Array(n));Q=n-1}(x),R++,J.fill(-1,0,x);let o=0;for(let t=0;t<x;t++){const n=r[t],e=r[X(t)],x=n<e?n:e,i=n<e?e:n;let l=(Math.imul(x,2654435761)^Math.imul(i,2246822507))&Q;for(;L[l]===R;){const n=K[l];if(-1!==n){const e=r[n],f=r[X(n)];if(e===x&&f===i||e===i&&f===x){J[t]=n,J[n]=t,K[l]=-1,N[n]=1,H[o++]=n;break}}l=l+1&Q}L[l]!==R&&(K[l]=t,L[l]=R)}for(;o>0;){const t=H[--o];N[t]=0;const x=J[t];if(-1===x)continue;const i=t-t%3,l=x-x%3,f=i+(t+2)%3,u=i+(t+1)%3,c=l+(x+2)%3,y=l+(x+1)%3,s=r[f],a=r[t],h=r[u],p=r[c],v=n[s*e],d=n[s*e+1],M=n[a*e],w=n[a*e+1],g=n[h*e],m=n[h*e+1],Z=n[p*e],A=n[p*e+1];if(!W(v,d,M,w,g,m,Z,A)&&V(v,d,M,w,Z,A)>0&&V(v,d,Z,A,g,m)>0){r[t]=p,r[x]=s;const n=J[c],e=J[f];J[t]=n,-1!==n&&(J[n]=t),J[x]=e,-1!==e&&(J[e]=x),J[f]=c,J[c]=f,-1!==n&&0===N[t]&&(N[t]=1,H[o++]=t),-1!==e&&0===N[x]&&(N[x]=1,H[o++]=x),-1!==J[u]&&0===N[u]&&(N[u]=1,H[o++]=u),-1!==J[y]&&0===N[y]&&(N[y]=1,H[o++]=y)}}},Object.defineProperty(t,"__esModule",{value:!0})});
 </script>
-<script>// Nucleo do gerador de letreiros - Morumbi 3D (v3)
-// Nome composto vai em duas linhas empilhadas. Produtos: classico, magia, blocado.
-(function (root) {
-  const SIZE = 60, S = 10000, FT = 1;
-  const MARGEM = 1.8;     // mm: invasao extra alem do contato minimo entre letras
-  const MESA = 256;
-
-  // Luminaria: a peca deixa de ser um bloco macico e vira caixa oca, com a
-  // frente fina o bastante para passar luz e o fundo aberto para entrar a
-  // fita de LED. Sem isso, os 60 mm imprimem 600 cm3 de plastico em 10 h e
-  // nao ha onde por a fita.
-  const LUMINARIA = {
-    face: 1.6,        // mm de frente: acima de ~2 mm o PLA branco para de difundir
-    parede: 2.4,      // 6 perimetros de 0,4 — aguenta o vao e nao deixa vazar luz
-    canal: 10,        // largura util minima do canal, para a fita caber deitada
-    cabo: 7,          // largura do rasgo de entrada do cabo
-    alturaCabo: 6     // altura do rasgo, medida a partir do fundo aberto
-  };
-
-  const PRODUTOS = {
-    classico: { nome: 'Clássico', fonte: 'luckiest', capa: 3 },
-    magia:    { nome: 'Magia',    fonte: 'luckiest', faixa: 2.5, cores: 2 },
-    gamer:    { nome: 'Gamer',    fonte: 'gamer',    capa: 3, alturaMin: 42, cores: 2 },
-    cinema:   { nome: 'Cinema',   fonte: 'cinema',   capa: 3, cores: 2 },
-    futuro:   { nome: 'Futuro',   fonte: 'futuro',   capa: 3, cores: 2 },
-    terror:   { nome: 'Terror',   fonte: 'terror',   capa: 3, cores: 2 }
-  };
-
-  function api() { return root.ClipperLib || require('clipper-lib'); }
-  function ec() { const m = root.earcut || require('earcut'); return m.default || m; }
-
-  const cub = (a,b,c,d,t) => { const u=1-t; return u*u*u*a + 3*u*u*t*b + 3*u*t*t*c + t*t*t*d; };
-  const qua = (a,b,c,t) => { const u=1-t; return u*u*a + 2*u*t*b + t*t*c; };
-
-  function pathToPolys(path, segs) {
-    segs = segs || 14;
-    const polys = []; let cur = null, px=0, py=0, sx=0, sy=0;
-    const add = (x,y) => cur.push({ X: Math.round(x*S), Y: Math.round(-y*S) });
-    for (const c of path.commands) {
-      if (c.type==='M'){ if(cur&&cur.length>2)polys.push(cur); cur=[]; add(c.x,c.y); px=sx=c.x; py=sy=c.y; }
-      else if (c.type==='L'){ add(c.x,c.y); px=c.x; py=c.y; }
-      else if (c.type==='C'){ for(let i=1;i<=segs;i++){const t=i/segs; add(cub(px,c.x1,c.x2,c.x,t), cub(py,c.y1,c.y2,c.y,t));} px=c.x; py=c.y; }
-      else if (c.type==='Q'){ for(let i=1;i<=segs;i++){const t=i/segs; add(qua(px,c.x1,c.x,t), qua(py,c.y1,c.y,t));} px=c.x; py=c.y; }
-      else if (c.type==='Z'){ if(cur&&cur.length>2)polys.push(cur); cur=null; px=sx; py=sy; }
-    }
-    if (cur && cur.length>2) polys.push(cur);
-    return polys;
-  }
-
-  function uniao(lista) {
-    const L=api(), c=new L.Clipper(), sol=new L.Paths();
-    lista.forEach(p => { if (p && p.length) c.AddPaths(p, 0, true); });
-    c.Execute(L.ClipType.ctUnion, sol, FT, FT);
-    return sol;
-  }
-  function diferenca(a, b) {
-    const L=api(), c=new L.Clipper(), sol=new L.Paths();
-    c.AddPaths(a,0,true); c.AddPaths(b,1,true);
-    c.Execute(L.ClipType.ctDifference, sol, FT, FT);
-    return sol;
-  }
-  function inflar(paths, d) {
-    const L=api(), co=new L.ClipperOffset(2, 0.25), sol=new L.Paths();
-    co.AddPaths(paths, L.JoinType.jtRound, L.EndType.etClosedPolygon);
-    co.Execute(sol, d*S);
-    return sol;
-  }
-  function mover(paths, dx, dy) {
-    const ix=Math.round((dx||0)*S), iy=Math.round((dy||0)*S);
-    return paths.map(p => p.map(pt => ({ X: pt.X+ix, Y: pt.Y+iy })));
-  }
-  function escalar(paths, s) {
-    return paths.map(p => p.map(pt => ({ X: Math.round(pt.X*s), Y: Math.round(pt.Y*s) })));
-  }
-  function caixa(paths) {
-    let a=Infinity,b=-Infinity,c=Infinity,d=-Infinity;
-    for (const p of paths) for (const pt of p) {
-      if(pt.X<a)a=pt.X; if(pt.X>b)b=pt.X; if(pt.Y<c)c=pt.Y; if(pt.Y>d)d=pt.Y;
-    }
-    return { minX:a/S, maxX:b/S, minY:c/S, maxY:d/S, w:(b-a)/S, h:(d-c)/S };
-  }
-  function analisar(paths) {
-    const L=api(); let corpos=0, vazados=0;
-    for (const p of paths) (L.Clipper.Area(p) > 0 ? corpos++ : vazados++);
-    return { corpos, vazados };
-  }
-  function retangulo(x0, y0, x1, y1) {
-    const q = v => Math.round(v*S);
-    return [[{X:q(x0),Y:q(y0)}, {X:q(x1),Y:q(y0)}, {X:q(x1),Y:q(y1)}, {X:q(x0),Y:q(y1)}]];
-  }
-
-  // Escava a peca para virar luminaria: parede em volta, frente fina na
-  // saida da luz, fundo aberto e um rasgo lateral para o cabo.
-  // Devolve null quando o traco e fino demais para parede dos dois lados —
-  // ai a peca continua macica, e quem chamou avisa por que.
-  function canalDeLuz(contorno, espessura) {
-    const cavidade = uniao([inflar(contorno, -LUMINARIA.parede)]);
-    if (!cavidade.length) return null;
-
-    // A fita so entra se sobrar uma faixa da largura dela: erodir o canal
-    // pela metade da largura e ver se algo resiste responde isso.
-    const folga = uniao([inflar(cavidade, -LUMINARIA.canal/2)]);
-    const bb = caixa(contorno);
-    const meio = (bb.minX + bb.maxX) / 2;
-    const rasgo = retangulo(meio - LUMINARIA.cabo/2, bb.minY - LUMINARIA.parede*2,
-                            meio + LUMINARIA.cabo/2, bb.minY + LUMINARIA.parede*2);
-    const anel = diferenca(contorno, cavidade);
-    const zFace = espessura - LUMINARIA.face;
-    const comRasgo = diferenca(anel, rasgo);
-    const alturaCabo = Math.min(LUMINARIA.alturaCabo, zFace/2);
-
-    return {
-      cavidade, anel, zFace,
-      passaFita: folga.length > 0,
-      areaCanal: cavidade.length ? Math.abs(api().Clipper.Area(cavidade[0]))/(S*S) : 0,
-      // O fundo (z=0) fica aberto de proposito: e por ele que entra a fita.
-      camadasCorpo: [
-        { paths: comRasgo, z0: 0,          z1: alturaCabo },
-        { paths: anel,     z0: alturaCabo, z1: zFace }
-      ],
-      camadasFace: [ { paths: contorno, z0: zFace, z1: espessura } ]
-    };
-  }
-
-  // divide o nome em ate 2 linhas, equilibrando o comprimento
-  function dividirLinhas(word) {
-    const ps = word.split(' ').filter(Boolean);
-    if (ps.length <= 1) return [word];
-    let corte = 1, dif = Infinity;
-    for (let i=1;i<ps.length;i++) {
-      const a = ps.slice(0,i).join('').length, b = ps.slice(i).join('').length;
-      if (Math.abs(a-b) < dif) { dif = Math.abs(a-b); corte = i; }
-    }
-    return [ps.slice(0,corte).join(' '), ps.slice(corte).join(' ')];
-  }
-
-  // altura padrao por tamanho da maior linha: nome comprido pede letra menor
-  function alturaAuto(linhas, larguraAlvo) {
-    const n = Math.max(...linhas.map(l => l.replace(/ /g,'').length));
-    const base = n <= 4 ? 60 : n <= 6 ? 55 : 48;
-    return Math.round(base * ((larguraAlvo || 220) / 220));
-  }
-
-  function Gerador(fontes) {
-    const cacheG = {}, cacheO = {};
-    let F = fontes.luckiest, FN = 'luckiest';
-
-    function letra(ch) {
-      const k = FN + ch;
-      if (cacheG[k]) return cacheG[k];
-      let paths = uniao([pathToPolys(F.charToGlyph(ch).getPath(0,0,SIZE))]);
-      let dil = 0;
-      if (analisar(paths).corpos > 1) {
-        for (const d of [0.4,0.8,1.2,1.6,2.0,2.6,3.2,4.0]) {
-          const t = uniao([inflar(paths, d)]);
-          if (analisar(t).corpos === 1) { paths = t; dil = d; break; }
-        }
-      }
-      return (cacheG[k] = { paths, dil, bb: caixa(paths) });
-    }
-
-    function encaixeMinimo(a, b) {
-      const k = FN + a + b;
-      if (k in cacheO) return cacheO[k];
-      const A = letra(a), B = letra(b);
-      const ok = ov => analisar(uniao([A.paths, mover(B.paths, (A.bb.maxX-ov)-B.bb.minX, 0)])).corpos === 1;
-      let lo=0, hi=2, achou=false;
-      while (hi <= 48) { if (ok(hi)) { achou=true; break; } lo=hi; hi*=2; }
-      if (!achou) return (cacheO[k] = null);
-      for (let i=0;i<14;i++){ const m=(lo+hi)/2; ok(m) ? hi=m : lo=m; }
-      return (cacheO[k] = hi);
-    }
-
-    function linhaEncaixada(txt, margem) {
-      const lista = []; let cursor = 0, prev = null;
-      for (const ch of txt.replace(/ /g, '')) {
-        const G = letra(ch);
-        let tx;
-        if (prev === null) tx = cursor - G.bb.minX;
-        else {
-          const P = letra(prev);
-          const min = encaixeMinimo(prev, ch) || 0;
-          const fina = Math.min(P.bb.maxX - P.bb.minX, G.bb.maxX - G.bb.minX);
-          // a margem de seguranca nunca pode comer mais de 28% da letra mais fina
-          const limite = 0.28 * fina;
-          let ov = min + margem;
-          if (ov > limite) ov = Math.max(limite, min + margem * 0.2);
-          tx = (cursor - ov) - G.bb.minX;
-        }
-        lista.push(mover(G.paths, tx, 0));
-        cursor = tx + G.bb.maxX; prev = ch;
-      }
-      const P = uniao(lista);
-      return { paths: P, bb: caixa(P) };
-    }
-
-    function linhaNatural(txt) {
-      const k = SIZE / F.unitsPerEm;
-      const lista = []; let x = 0, ant = null;
-      for (const ch of txt.replace(/ /g, '')) {
-        const g = F.charToGlyph(ch);
-        if (ant) x += (F.getKerningValue(ant, g) || 0) * k;
-        lista.push(mover(letra(ch).paths, x, 0));
-        x += g.advanceWidth * k; ant = g;
-      }
-      const P = uniao(lista);
-      return { paths: P, bb: caixa(P) };
-    }
-
-    // empilha duas linhas centralizadas; se exigirContato, procura o maior
-    // afastamento que ainda deixa a peca em um corpo so
-    function empilhar(linhas, folga, exigirContato) {
-      if (linhas.length === 1) return { paths: linhas[0].paths, folga: 0 };
-      const larg = Math.max(...linhas.map(l => l.bb.w));
-      const c0 = mover(linhas[0].paths, (larg - linhas[0].bb.w)/2 - linhas[0].bb.minX, 0);
-      const c1 = mover(linhas[1].paths, (larg - linhas[1].bb.w)/2 - linhas[1].bb.minX, 0);
-      const b0 = linhas[0].bb, b1 = linhas[1].bb;
-      const monta = f => uniao([ mover(c0, 0, (b1.maxY - b1.minY) + f - b0.minY), mover(c1, 0, -b1.minY) ]);
-      if (!exigirContato) return { paths: monta(folga), folga };
-      if (analisar(monta(folga)).corpos === 1) return { paths: monta(folga), folga };
-      let lo = -0.28 * (b0.maxY - b0.minY), hi = folga;
-      if (analisar(monta(lo)).corpos !== 1) return { paths: monta(lo), folga: lo, falhou: true };
-      for (let i=0;i<16;i++){ const m=(lo+hi)/2; analisar(monta(m)).corpos === 1 ? lo=m : hi=m; }
-      return { paths: monta(lo), folga: lo };
-    }
-
-    // 1o garante que a moldura une tudo numa peca so;
-    // 2o, dentro do que une, pega a maior que ainda preserva os vazados
-    function escolherMoldura(paths, teto) {
-      const base = analisar(paths).vazados;
-      const escala = [1.2, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 7, 8, 10, 12, 15];
-      let dMin = null;
-      for (const d of escala) {
-        if (analisar(uniao([inflar(paths, d)])).corpos === 1) { dMin = d; break; }
-      }
-      if (dMin === null) return { d: 1.2, une: false, preserva: false };
-      // maior valor ate o teto que une e preserva os vazados
-      for (let i = escala.length - 1; i >= 0; i--) {
-        const d = escala[i];
-        if (d < dMin || d > teto) continue;
-        const a = analisar(uniao([inflar(paths, d)]));
-        if (a.corpos === 1 && a.vazados >= base) return { d, une: true, preserva: true };
-      }
-      // nenhuma ate o teto serviu: procura acima dele a menor que preserva
-      for (const d of escala) {
-        if (d < dMin || d > teto * 2) continue;
-        const a = analisar(uniao([inflar(paths, d)]));
-        if (a.corpos === 1 && a.vazados >= base) return { d, une: true, preserva: true, acimaDoTeto: true };
-      }
-      const a = analisar(uniao([inflar(paths, dMin)]));
-      return { d: dMin, une: true, preserva: a.vazados >= base };
-    }
-
-    function gerar(nome, larguraAlvo, espessura, produto, duasLinhas, alturaMax, baseMM, luminaria) {
-      const cfg = PRODUTOS[produto] || PRODUTOS.classico;
-      // Peca grossa e luminaria por padrao: e o que a espessura de 60 mm da
-      // interface sempre prometeu. Da para forcar dos dois lados passando o
-      // ultimo argumento.
-      if (luminaria === undefined) luminaria = espessura >= 40;
-      FN = cfg.fonte; F = fontes[FN] || fontes.luckiest;
-      const word = nome.toUpperCase().trim().replace(/\s+/g, ' ');
-      const linhas = duasLinhas === false ? [word] : dividirLinhas(word);
-
-      const dils = {};
-      for (const ch of new Set(word.replace(/ /g,''))) { const d = letra(ch).dil; if (d) dils[ch] = d; }
-
-      const altUsada = alturaMax === 'auto' ? alturaAuto(linhas, larguraAlvo) : alturaMax;
-      const tetoAlt = altUsada ? altUsada * linhas.length : Infinity;
-      // alguns produtos nao podem achatar: a peca cresce em largura para manter altura minima
-      const pisoAlt = cfg.alturaMin ? cfg.alturaMin * linhas.length * ((larguraAlvo||220)/220) : 0;
-      // com base: letras no espacamento natural, ligadas por uma barra na linha de base
-      const comBase = baseMM > 0;
-      const linhaComBase = (txt, esc) => {
-        const L = linhaNatural(txt);
-        const h = baseMM / esc, m = 0.5 / esc;
-        // ancora a base no ponto mais baixo das letras, nao na linha de base da fonte
-        const y0 = L.bb.minY, y1 = L.bb.minY + h;
-        const barra = [[{X:Math.round((L.bb.minX-m)*S),Y:Math.round(y0*S)},{X:Math.round((L.bb.maxX+m)*S),Y:Math.round(y0*S)},
-                        {X:Math.round((L.bb.maxX+m)*S),Y:Math.round(y1*S)},{X:Math.round((L.bb.minX-m)*S),Y:Math.round(y1*S)}]];
-        const P = uniao([L.paths, barra]);
-        return { paths: P, bb: caixa(P) };
-      };
-      let esc = 1, EMP;
-      for (let i=0;i<3;i++) {
-        const ls = linhas.map(t => comBase ? linhaComBase(t, esc) : linhaEncaixada(t, MARGEM/esc));
-        EMP = empilhar(ls, 1.5/esc, true);
-        const b = caixa(EMP.paths);
-        const tetoMesa = (MESA * Math.SQRT2 - 12) / (b.w + b.h);   // limite fisico da impressora
-        esc = Math.min(Math.max(Math.min(larguraAlvo / b.w, tetoAlt / b.h), pisoAlt / b.h), tetoMesa);
-      }
-      const encaixado = escalar(EMP.paths, esc);
-
-      let escN = 1, NAT;
-      for (let i=0;i<3;i++) {
-        NAT = empilhar(linhas.map(t => linhaNatural(t)), 2.0/escN, false);
-        const b = caixa(NAT.paths);
-        const tetoMesaN = (MESA * Math.SQRT2 - 50) / (b.w + b.h);   // desconta a moldura que vem depois
-        escN = Math.min(Math.max(Math.min(larguraAlvo / b.w, tetoAlt / b.h), pisoAlt / b.h), tetoMesaN);
-      }
-      const nat = escalar(NAT.paths, escN);
-
-      const t = espessura;
-      const simples = { rot:'', camadas:[{paths:encaixado, z0:0, z1:t}],
-                        bb: caixa(encaixado), corpos: analisar(encaixado).corpos, esperado:1 };
-      const base = { word, linhas, duas: linhas.length>1, dils, esc, produto,
-                     nomeProduto: cfg.nome, simples, viavel:true, motivo:null,
-                     larguraAlvo, larguraReal: caixa(encaixado).w, altUsada, comBase };
-
-      if (luminaria) {
-        const canal = canalDeLuz(encaixado, t);
-        if (!canal) {
-          // Traco fino demais para parede dos dois lados: sai macica mesmo,
-          // e o aviso diz o que fazer (letra maior ou produto mais grosso).
-          return Object.assign(base, { luminaria: { possivel: false, parede: LUMINARIA.parede,
-            motivo: 'O traço da letra não comporta parede de ' + LUMINARIA.parede +
-                    'mm dos dois lados. Aumente a largura ou escolha uma fonte mais cheia.' } });
-        }
-        const bbL = caixa(encaixado);
-        const info = { possivel: true, passaFita: canal.passaFita, face: LUMINARIA.face,
-                       parede: LUMINARIA.parede, canal: LUMINARIA.canal,
-                       cabo: LUMINARIA.cabo, areaCanal: canal.areaCanal,
-                       motivo: canal.passaFita ? null :
-                         'O canal ficou mais estreito que os ' + LUMINARIA.canal +
-                         'mm da fita. Serve para LED em fio, não para fita.' };
-        // Peca UNICA, sempre. Separar a frente em outra cor parece bom, mas
-        // nao fecha: numa letra com contra-forma ("O", "A", "e"), escavar
-        // deixa a parede de dentro como um anel solto, preso a nada. Quem
-        // segura essa parede e a frente — tirando a frente, ela cai.
-        const inteira = { rot: 'LUMINARIA',
-          camadas: canal.camadasCorpo.concat(canal.camadasFace),
-          bb: bbL, corpos: analisar(encaixado).corpos, esperado: 1 };
-        base.simples = inteira;
-        const ilhas = analisar(canal.anel).corpos;
-        if (ilhas > 1) {
-          info.paredeSolta = ilhas - 1;
-          info.motivoPecaUnica = (ilhas === 2
-            ? 'A contra-forma da letra deixa uma parede interna que só a frente segura'
-            : 'As contra-formas deixam ' + (ilhas-1) + ' paredes internas que só a frente segura')
-            + ': a luminária sai em peça única.';
-        }
-        return Object.assign(base, { luminaria: info, pecas: [inteira] });
-      }
-
-      if (produto === 'magia') {
-        const M = escolherMoldura(nat, 3.5), dA = M.une ? M.d : 0;
-        if (!dA || !M.preserva) {
-          return Object.assign(base, { viavel:false, pecas:[], delta:dA,
-            motivo:'Nesse tamanho a moldura fecharia o miolo das letras. Use um tamanho maior ou o modelo Clássico.' });
-        }
-        const faixa = Math.min(cfg.faixa, (t-1)/2), h1 = t - faixa;
-        const camadas = [
-          { rot:'MAGIA-BASE', p: uniao([inflar(nat,dA)]), z0:0,  z1:h1 },
-          { rot:'MAGIA-FACE', p: nat,                     z0:h1, z1:t }
-        ];
-        return Object.assign(base, { delta:dA, pecas: camadas.map((c,i) => ({
-          rot:c.rot, camadas:[{paths:c.p, z0:c.z0, z1:c.z1}], bb:caixa(c.p),
-          corpos: analisar(c.p).corpos, esperado: i===0 ? 1 : null })) });
-      }
-
-      const M = escolherMoldura(nat, 4.0);
-      const delta = M.d;
-      const moldura = uniao([inflar(nat, delta)]);
-      const cap = Math.min(cfg.capa, t-1), corpo = t - cap;
-      const anel = diferenca(moldura, nat);
-      return Object.assign(base, { delta, molduraFechouVazados: M.une && !M.preserva, pecas: [
-        { rot:'HIBRIDO-CORPO', camadas:[{paths:moldura,z0:0,z1:corpo},{paths:anel,z0:corpo,z1:t}],
-          bb:caixa(moldura), corpos:analisar(moldura).corpos, esperado:1 },
-        { rot:'HIBRIDO-CAPA', camadas:[{paths:nat,z0:corpo,z1:t}],
-          bb:caixa(nat), corpos:analisar(nat).corpos, esperado:null }
-      ]});
-    }
-    return { gerar, letra };
-  }
-
-  // ---------- STL ----------
-  function grupos(paths) {
-    const L=api(), c=new L.Clipper(), tree=new L.PolyTree();
-    c.AddPaths(paths, 0, true); c.Execute(L.ClipType.ctUnion, tree, FT, FT);
-    const out=[], pilha=tree.m_Childs.slice();
-    while (pilha.length) {
-      const n = pilha.pop();
-      if (!n.IsHole()) {
-        const buracos=[];
-        for (const f of n.m_Childs) { buracos.push(f.m_polygon); pilha.push(...f.m_Childs); }
-        out.push({ outer:n.m_polygon, buracos });
-      } else pilha.push(...n.m_Childs);
-    }
-    return out;
-  }
-  function tampa(paths, z, cima) {
-    const tris=[];
-    for (const g of grupos(paths)) {
-      const v=[], hi=[];
-      const push = p => { for (const pt of p) v.push(pt.X/S, pt.Y/S); };
-      push(g.outer);
-      for (const b of g.buracos) { hi.push(v.length/2); push(b); }
-      const idx = ec()(v, hi, 2);
-      for (let i=0;i<idx.length;i+=3) {
-        const P = k => [v[k*2], v[k*2+1], z];
-        const a=P(idx[i]), b=P(idx[i+1]), c=P(idx[i+2]);
-        tris.push(cima ? [a,b,c] : [a,c,b]);
-      }
-    }
-    return tris;
-  }
-  function paredes(paths, z0, z1) {
-    const tris=[];
-    for (const g of grupos(paths)) for (const ct of [g.outer].concat(g.buracos)) {
-      for (let i=0;i<ct.length;i++) {
-        const p=ct[i], q=ct[(i+1)%ct.length];
-        const x1=p.X/S,y1=p.Y/S,x2=q.X/S,y2=q.Y/S;
-        if (x1===x2 && y1===y2) continue;
-        tris.push([[x1,y1,z0],[x2,y2,z0],[x2,y2,z1]]);
-        tris.push([[x1,y1,z0],[x2,y2,z1],[x1,y1,z1]]);
-      }
-    }
-    return tris;
-  }
-  // Junta em T: vertice pousado no MEIO da aresta de outra face. Acontece
-  // onde uma camada tem um recorte que a de cima nao tem — o rasgo do cabo
-  // da luminaria e o caso classico. A geometria esta certa, mas a aresta
-  // fica sem par e o fatiador ve a malha como aberta.
-  //
-  // O conserto e local: acha a aresta de borda, junta TODOS os vertices que
-  // estao em cima dela e divide o triangulo dono em leque. Dividir um ponto
-  // por vez nao resolve quando ha varios na mesma aresta.
-  function costurarJuntasT(tris, tol) {
-    tol = tol || 1e-4;
-    const chave = p => p[0].toFixed(4) + ',' + p[1].toFixed(4) + ',' + p[2].toFixed(4);
-    const indice = new Map(), vertices = [];
-    let faces = [];
-    for (const t of tris) {
-      const f = [];
-      for (const p of t) {
-        const k = chave(p);
-        let i = indice.get(k);
-        if (i === undefined) { i = vertices.length; indice.set(k, i); vertices.push(p); }
-        f.push(i);
-      }
-      if (f[0] !== f[1] && f[1] !== f[2] && f[0] !== f[2]) faces.push(f);
-    }
-
-    const dist = (a, b) => Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
-    for (let volta = 0; volta < 6; volta++) {
-      const conta = new Map();
-      for (const [a,b,c] of faces) for (const [i,j] of [[a,b],[b,c],[c,a]]) {
-        const k = i < j ? i+'_'+j : j+'_'+i;
-        conta.set(k, (conta.get(k) || 0) + 1);
-      }
-      const bordas = [];
-      for (const [k,n] of conta) if (n === 1) bordas.push(k.split('_').map(Number));
-      if (!bordas.length) break;
-
-      const candidatos = new Set();
-      for (const [i,j] of bordas) { candidatos.add(i); candidatos.add(j); }
-
-      const corte = new Map();
-      for (const [i,j] of bordas) {
-        const a = vertices[i], b = vertices[j], L = dist(a,b);
-        if (L < tol) continue;
-        const dentro = [];
-        for (const v of candidatos) {
-          if (v === i || v === j) continue;
-          const p = vertices[v];
-          const t = ((p[0]-a[0])*(b[0]-a[0]) + (p[1]-a[1])*(b[1]-a[1]) + (p[2]-a[2])*(b[2]-a[2])) / (L*L);
-          if (!(t > 1e-9 && t < 1-1e-9)) continue;
-          const proj = [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
-          if (dist(p, proj) > tol) continue;
-          dentro.push([t, v]);
-        }
-        if (dentro.length) {
-          dentro.sort((x,y) => x[0]-y[0]);
-          corte.set(i+'_'+j, dentro.map(d => d[1]));
-        }
-      }
-      if (!corte.size) break;
-
-      const novas = [];
-      for (const face of faces) {
-        let dividiu = false;
-        for (let k = 0; k < 3; k++) {
-          const a = face[k], b = face[(k+1)%3], c = face[(k+2)%3];
-          const direto = corte.get(a+'_'+b), inverso = corte.get(b+'_'+a);
-          if (!direto && !inverso) continue;
-          const meio = direto ? direto : inverso.slice().reverse();
-          const corrente = [a].concat(meio, [b]);
-          for (let n = 0; n < corrente.length-1; n++) novas.push([corrente[n], corrente[n+1], c]);
-          dividiu = true;
-          break;
-        }
-        if (!dividiu) novas.push(face);
-      }
-      faces = novas;
-    }
-    return faces.map(f => f.map(i => vertices[i]));
-  }
-
-  function stlBinario(camadas) {
-    let tris = tampa(camadas[0].paths, camadas[0].z0, false);
-    for (let i=0;i<camadas.length;i++) {
-      const c = camadas[i];
-      tris = tris.concat(paredes(c.paths, c.z0, c.z1));
-      if (i < camadas.length-1) {
-        const n = camadas[i+1];
-        const sobe = diferenca(c.paths, n.paths); if (sobe.length) tris = tris.concat(tampa(sobe, c.z1, true));
-        const desce = diferenca(n.paths, c.paths); if (desce.length) tris = tris.concat(tampa(desce, c.z1, false));
-      }
-    }
-    const u = camadas[camadas.length-1];
-    tris = tris.concat(tampa(u.paths, u.z1, true));
-    tris = costurarJuntasT(tris);
-
-    const buf = new ArrayBuffer(84 + tris.length*50), dv = new DataView(buf);
-    dv.setUint32(80, tris.length, true);
-    let o = 84;
-    for (const t of tris) {
-      const ux=t[1][0]-t[0][0], uy=t[1][1]-t[0][1], uz=t[1][2]-t[0][2];
-      const vx=t[2][0]-t[0][0], vy=t[2][1]-t[0][1], vz=t[2][2]-t[0][2];
-      let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
-      const m = Math.hypot(nx,ny,nz)||1;
-      dv.setFloat32(o,nx/m,true); dv.setFloat32(o+4,ny/m,true); dv.setFloat32(o+8,nz/m,true); o+=12;
-      for (const q of t) { dv.setFloat32(o,q[0],true); dv.setFloat32(o+4,q[1],true); dv.setFloat32(o+8,q[2],true); o+=12; }
-      dv.setUint16(o,0,true); o+=2;
-    }
-    return { buffer: buf, n: tris.length };
-  }
-
-  const M = { Gerador, alturaAuto, stlBinario, caixa, analisar, grupos, MESA, SIZE, PRODUTOS };
-  if (typeof module !== 'undefined' && module.exports) module.exports = M;
-  root.MorumbiNucleo = M;
-})(typeof window !== 'undefined' ? window : globalThis);
-</script>
+<!-- O nucleo saiu daqui no sprint C1. Estava inline porque comecou como um
+     arquivo so; com o segundo gerador a caminho, codigo comum preso dentro
+     de uma tela vira codigo copiado. Caminho relativo de proposito: a pagina
+     roda servida pelo Flask e aberta como file:// pelas ferramentas. -->
+<script src="nucleo/nucleo.js"></script>
+<script src="nucleo/oficina.js"></script>
+<script src="nucleo/letreiro.js"></script>
 <script>
 (function(){
-  const MESA = 256;
+  const MESA = MorumbiNucleo.MESA;   // a mesa e da plataforma, nao desta tela
   // cada espessura tem seu preenchimento: parede fina precisa de mais miolo para nao trincar
-  const ESPESSURAS = { 6:{infill:25, rot:"parede"}, 12:{infill:8, rot:"mesa"}, 60:{infill:6, rot:"luminaria"} };
+  // ESPESSURAS, a estimativa, o que cabe na mesa, o preco e o nome do arquivo
+  // moraram aqui ate o C1. Sao da plataforma: o proximo gerador precisa dos
+  // MESMOS numeros, e duas copias viram dois numeros diferentes no dia em que
+  // um deles for corrigido.
+  const O = MorumbiOficina, ESPESSURAS = O.ESPESSURAS;
   const CORES = [["Branco","#F2F0EA"],["Preto","#23262A"],["Vermelho","#C0392B"],["Azul","#1E63A8"],
     ["Rosa","#E0669A"],["Amarelo","#E8B92E"],["Verde","#3E9B54"],["Roxo","#7B52AB"],
     ["Laranja","#E0752A"],["Dourado","#C9A227"],["Prata","#B9BEC4"]];
   const hex = n => (CORES.find(c=>c[0]===n)||[,"#888"])[1];
   const $ = id => document.getElementById(id);
 
-  const est = { largura:220, versao:1, produto:"classico", duas:true, alt:"auto", base:8, esp:12 };
+  const PADRAO = { largura:220, versao:1, produto:"classico", duas:true, alt:"auto", base:8, esp:12 };
+  const CHAVE = "morumbi3d.letreiro";
+
+  // Reimprimir e regerar: sem isto, refazer a peca de um cliente e caçar o
+  // arquivo antigo e adivinhar em que tamanho ele saiu. O nome fica junto
+  // porque e ele que manda no resto.
+  function guardado() {
+    try {
+      const bruto = localStorage.getItem(CHAVE);
+      if (!bruto) return null;
+      const g = JSON.parse(bruto);
+      // So o que o gerador entende: chave desconhecida vinda de uma versao
+      // antiga nao pode virar parametro.
+      const limpo = {};
+      for (const k of Object.keys(PADRAO)) if (k in g) limpo[k] = g[k];
+      return { est: limpo, nome: typeof g.nome === "string" ? g.nome : null };
+    } catch (e) { return null; }
+  }
+  function guardar() {
+    try { localStorage.setItem(CHAVE, JSON.stringify({ ...est, nome: $("nome").value })); }
+    catch (e) { /* aba anonima, ou disco cheio: nao e motivo para travar a tela */ }
+  }
+
+  const salvo = guardado();
+  const est = Object.assign({}, PADRAO, (salvo && salvo.est) || {});
   let G=null, R=null, atual=null;
 
   ["c0","c1","c2"].forEach((id,i)=>{
@@ -8366,21 +7869,21 @@ canvas{width:100%;height:auto;display:block;border-radius:6px}
       const b = e.target.closest(".opt"); if(!b || b.disabled) return;
       [...$(id).children].forEach(x=>x.setAttribute("aria-pressed", x===b));
       est[chave] = tipo === "num" ? +b.dataset.v : tipo === "bool" ? b.dataset.v === "2" : b.dataset.v;
-      ajustarControles(); agendar();
+      ajustarControles(); agendar(); guardar();
     });
   }
   grupo("tam","largura","num"); grupo("ver","versao","num");
   grupo("prod","produto","txt"); grupo("disp","duas","bool"); grupo("base","base","num");
-  $("esp").addEventListener("change", ()=>{ est.esp = +$("esp").value; agendar(); });
+  $("esp").addEventListener("change", ()=>{ est.esp = +$("esp").value; agendar(); guardar(); });
   $("piso").addEventListener("input", pintar);
   $("pgrama").addEventListener("input", pintar);
-  $("alt").addEventListener("change", ()=>{ const v=$("alt").value; est.alt = v==="auto"?"auto":+v; agendar(); });
-  $("nome").addEventListener("input", ()=>{ ajustarControles(); agendar(); });
+  $("alt").addEventListener("change", ()=>{ const v=$("alt").value; est.alt = v==="auto"?"auto":+v; agendar(); guardar(); });
+  $("nome").addEventListener("input", ()=>{ ajustarControles(); agendar(); guardar(); });
 
   function ajustarControles(){
     const composto = /\s/.test($("nome").value.trim());
     $("boxDisp").hidden = !composto;
-    const fixo = MorumbiNucleo.PRODUTOS[est.produto] && MorumbiNucleo.PRODUTOS[est.produto].cores;
+    const fixo = MorumbiLetreiro.PRODUTOS[est.produto] && MorumbiLetreiro.PRODUTOS[est.produto].cores;
     $("boxVer").hidden = !!fixo;
     const n = fixo || est.versao;
     $("boxBase").hidden = n !== 1;
@@ -8392,34 +7895,6 @@ canvas{width:100%;height:auto;display:block;border-radius:6px}
   let timer=null;
   function agendar(){ clearTimeout(timer); timer = setTimeout(rodar, 220); }
 
-  // densidade efetiva: cascas solidas + preenchimento. Calibrada no MUNIR impresso
-  // (66,19g em 1h46 com 15mm e 8% de infill).
-  function estimar(vol, esp, oca){
-    // Peca ja escavada (luminaria): o volume que sobrou E a parede, e parede
-    // de 2,4 mm imprime cheia. Aplicar o preenchimento de 6% aqui erraria o
-    // filamento por quase dez vezes — para baixo, que e o lado que da
-    // prejuizo na venda.
-    if (oca) { const g = vol * 1.22; return { g, min: g*1.6 }; }
-    const inf = (ESPESSURAS[esp] || {infill:8}).infill / 100;
-    const casca = Math.min(2.4 / esp, 1);          // ~1,2mm solido em cima e embaixo
-    const d = Math.min(1.24 * (casca + inf * (1 - casca)) + 0.02, 1.24);
-    const g = vol * d;
-    return { g, min: g*1.6 };
-  }
-  function volDe(camadas){
-    let v = 0;
-    for(const c of camadas){
-      let a = 0;
-      for(const p of c.paths) a += ClipperLib.Clipper.Area(p);
-      v += (a/1e8) * (c.z1 - c.z0);
-    }
-    return v/1000;
-  }
-  function cabe(w,h){
-    if(w <= MESA && h <= MESA) return {ok:true, ang:0, uso:Math.max(w,h)};
-    const d = (w+h)/Math.SQRT2;
-    return {ok: d <= MESA, ang:45, uso:d};
-  }
 
   function rodar(){
     const nome = $("nome").value.trim();
@@ -8428,7 +7903,7 @@ canvas{width:100%;height:auto;display:block;border-radius:6px}
     setTimeout(()=>{
       let falha = null;
       try{
-        R = G.gerar(nome, est.largura, est.esp, est.produto, est.duas, est.alt === "auto" ? "auto" : (est.alt || null), ((MorumbiNucleo.PRODUTOS[est.produto]||{}).cores || est.versao) === 1 ? est.base : 0);
+        R = G.gerar(nome, est.largura, est.esp, est.produto, est.duas, est.alt === "auto" ? "auto" : (est.alt || null), ((MorumbiLetreiro.PRODUTOS[est.produto]||{}).cores || est.versao) === 1 ? est.base : 0);
         atual = montar();
       }catch(err){ atual = null; falha = err; }
       try{ pintar(); }catch(err){ falha = falha || err; }
@@ -8439,16 +7914,18 @@ canvas{width:100%;height:auto;display:block;border-radius:6px}
   function montar(){
     const slug = R.word.replace(/ /g,"-");
     const prod = est.produto.toUpperCase();
-    const fixo = MorumbiNucleo.PRODUTOS[est.produto] && MorumbiNucleo.PRODUTOS[est.produto].cores;
+    const fixo = MorumbiLetreiro.PRODUTOS[est.produto] && MorumbiLetreiro.PRODUTOS[est.produto].cores;
     const n = fixo || est.versao;
     const lista = n === 1 ? [R.simples] : (R.viavel ? R.pecas : []);
     return lista.map((s,i)=>{
       const cor = $(["c0","c1","c2"][i]).value;
       const t = Math.round(s.camadas[s.camadas.length-1].z1 - s.camadas[0].z0);
       const rot = s.rot ? s.rot : prod;
-      return Object.assign({}, s, { cor,
-        nomeArq: `${slug}_${s.rot ? rot : prod}_${cor}_${Math.round(s.bb.w)}x${Math.round(s.bb.h)}x${t}mm_inf${(ESPESSURAS[est.esp]||{infill:8}).infill}.stl`,
-        enc: cabe(s.bb.w, s.bb.h), vol: volDe(s.camadas) });
+      const vist = O.vistoriar(s);
+      return Object.assign({}, s, { cor, vist, enc: vist.enc,
+        nomeArq: O.nomeDeArquivo({ nome: R.word, rotulo: rot, cor, bb: s.bb,
+                                   espessura: est.esp, altura: t }),
+        vol: O.volume(s.camadas) });
     });
   }
 
@@ -8523,12 +8000,11 @@ canvas{width:100%;height:auto;display:block;border-radius:6px}
       return;
     }
     const oca = !!(R.luminaria && R.luminaria.possivel);
-    const p = atual[0], e = estimar(atual.reduce((s,x)=>s+x.vol,0), est.esp, oca);
-    // purga: cada troca de cor descarta filamento antes de voltar a imprimir a peca
-    const cores = atual.length, purga = 6 * (cores - 1);
+    const p = atual[0], e = O.estimar(atual.reduce((s,x)=>s+x.vol,0), est.esp, oca);
+    const cores = atual.length, purga = O.purga(cores);
     const gTotal = e.g + purga, minTotal = gTotal * 1.6;
     const piso = +$("piso").value || 0, pg = +$("pgrama").value || 0;
-    const preco = Math.ceil((piso + gTotal * pg) / 5) * 5;
+    const preco = O.precoComercial(gTotal, piso, pg);
     const porHora = minTotal > 0 ? preco / (minTotal/60) : 0;
     const nLin = R.linhas.length, altLetra = Math.round(p.bb.h / nLin);
     dl.innerHTML = `
@@ -8536,15 +8012,21 @@ canvas{width:100%;height:auto;display:block;border-radius:6px}
       <dt>Peça</dt><dd>${Math.round(p.bb.w)}×${Math.round(p.bb.h)}mm, ${est.esp}mm (${(ESPESSURAS[est.esp]||{}).rot}), ${oca ? `escavada: parede ${R.luminaria.parede}mm` : `infill ${(ESPESSURAS[est.esp]||{infill:8}).infill}%`}</dd>
       <dt>Altura</dt><dd>${R.altUsada ? R.altUsada+"mm por linha" : "sem limite"}${R.comBase ? ", com base" : ""}</dd>
       <dt>Moldura</dt><dd>${R.delta ? R.delta+"mm" : "não se aplica"}</dd>
-      <dt>Na mesa</dt><dd>${p.enc.ang?"na diagonal, ":""}ocupa ${Math.round(p.enc.uso)}mm de 256mm</dd>
+      <dt>Na mesa</dt><dd>${p.enc.ang?"na diagonal, ":""}ocupa ${Math.round(p.enc.uso)}mm de ${O.MESA}mm</dd>
       <dt>Estimativa</dt><dd>${gTotal.toFixed(0)}g${purga?` (${e.g.toFixed(0)}g + ${purga}g de purga)`:""} · ${Math.floor(minTotal/60)}h${String(Math.round(minTotal%60)).padStart(2,"0")}</dd>
       <dt>Preço sugerido</dt><dd class="preco">R$ ${preco}</dd>
       <dt>Retorno</dt><dd>R$ ${porHora.toFixed(0)} por hora de impressora</dd>`;
 
     const msgs = [];
-    if(!p.enc.ok) msgs.push(["mal", `Não cabe na mesa: precisa de ${Math.round(p.enc.uso)}mm.${R.duas?" Nome composto em duas linhas fica alto — tente 17cm ou uma linha só.":" Use um tamanho menor."}`]);
-    const solto = atual.find(s=>s.esperado===1 && s.corpos!==1);
-    if(solto) msgs.push(["mal", `A peça ${solto.rot||"principal"} saiu em ${solto.corpos} partes soltas. Não imprima assim.`]);
+    // A vistoria e a MESMA que decide o botao de baixar, logo abaixo. Antes
+    // eram dois caminhos: um avisava, o outro liberava -- e peca em partes
+    // soltas passava pelo segundo.
+    for(const s of atual){
+      for(const m of s.vist.motivos){
+        const onde = atual.length > 1 && s.rot ? `A peça ${s.rot}: ` : "";
+        msgs.push(["mal", onde + m + (!s.vist.enc.ok && R.duas ? " Nome composto em duas linhas fica alto — tente 17cm ou uma linha só." : "")]);
+      }
+    }
     if(R.larguraReal && R.larguraReal > R.larguraAlvo + 2)
       msgs.push(["bem", `A peça passou para ${Math.round(R.larguraReal)}mm de largura para não achatar as letras. É o limite da mesa que manda daqui em diante.`]);
     if(R.larguraReal && R.larguraReal < R.larguraAlvo - 2)
@@ -8569,7 +8051,9 @@ canvas{width:100%;height:auto;display:block;border-radius:6px}
 
     bx.innerHTML = atual.map((s,i)=>{
       const q = s.rot ? s.rot.split("-").pop().toLowerCase() : "arquivo";
-      return `<button type="button" class="btn" data-i="${i}" ${p.enc.ok?"":"disabled"}>Baixar ${q==="arquivo"?"o arquivo":"a peça "+q} — ${s.cor}<small>${s.nomeArq}</small></button>`;
+      const trava = s.vist.ok ? "" : "disabled";
+      const porque = s.vist.ok ? "" : ` title="${s.vist.motivos.join(" ")}"`;
+      return `<button type="button" class="btn" data-i="${i}" ${trava}${porque}>Baixar ${q==="arquivo"?"o arquivo":"a peça "+q} — ${s.cor}<small>${s.nomeArq}</small></button>`;
     }).join("");
   }
 
@@ -8594,11 +8078,40 @@ canvas{width:100%;height:auto;display:block;border-radius:6px}
     if(window.FontFace && document.fonts){
       new FontFace("LetreiroFonte", b1.slice(0)).load().then(f=>document.fonts.add(f)).catch(()=>{});
     }
-    G = MorumbiNucleo.Gerador({ luckiest: opentype.parse(b1), gamer: opentype.parse(b2),
+    G = MorumbiLetreiro.Gerador({ luckiest: opentype.parse(b1), gamer: opentype.parse(b2),
       cinema: opentype.parse(b3), futuro: opentype.parse(b4), terror: opentype.parse(b5) });
     // O catalogo (/criar) tem um cartao por modelo. Sem isto, os seis cartoes
     // largavam a pessoa na mesma tela em Classico, e a escolha que ela ja
     // tinha feito no cartao se perdia no caminho.
+    // A tela nasce mostrando o que est diz -- que pode vir do que ficou
+    // guardado. Sem isto o estado voltava mas os botoes ficavam no padrao.
+    if (salvo) {
+      if (salvo.nome) $("nome").value = salvo.nome;
+
+      // A TELA e quem decide o que e um valor valido, e por isso o estado e
+      // relido dela depois de sincronizar. Filtrar so as chaves nao basta:
+      // `esp: 999` e chave conhecida com valor que nao existe no menu, e ia
+      // direto para o gerador enquanto a tela continuava mostrando 12 mm.
+      for (const [caixa, chave, num] of [["tam","largura",true], ["ver","versao",true],
+                                         ["prod","produto",false], ["base","base",true]]) {
+        const alvo = [...$(caixa).children].find(b => String(b.dataset.v) === String(est[chave]));
+        if (alvo) [...$(caixa).children].forEach(x => x.setAttribute("aria-pressed", x === alvo));
+        const marcado = $(caixa).querySelector('.opt[aria-pressed="true"]');
+        est[chave] = num ? +marcado.dataset.v : marcado.dataset.v;
+      }
+      const disp = [...$("disp").children].find(b => (b.dataset.v === "2") === !!est.duas);
+      if (disp) [...$("disp").children].forEach(x => x.setAttribute("aria-pressed", x === disp));
+      est.duas = $("disp").querySelector('.opt[aria-pressed="true"]').dataset.v === "2";
+
+      for (const [id, chave] of [["esp","esp"], ["alt","alt"]]) {
+        if ($(id).querySelector(`option[value="${est[chave]}"]`)) $(id).value = est[chave];
+        const v = $(id).value;
+        est[chave] = (chave === "alt" && v === "auto") ? "auto" : +v;
+      }
+    }
+
+    // O modelo pedido pelo cartao do catalogo GANHA do que estava guardado:
+    // quem clicou em "Terror" quer Terror, nao o que gerou semana passada.
     const pedido = new URLSearchParams(location.search).get("modelo");
     if (pedido) {
       const b = $("prod").querySelector(`.opt[data-v="${CSS.escape(pedido)}"]`);

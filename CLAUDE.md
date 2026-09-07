@@ -125,6 +125,36 @@ aparece só na hora de extrudar, longe da causa.
 
 A versão normal puxa bibliotecas gráficas que não existem em VPS.
 
+### O gerador de letreiros são três arquivos, e a divisão tem guarda
+
+Desde o C1, `web/nucleo/`:
+
+    nucleo.js    polígono, sólido, STL, a mesa      qualquer gerador
+    oficina.js   os números DESTA casa              purga, densidade, preço
+    letreiro.js  o desenho do letreiro              só ele
+
+`gerador-letreiros.html` carrega os três por `<script src>` **relativo** — por
+isso a rota é `/letreiros/` **com barra**, e por isso as ferramentas em
+`ferramentas/` copiam a pasta `nucleo/` junto quando montam a página
+temporária (`pagina_temporaria.js` faz isso num lugar só).
+
+Há teste que reprova `'magia'` dentro do núcleo. Sem ele a divisão dura um
+sprint: alguém precisa de um ajuste rápido, põe um `if` do letreiro no núcleo,
+e o próximo gerador herda uma regra que não é dele.
+
+### Mexeu em geometria? Confira a impressão digital
+
+    node ferramentas/impressao_digital.js --conferir docs/impressao-digital.txt
+
+Vinte casos, um sha256 por peça. É o único jeito honesto de refatorar
+geometria: um teste que só olha "malha fechada" passa feliz com a peça virada
+do avesso. Roda junto da suíte quando há Chromium (~75 s).
+
+Mudou um hash e a peça **devia** mudar? Regenere e explique no commit qual
+peça mudou e por quê:
+
+    node ferramentas/impressao_digital.js > docs/impressao-digital.txt
+
 ### `display` de classe ganha do `[hidden]` do navegador
 
 `el.hidden = true` põe o atributo, e o atributo só esconde porque a folha do

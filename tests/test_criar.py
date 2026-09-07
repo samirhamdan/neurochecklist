@@ -189,8 +189,30 @@ class TesteTela(unittest.TestCase):
         self.assertNotIn("Gerar logo</a>", painel)
 
     def test_os_geradores_tem_volta_para_o_catalogo(self):
-        for rota in ("/letreiros", "/logo/"):
+        for rota in ("/letreiros/", "/logo/"):
             with self.subTest(rota=rota):
                 pagina = self.cliente.get(rota).get_data(as_text=True)
                 self.assertTrue('href="/criar"' in pagina,
                                 f"{rota} nao tem como voltar para o catalogo")
+
+    def test_o_link_antigo_do_letreiro_continua_chegando(self):
+        """Alguem tem /letreiros salvo no navegador. Nao pode virar 404."""
+        r = self.cliente.get("/letreiros")
+        self.assertEqual(r.status_code, 308)
+        self.assertTrue(r.headers["Location"].endswith("/letreiros/"), r.headers["Location"])
+
+    def test_a_pagina_carrega_o_nucleo_e_o_servidor_entrega(self):
+        """Caminho relativo so funciona com a barra no fim -- e sem o nucleo a
+        tela abre em branco, sem erro nenhum na aba de rede do usuario."""
+        pagina = self.cliente.get("/letreiros/").get_data(as_text=True)
+        self.assertTrue('src="nucleo/nucleo.js"' in pagina, "a pagina parou de pedir o nucleo")
+        self.assertTrue('src="nucleo/letreiro.js"' in pagina, "a pagina parou de pedir a peca")
+        for arquivo in ("nucleo.js", "letreiro.js"):
+            with self.subTest(arquivo=arquivo):
+                r = self.cliente.get(f"/letreiros/nucleo/{arquivo}")
+                self.assertEqual(r.status_code, 200, f"{arquivo} nao e servido")
+                self.assertIn(b"MorumbiNucleo", r.data)
+
+    def test_o_nucleo_nao_esta_aberto_para_quem_nao_entrou(self):
+        r = self.app.test_client().get("/letreiros/nucleo/nucleo.js")
+        self.assertEqual(r.status_code, 302)

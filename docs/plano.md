@@ -369,22 +369,58 @@ fora**.
 **Você confere:** clique em "1 cor" e veja sobrar só o Clássico e o Logo.
 Depois clique no cartão do Terror: o gerador tem que abrir já no Terror.
 
-## Sprint C1 — Soltar o núcleo
+## Sprint C1 — Soltar o núcleo ✅ FEITO
 **Tamanho M · sem dependência · pode andar em paralelo com a trilha de gestão**
 
-**Entra:** o núcleo vira módulo de verdade, fora do HTML do letreiro ·
-formulário de parâmetros declarado por gerador · validação de malha
-obrigatória antes de qualquer download · prévia 3D · estimativa de gramas,
-horas e preço · nome de arquivo padronizado · configuração salva, para
+**A decisão de fundo:** o corte não foi em dois, foi em **três**, e é a tabela
+"plataforma × peça" virada arquivo:
+
+| Arquivo | O que é | Serve para |
+| --- | --- | --- |
+| `nucleo.js` | polígono, sólido, STL, a mesa | qualquer gerador, de qualquer casa |
+| `oficina.js` | os números **desta** casa | qualquer gerador da Morumbi 3D |
+| `letreiro.js` | o desenho do letreiro | só ele |
+
+A oficina é a peça que faltava no plano original. A estimativa de gramas, o
+que cabe na mesa, a purga de 6 g, o preço de balcão e o nome do arquivo
+estavam **dentro da tela** do letreiro — não no núcleo. Se o topo de bolo
+fosse escrito com o plano como estava, ele reescreveria todos esses números,
+e no dia em que um fosse corrigido a casa passaria a ter dois preços.
+
+**A prova:** `docs/impressao-digital.txt` — um sha256 por peça de uma matriz
+de vinte casos, conferido a cada rodada da suíte. Um teste que só olha "malha
+fechada" passa feliz com a peça virada do avesso; um hash não. Inverti a
+normal de um triângulo de propósito para ver o teste ficar vermelho.
+
+**Entra:** o núcleo vira três módulos de verdade, fora do HTML · carregam em
+navegador e em node · **validação de malha obrigatória antes de qualquer
+download** · estimativa, preço e nome de arquivo passam a ser da plataforma ·
+parâmetros do letreiro declarados como dado · configuração salva, para
 reimprimir sem procurar arquivo antigo.
 
-**Eu testo:** **os três geradores de hoje continuam produzindo o mesmo STL,
-byte a byte, depois da extração** — é assim que se prova que uma extração não
-quebrou nada · malha reprovada não gera download, nunca · a mesma
-configuração gera o mesmo arquivo duas vezes.
+**O que eu testei:** os STL saem **byte a byte idênticos** depois da extração ·
+malha reprovada não gera download, nunca · o preço da tela e o do servidor dão
+o mesmo número · o núcleo não sabe o que é um letreiro (e há teste que
+reprova se alguém escrever `'magia'` lá dentro) · configuração inválida
+guardada não passa por cima do que a tela mostra.
 
-**Você confere:** gere um letreiro que você já gerou antes e compare o
-arquivo com o antigo. Tem que ser idêntico.
+**Você confere:** gere um letreiro que já gerou antes — sai igual. Escolha
+Cinema em 28 cm, feche a aba e volte: está como você deixou. Clique no cartão
+do Terror no Criar: ganha do que estava guardado, porque foi o que você pediu
+agora.
+
+**Duas coisas do plano original que NÃO entraram, e por quê:**
+
+**Prévia 3D de verdade** (girar a peça na tela) — a prévia de hoje é um
+desenho da peça em pé, que responde a mesma pergunta na maior parte dos casos.
+Um visualizador WebGL é um sprint inteiro sozinho, e entra melhor depois do
+topo de bolo, quando houver duas peças para girar.
+
+**O renderizador de formulário** — os parâmetros do letreiro estão declarados
+como dado (`PARAMETROS`, com teste comparando com os controles da tela), mas
+nada os renderiza ainda. Formulário genérico escrito contra **um** formulário
+acerta por acaso. O C2 traz o segundo: aí ele se escreve contra duas
+exigências reais em vez de uma imaginada.
 
 ## Sprint C2 — Gerador de topo de bolo
 **Tamanho G · depende do C1 · o gargalo não é código**

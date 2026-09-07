@@ -72,7 +72,7 @@ class Modelo:
 def _letreiro(slug, nome, resumo, cores, nota="", busca=()):
     return Modelo(slug=f"letreiro-{slug}", nome=f"Letreiro {nome}", categoria=FESTA,
                   resumo=resumo, gerador="Gerador de letreiros",
-                  rota=f"/letreiros?modelo={slug}", cores=cores, nota=nota, busca=busca)
+                  rota=f"/letreiros/?modelo={slug}", cores=cores, nota=nota, busca=busca)
 
 
 # Os seis modelos abaixo sao os que existem hoje no gerador de letreiros --

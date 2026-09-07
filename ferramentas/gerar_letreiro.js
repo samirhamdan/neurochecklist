@@ -12,14 +12,10 @@
  *        --largura 220 --espessura 12 --saida /tmp/stl
  */
 
-const { execFileSync } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-
-const CHROME =
-  process.env.CHROME_BIN || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
-const PAGINA = path.join(__dirname, "..", "web", "gerador-letreiros.html");
+const { rodar, PRELUDIO } = require("./pagina_temporaria.js");
 
 function argumentos() {
   const a = { nome: "MORUMBI", produto: "classico", largura: 220,
@@ -45,29 +41,10 @@ const a = argumentos();
 const injecao = `
 <script>
 (function () {
-  function carregar(id) {
-    const bin = atob(document.getElementById(id).textContent.trim());
-    const buf = new ArrayBuffer(bin.length), u8 = new Uint8Array(buf);
-    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    return buf;
-  }
-  function b64(buffer) {
-    const u8 = new Uint8Array(buffer);
-    let s = "";
-    for (let i = 0; i < u8.length; i += 8192) {
-      s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
-    }
-    return btoa(s);
-  }
+${PRELUDIO}
   const saida = { erro: null, pecas: [] };
   try {
-    const G = MorumbiNucleo.Gerador({
-      luckiest: opentype.parse(carregar("fonte1")),
-      gamer:    opentype.parse(carregar("fonte2")),
-      cinema:   opentype.parse(carregar("fonte3")),
-      futuro:   opentype.parse(carregar("fonte4")),
-      terror:   opentype.parse(carregar("fonte5"))
-    });
+    const G = gerador();
     const R = G.gerar(${JSON.stringify(a.nome)}, ${a.largura}, ${a.espessura},
       ${JSON.stringify(a.produto)}, ${a.duas},
       ${typeof a.altura === "string" ? JSON.stringify(a.altura) : a.altura},
@@ -90,41 +67,12 @@ const injecao = `
   } catch (e) {
     saida.erro = String((e && e.stack) || e);
   }
-  const alvo = document.createElement("div");
-  alvo.id = "RESULTADO_TESTE";
-  alvo.textContent = JSON.stringify(saida);
-  document.body.appendChild(alvo);
+  entregar(saida);
 })();
 </script>
 `;
 
-const html = fs.readFileSync(PAGINA, "utf8").replace("</body>", injecao + "</body>");
-const temporario = fs.mkdtempSync(path.join(os.tmpdir(), "letreiro-"));
-const arquivo = path.join(temporario, "pagina.html");
-fs.writeFileSync(arquivo, html);
-
-const dom = execFileSync(
-  CHROME,
-  ["--headless", "--disable-gpu", "--no-sandbox", "--virtual-time-budget=60000",
-   "--dump-dom", "file://" + arquivo],
-  { maxBuffer: 1024 * 1024 * 512, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
-);
-
-const marca = dom.indexOf('id="RESULTADO_TESTE">');
-if (marca < 0) {
-  console.error("A pagina nao chegou a produzir resultado.");
-  process.exit(1);
-}
-const inicio = marca + 'id="RESULTADO_TESTE">'.length;
-const bruto = dom.slice(inicio, dom.indexOf("</div>", inicio));
-const r = JSON.parse(
-  bruto.replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-);
-
-if (r.erro) {
-  console.error("Erro dentro da pagina:\n" + r.erro);
-  process.exit(1);
-}
+const r = rodar(injecao, { minutos: 1 });
 
 fs.mkdirSync(a.saida, { recursive: true });
 console.log(`nome: ${a.nome} | produto: ${a.produto} | linhas: ${JSON.stringify(r.linhas)}`);

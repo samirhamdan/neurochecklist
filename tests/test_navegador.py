@@ -215,6 +215,173 @@ class TesteFiltroDeCriar(NoNavegador):
         self.assertTrue(self.pg.url.endswith("/criar"), self.pg.url)
 
 
+class TesteATravaDoDownload(NoNavegador):
+    """Peca reprovada nao gera arquivo. Nunca.
+
+    Ate o C1 havia dois caminhos: um AVISAVA que a peca tinha saido em partes
+    soltas, o outro -- o que liga o botao -- olhava so se cabia na mesa. O
+    aviso rolava para fora da tela e o STL ia para a impressora.
+
+    Achar uma peca de verdade que saia em partes soltas e dificil, e isso e
+    bom: o gerador trabalha para que nao aconteca. O que da para provar aqui e
+    a COSTURA -- que a tela obedece a vistoria -- e e isso que se quebra numa
+    mudanca futura. A decisao em si tem teste proprio em test_nucleo.py.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.abrir("/letreiros/?modelo=classico")
+        self.pg.wait_for_selector("#baixar", state="attached")
+        self.pg.wait_for_function(
+            "() => document.querySelector('#baixar').children.length > 0", timeout=30000)
+
+    def botoes(self):
+        return self.pg.eval_on_selector_all(
+            "#baixar .btn", "e => e.map(b => ({off: b.disabled, why: b.title}))")
+
+    def redesenhar(self, nome):
+        self.pg.fill("#nome", nome)
+        self.pg.wait_for_function(
+            "() => document.querySelector('#baixar').children.length > 0", timeout=30000)
+        self.pg.wait_for_timeout(700)
+
+    def test_peca_boa_pode_baixar(self):
+        self.redesenhar("MORUMBI")
+        botoes = self.botoes()
+        self.assertTrue(botoes, "nenhum botao de baixar apareceu")
+        for b in botoes:
+            self.assertFalse(b["off"], f"peca boa com download travado: {b}")
+
+    def test_peca_reprovada_nao_pode_baixar(self):
+        """A vistoria diz nao; a tela tem que obedecer, e dizer por que."""
+        self.pg.evaluate("""() => {
+          const antes = MorumbiOficina.vistoriar;
+          MorumbiOficina.vistoriar = p => Object.assign(antes(p), {
+            ok: false, motivos: ["A peça saiu em 3 partes soltas em vez de 1."] });
+        }""")
+        self.redesenhar("MORUMBI ")
+        botoes = self.botoes()
+        self.assertTrue(botoes, "nenhum botao de baixar apareceu")
+        for b in botoes:
+            self.assertTrue(b["off"], f"peca reprovada continuou baixavel: {b}")
+            self.assertIn("partes soltas", b["why"])
+        avisos = self.pg.eval_on_selector_all(
+            ".aviso.mal", "e => e.map(x => x.textContent)")
+        self.assertTrue(any("partes soltas" in a for a in avisos),
+                        f"a tela travou o botao mas nao disse por que: {avisos}")
+
+
+class TesteConfiguracaoGuardada(NoNavegador):
+    """Reimprimir e regerar -- nao caçar o arquivo antigo e adivinhar o tamanho."""
+
+    def abrir_gerador(self, busca=""):
+        self.abrir(f"/letreiros/{busca}")
+        self.pg.wait_for_selector("#baixar", state="attached")
+        self.pg.wait_for_function(
+            "() => document.querySelector('#baixar').children.length > 0", timeout=30000)
+        self.pg.wait_for_timeout(400)
+
+    def marcado(self, caixa):
+        return self.pg.eval_on_selector(f'#{caixa} .opt[aria-pressed="true"]', "e => e.dataset.v")
+
+    def test_o_que_voce_deixou_volta_na_proxima_visita(self):
+        self.abrir_gerador()
+        self.pg.fill("#nome", "BEATRIZ")
+        self.pg.click('#prod .opt[data-v="cinema"]')
+        self.pg.click('#tam .opt[data-v="280"]')
+        self.pg.wait_for_timeout(600)
+
+        self.abrir_gerador()
+        self.assertEqual(self.pg.input_value("#nome"), "BEATRIZ")
+        self.assertEqual(self.marcado("prod"), "cinema")
+        self.assertEqual(self.marcado("tam"), "280")
+
+    def test_o_cartao_do_catalogo_ganha_do_que_estava_guardado(self):
+        """Quem clicou em Terror quer Terror, nao o que gerou semana passada."""
+        self.abrir_gerador()
+        self.pg.click('#prod .opt[data-v="cinema"]')
+        self.pg.wait_for_timeout(600)
+
+        self.abrir_gerador("?modelo=terror")
+        self.assertEqual(self.marcado("prod"), "terror")
+
+    def test_lixo_guardado_nao_derruba_a_tela(self):
+        """localStorage e do navegador da pessoa: pode ter qualquer coisa."""
+        self.abrir_gerador()
+        self.pg.evaluate("() => localStorage.setItem('morumbi3d.letreiro', '{isso nao e json')")
+        self.abrir_gerador()
+        self.assertEqual(self.marcado("prod"), "classico")
+
+    def test_chave_desconhecida_nao_vira_parametro(self):
+        """Versao antiga, ou alguem editando a mao: so entra o que o gerador entende."""
+        self.abrir_gerador()
+        self.pg.evaluate("""() => localStorage.setItem('morumbi3d.letreiro',
+            JSON.stringify({produto: 'magia', inventado: 'xis', esp: 999}))""")
+        self.abrir_gerador()
+        self.assertEqual(self.marcado("prod"), "magia")
+        self.assertEqual(self.pg.input_value("#esp"), "12")
+        # O que importa nao e o menu: e o numero com que a peca foi GERADA.
+        # Com so o filtro de chaves, a tela mostrava 12 mm e o gerador recebia
+        # 999 -- e o STL saia com uma espessura que nao esta em lugar nenhum.
+        self.assertIn("12mm", self.pg.inner_text("#dados"),
+                      "a peca foi gerada com uma espessura que a tela nao oferece")
+
+    def test_tamanho_invalido_guardado_tambem_e_descartado(self):
+        """O mesmo, pelo caminho dos botoes -- que e outro codigo."""
+        self.abrir_gerador()
+        self.pg.evaluate("""() => localStorage.setItem('morumbi3d.letreiro',
+            JSON.stringify({nome: 'LUA', largura: 999, produto: 'classico'}))""")
+        self.abrir_gerador()
+        self.assertEqual(self.marcado("tam"), "220")
+        # A largura nao denuncia sozinha: o gerador apara a peca para caber na
+        # mesa, entao 999 vira ~243 e passa por "grande, mas plausivel". Quem
+        # denuncia e a ALTURA DA LETRA -- ela nao pode passar de 60 mm, que e o
+        # tamanho do glifo. Com o 999 valendo, sai 272 mm por linha.
+        altura = int(self.pg.evaluate(
+            "() => document.querySelector('#dados').textContent.match(/(\\d+)mm por linha/)[1]"))
+        self.assertLessEqual(altura, 60,
+                             f"letra de {altura}mm: o tamanho guardado passou por cima do botao")
+
+    def test_o_que_a_tela_guarda_e_so_o_que_ela_entende(self):
+        """Sem isto, chave estranha entra, e `guardar()` a devolve para sempre."""
+        self.abrir_gerador()
+        self.pg.evaluate("""() => localStorage.setItem('morumbi3d.letreiro',
+            JSON.stringify({produto: 'magia', inventado: 'xis'}))""")
+        self.abrir_gerador()
+        self.pg.fill("#nome", "ZOE")
+        self.pg.wait_for_timeout(600)
+        chaves = self.pg.evaluate(
+            "() => Object.keys(JSON.parse(localStorage.getItem('morumbi3d.letreiro')))")
+        self.assertNotIn("inventado", chaves, f"chave estranha ficou guardada: {chaves}")
+
+
+class TesteImpressaoDigital(unittest.TestCase):
+    """A prova do C1: o que sai do gerador nao mudou.
+
+    Vinte casos, um sha256 por peca, guardados em docs/impressao-digital.txt.
+    E o unico jeito honesto de mexer em geometria: um teste que so olha "malha
+    fechada" passa feliz com a peca virada do avesso; um hash nao passa.
+
+    Demora ~75 s, quase tudo em abrir o Chromium e ler as cinco fontes. Vale:
+    e a diferenca entre refatorar e torcer.
+    """
+
+    @unittest.skipUnless(TEM_NAVEGADOR, SEM_NAVEGADOR)
+    def test_a_matriz_inteira_sai_igual(self):
+        import subprocess
+        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        node = shutil.which("node") or "/opt/node22/bin/node"
+        if not os.path.exists(node):
+            self.skipTest("node nao instalado")
+        r = subprocess.run(
+            [node, os.path.join(raiz, "ferramentas", "impressao_digital.js"),
+             "--conferir", os.path.join(raiz, "docs", "impressao-digital.txt")],
+            capture_output=True, text=True, timeout=600, cwd=raiz,
+            env={**os.environ, "CHROME_BIN": CHROMIUM})
+        self.assertEqual(r.returncode, 0,
+                         "a geometria mudou:\n" + (r.stderr or r.stdout)[:4000])
+
+
 class TesteQuadroELista(NoNavegador):
     """A tela da producao alterna entre duas vistas. Uma de cada vez.
 

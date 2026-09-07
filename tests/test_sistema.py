@@ -344,7 +344,9 @@ class TesteJuncao(unittest.TestCase):
     def test_painel_continua_de_pe(self):
         self.cliente.post("/entrar", data={"usuario": "samir", "senha": "segredo"})
         self.assertEqual(self.cliente.get("/").status_code, 200)
-        self.assertEqual(self.cliente.get("/letreiros").status_code, 200)
+        # /letreiros redireciona para /letreiros/ desde o C1 -- o nucleo e
+        # carregado por caminho relativo. Link antigo tem que continuar valendo.
+        self.assertEqual(self.cliente.get("/letreiros", follow_redirects=True).status_code, 200)
         self.assertEqual(self.cliente.get("/saude").status_code, 200)
 
     def test_gerador_quebrado_nao_derruba_o_sistema(self):

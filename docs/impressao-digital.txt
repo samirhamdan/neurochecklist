@@ -1,0 +1,59 @@
+# Impressao digital do gerador de letreiros.
+# Gerado por ferramentas/impressao_digital.js -- nao editar a mao.
+# Um sha256 por peca. Mudou um hash sem que a peca devesse mudar?
+# Entao a mudanca alterou a geometria, e nao so o arranjo do codigo.
+MORUMBI|classico|220|12|1lin|auto|0  largura=220  altura=48
+    HIBRIDO-CORPO  bf406dab9d42b5c12b5ea8b59b0e8c56d9856fccb3273fec044c5d48c96ee3e2  tri=51920  corpos=1/1
+    HIBRIDO-CAPA  e75a0183c7ab9cc92063232a8c8280d99ed19562628337a78c09ff085763669c  tri=8444  corpos=7
+MORUMBI|classico|220|12|1lin|auto|8  largura=220  altura=48
+    HIBRIDO-CORPO  bf406dab9d42b5c12b5ea8b59b0e8c56d9856fccb3273fec044c5d48c96ee3e2  tri=51920  corpos=1/1
+    HIBRIDO-CAPA  e75a0183c7ab9cc92063232a8c8280d99ed19562628337a78c09ff085763669c  tri=8444  corpos=7
+MORUMBI|classico|220|6|1lin|auto|0  largura=220  altura=48
+    HIBRIDO-CORPO  b77773ed8d7d0193f13fd926d52e4c25957f39533e3446a8ba3c2cba1e65b346  tri=51920  corpos=1/1
+    HIBRIDO-CAPA  3e5b43b87247fa81eac9b54c052d5c5026a0ceb7a91c4f20f33e5bdb5b816290  tri=8444  corpos=7
+MORUMBI|classico|220|60|1lin|auto|0  largura=220  altura=48
+    LUMINARIA  add936a189bb7e4d7981cb97b1c1b05919c09e858eda96cd9ea117afa2d97fc9  tri=82624  corpos=1/1
+MORUMBI|classico|170|12|1lin|40|0  largura=170  altura=40
+    HIBRIDO-CORPO  29c94ee002213922de1c0a83e8d21d3c557b8d014f573abb6935ab53c6f551eb  tri=46790  corpos=1/1
+    HIBRIDO-CAPA  711b0a02de14979ca1043098d96a9384ce4914bde436c4fc8f75e8cebeab7e4d  tri=8444  corpos=7
+Ana Clara|classico|220|12|2lin|auto|0  largura=210.157  altura=55
+    HIBRIDO-CORPO  879b7a6d8528a010ce573255f9b843b7b73dec28b62ea3b4e0e8d1bf26b2275f  tri=38970  corpos=1/1
+    HIBRIDO-CAPA  d5fc9632d3a2685e302c5c3700e52de9ab2a6c1e0db0b5685aa931ac3cd5f1be  tri=3684  corpos=7
+Ana Clara|classico|220|12|1lin|auto|0  largura=220  altura=48
+    HIBRIDO-CORPO  a7b949f1ec37e1a35a26f278f21f44e700f519d361764436f8048ac4e75fc1b5  tri=38826  corpos=1/1
+    HIBRIDO-CAPA  708c4b5190a66636b713192c02c90b7ae3d0f5cac70fe4d840ad29f0f4bdbca7  tri=3680  corpos=7
+Ana Clara|magia|220|12|2lin|auto|0  largura=210.157  altura=55
+    MAGIA-BASE  ece453c2899b0930531012d99ec02f3b02dce279dac8b63983610cc2e2b7dd7c  tri=24076  corpos=1/1
+    MAGIA-FACE  bcbb9c41a9acfa6f04e81d715017435e2849a9bc28e1c0ad86c3b3eed9de9ab2  tri=3684  corpos=7
+LOVE|magia|220|12|1lin|auto|0  largura=166.538  altura=60
+    MAGIA-BASE  b0c3193e5246719a2ecfead4f3cd7a4d9b9fff2be3d420e6ca667207ce31d71f  tri=17916  corpos=1/1
+    MAGIA-FACE  8bd2fc634a441290fbaf7b113a217fb82bd056f886f89fce26034fd9e12f5975  tri=2816  corpos=4
+LOVE|magia|80|12|1lin|auto|0  largura=57.644  altura=22
+    MAGIA-BASE  c8e0d6e498690e2e396e6a88194ae994718057914f3ec6f9ea7fdbcbdbfb8f9b  tri=13244  corpos=1/1
+    MAGIA-FACE  b369cad8b4210d447b478734f68666215d98cb3bff81ce426498ff280d5445bb  tri=2808  corpos=4
+JOAO|gamer|220|12|1lin|auto|0  largura=220  altura=60
+    HIBRIDO-CORPO  ca2d3baf07672af82e6b524261a5c9773512dc47218043f5a134e55188bfc846  tri=44128  corpos=1/1
+    HIBRIDO-CAPA  b32f7965d2d8e5635a9928fe7bb72fdbe3d0f375e4db55e30a23ae648afb2f29  tri=268  corpos=4
+JOAO|gamer|220|60|1lin|auto|0  largura=220  altura=60
+    LUMINARIA  a19715fa5fa62c2c6f40a31b4631ec86637f838c59f52f6474af88b4e7ccae7b  tri=39128  corpos=1/1
+SOFIA|cinema|220|12|1lin|auto|0  largura=214.709  altura=55
+    HIBRIDO-CORPO  1fef1a0d9c601ece466fe3305189b68ac4ec16ed69b3d4de1b62ecec836f9247  tri=37622  corpos=1/1
+    HIBRIDO-CAPA  a330886167e57d720925c1b3802efaf5c5cda89723ee1796b02c3fc61d0e048c  tri=1708  corpos=5
+SOFIA|cinema|170|60|1lin|auto|0  largura=166.293  altura=43
+    LUMINARIA  c817485e55c6ebd1c780c1cb31afac3b71e5ec747021846fd035d00451bf05c6  tri=34590  corpos=1/1
+NOAH|futuro|220|12|1lin|auto|0  largura=220  altura=60
+    HIBRIDO-CORPO  c304f35643fa2e425a42c4b9443cf27f4fe6db0f5b2394ad05c73f397c37ccf5  tri=43632  corpos=1/1
+    HIBRIDO-CAPA  32a2f247aff5464d85fbe96c01ea9823bf2dc977a1e6263bd1ed172ee1e5317b  tri=3288  corpos=4
+NOAH|futuro|220|60|1lin|auto|0  largura=220  altura=60
+    LUMINARIA  90287a2a5aa27ed271af647d1663f46925cdb8d346588221b08dd0649747dfc3  tri=36000  corpos=1/1
+LUA|terror|220|12|1lin|auto|0  largura=84.274  altura=60
+    HIBRIDO-CORPO  de90e371e390573fd521e35fc330d150cb5ddad909bc4123afdba77e72b171f7  tri=53296  corpos=1/1
+    HIBRIDO-CAPA  6cd81ef6d37dbdc98afbdfd210cdea6dd9b2bc9e3169c2102b496ca063a84bbd  tri=11252  corpos=3
+LUA|terror|220|60|1lin|auto|0  largura=84.274  altura=60
+    LUMINARIA  144282cd1ee2584bb4811839fe589466564dea06774c7efe6c139294513180ce  tri=65676  corpos=1/1
+MM|classico|220|12|1lin|auto|0  largura=122.081  altura=60
+    HIBRIDO-CORPO  3047c2a5e65c7b854b9c99aa36401b224b7aca3c4c74f389c8a5d2dae5741dd8  tri=20986  corpos=1/1
+    HIBRIDO-CAPA  b29143395f8dbfcbc989cb2bff1046dc51578f14587a6669343f07b13205f2fc  tri=96  corpos=2
+Maria Eduarda Silva|classico|250|12|2lin|auto|0  largura=250  altura=55
+    HIBRIDO-CORPO  a3d50a9a6b34332a9324c18e8ea63619171b3f85952a043690dcf6e853261d59  tri=74410  corpos=1/1
+    HIBRIDO-CAPA  f229a5f12a1c351540ebedbe07298e7adcc0ded1d53543a12d7f72bb42e8ca8f  tri=11152  corpos=17

@@ -436,10 +436,19 @@ def criar_app() -> Flask:
                                em_obra=criar.EM_OBRA)
 
     # ------------------------------------------------------------ ferramentas
-    @app.route("/letreiros")
+    # A barra no fim nao e enfeite: desde o C1 a pagina carrega o nucleo por
+    # caminho RELATIVO, e sem ela "nucleo/nucleo.js" cairia na raiz do site.
+    # Flask redireciona /letreiros para ca sozinho, entao link antigo continua
+    # valendo.
+    @app.route("/letreiros/")
     @auth.exige_login
     def letreiros():
         return send_from_directory(os.path.join(RAIZ, "web"), "gerador-letreiros.html")
+
+    @app.route("/letreiros/nucleo/<path:arquivo>")
+    @auth.exige_login
+    def letreiros_nucleo(arquivo):
+        return send_from_directory(os.path.join(RAIZ, "web", "nucleo"), arquivo)
 
     @app.route("/saude")
     def saude():
