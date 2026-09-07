@@ -125,6 +125,32 @@ aparece só na hora de extrudar, longe da causa.
 
 A versão normal puxa bibliotecas gráficas que não existem em VPS.
 
+### `display` de classe ganha do `[hidden]` do navegador
+
+`el.hidden = true` põe o atributo, e o atributo só esconde porque a folha do
+navegador diz `[hidden]{display:none}` — regra fraca, que qualquer
+`.minha-classe{display:flex}` derruba. A tela fica com o atributo certo e
+**nada some**.
+
+`sistema.css` carrega `[hidden]{display:none !important}` por causa disto.
+Custou um filtro que marcava tudo como oculto e mostrava os oito cartões, e a
+descoberta de que o botão Quadro/Lista da produção estava assim havia um
+sprint inteiro.
+
+### Conferir a tela pelo DOM é conferir a coisa errada
+
+O bug acima passou por uma conferência minha no navegador: eu perguntei por
+`.modelo:not([hidden])` — o ATRIBUTO — e recebi a resposta certa enquanto a
+tela mostrava tudo. **Pergunte se o elemento tem caixa** (`offsetParent !==
+null`), que é o que a pessoa vê. É a regra de `tests/test_navegador.py`.
+
+### `networkidle` no teste de navegador mede a internet
+
+As telas puxam fonte do Google. Numa máquina sem saída, `wait_for_load_state
+("networkidle")` espera até estourar o tempo e o teste parece travado. Os
+testes de navegador bloqueiam tudo que não é `127.0.0.1` e esperam por
+seletor, nunca por rede parada.
+
 ---
 
 ## Estado do servidor

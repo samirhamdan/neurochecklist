@@ -27,6 +27,13 @@ malha = [
 # curadoria continuam rodando sem isto.
 sistema = ["flask>=3.0"]
 
+# Os testes de navegador (tests/test_navegador.py). Ficam de fora da VPS de
+# proposito: 400 MB de Chromium para provar coisa que so acontece na tela de
+# quem desenvolve. Sem eles a suite PULA esses testes e continua verde --
+# entao rode-os antes de subir uma tela nova, ou o pulo vira falso "OK".
+#     pip install -e ".[navegador]" && playwright install chromium
+navegador = ["playwright>=1.40"]
+
 [project.scripts]
 morumbi3d = "morumbi3d.cli:main"
 

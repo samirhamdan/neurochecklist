@@ -18,8 +18,7 @@
       <a href="{{ url_for('lista_compras') }}" {{ 'class=aqui' if aba == 'compras' }}>Compras</a>
       <a href="{{ url_for('lista_filamentos') }}" {{ 'class=aqui' if aba == 'filamentos' }}>Filamentos</a>
       <a href="{{ url_for('lista_insumos') }}" {{ 'class=aqui' if aba == 'insumos' }}>Insumos</a>
-      <a href="{{ url_for('letreiros') }}">Gerar letreiro</a>
-      <a href="/logo/">Gerar logo</a>
+      <a href="{{ url_for('tela_criar') }}" {{ 'class=aqui' if aba == 'criar' }}>Criar</a>
       {% if com_senha %}
         <span class="quem">{{ usuario }}</span>
         <form method="post" action="{{ url_for('sair') }}">

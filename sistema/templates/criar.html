@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block titulo %}Criar — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina">
+  <div class="cabecalho-lista">
+    <h2 class="secao">Criar</h2>
+  </div>
+
+  <div class="cartao filtros">
+    <input class="busca" id="busca" type="search" autocomplete="off"
+           placeholder="Procurar por nome, tema ou ocasião — princesa, halloween, empresa…">
+    <div class="grupo-chip" data-filtro="categoria">
+      <b>Categoria</b>
+      <button type="button" class="chip" data-v="" aria-pressed="true">Tudo</button>
+      {% for c in categorias %}
+      <button type="button" class="chip" data-v="{{ c }}" aria-pressed="false">{{ c }}</button>
+      {% endfor %}
+    </div>
+    <div class="grupo-chip" data-filtro="cores">
+      <b>Cores</b>
+      <button type="button" class="chip" data-v="" aria-pressed="true">Tanto faz</button>
+      {% for n in cores %}
+      <button type="button" class="chip" data-v="{{ n }}" aria-pressed="false">
+        {{ '1 cor' if n == 1 else '%d cores'|format(n) }}</button>
+      {% endfor %}
+    </div>
+    <div class="grupo-chip" data-filtro="status">
+      <b>Situação</b>
+      <button type="button" class="chip" data-v="" aria-pressed="true">Tudo</button>
+      <button type="button" class="chip" data-v="{{ no_ar }}" aria-pressed="false">Dá para gerar hoje</button>
+      <button type="button" class="chip" data-v="{{ em_obra }}" aria-pressed="false">Em construção</button>
+    </div>
+  </div>
+
+  <p class="conta-modelos" id="conta">
+    <b>{{ conta.total }}</b> modelos · {{ conta.no_ar }} dão para gerar hoje</p>
+
+  <div class="modelos" id="lista">
+    {% for m in modelos %}
+    <article class="modelo {{ 'planejado' if m.status == em_obra }}"
+             data-nome="{{ m.procuravel }}" data-categoria="{{ m.categoria }}"
+             data-cores="{{ m.cores|join(' ') }}" data-status="{{ m.status }}">
+      <header>
+        <h3>{{ m.nome }}</h3>
+        <span class="etiqueta {{ 'verde' if m.status == no_ar else 'cinza' }}">{{ m.status }}</span>
+      </header>
+      <p>{{ m.resumo }}</p>
+      <div class="meta">
+        <span>{{ m.gerador }}</span><span>{{ m.cor_rotulo }}</span><span>{{ m.saida }}</span>
+      </div>
+      {% if m.nota %}<div class="cuidado">{{ m.nota }}</div>{% endif %}
+      <div class="acoes">
+        {% if m.rota %}<a class="botao" href="{{ m.rota }}">Abrir</a>{% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <div class="cartao cartao-vazio" id="nada" hidden>
+    <b>Nenhum modelo com esse filtro.</b>
+    <span>Limpe a busca ou volte para “Tudo”. Se é uma peça que um cliente pediu e não
+    está aqui, ela é candidata a virar modelo.</span>
+  </div>
+
+  <p class="nota">Cada modelo aqui é uma peça que o sistema sabe desenhar, medir e
+  precificar sozinho. Modelo <b>em construção</b> não tem botão de propósito — botão que
+  não leva a lugar nenhum é pior que a falta dele.</p>
+</main>
+
+<script>
+(function () {
+  const cartoes = [...document.querySelectorAll(".modelo")];
+  const busca = document.getElementById("busca");
+  const conta = document.getElementById("conta");
+  const nada = document.getElementById("nada");
+  const escolha = { categoria: "", cores: "", status: "" };
+
+  function aplicar() {
+    const termo = busca.value.trim().toLowerCase();
+    let vistos = 0;
+    for (const c of cartoes) {
+      const ok =
+        (!termo || c.dataset.nome.includes(termo)) &&
+        (!escolha.categoria || c.dataset.categoria === escolha.categoria) &&
+        (!escolha.cores || c.dataset.cores.split(" ").includes(escolha.cores)) &&
+        (!escolha.status || c.dataset.status === escolha.status);
+      c.hidden = !ok;
+      if (ok) vistos++;
+    }
+    nada.hidden = vistos > 0;
+    conta.innerHTML = vistos === cartoes.length
+      ? `<b>${vistos}</b> modelos · ${cartoes.filter(c => c.dataset.status === "no ar").length} dão para gerar hoje`
+      : `<b>${vistos}</b> de ${cartoes.length} modelos`;
+  }
+
+  for (const grupo of document.querySelectorAll(".grupo-chip")) {
+    grupo.addEventListener("click", e => {
+      const b = e.target.closest(".chip");
+      if (!b) return;
+      [...grupo.querySelectorAll(".chip")].forEach(x => x.setAttribute("aria-pressed", x === b));
+      escolha[grupo.dataset.filtro] = b.dataset.v;
+      aplicar();
+    });
+  }
+  busca.addEventListener("input", aplicar);
+  aplicar();
+})();
+</script>
+{% endblock %}

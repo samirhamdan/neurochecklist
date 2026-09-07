@@ -336,6 +336,39 @@ precificar é perder venda por conversa que não precisava existir. Minha
 sugestão: **template tem preço; sob consulta fica para o que não tem
 template** — um logo novo, um projeto de fato único.
 
+## Sprint C0 — A tela Criar ✅ FEITO
+**Tamanho P · sem dependência**
+
+O menu tinha dois links soltos: "Gerar letreiro" e "Gerar logo". Dois cabem.
+Doze não — e o C4 tem uma dezena pela frente. Pior: o link escondia que
+**dentro do gerador de letreiros moram seis modelos diferentes**. Quem abria
+achava que tinha uma opção; tinha seis.
+
+**A decisão de fundo:** o catálogo não lista *geradores*, lista o que dá para
+**fazer**. Cada modelo é uma linha em `sistema/criar.py`, e a tela e os
+filtros saem dela — acrescentar um modelo é acrescentar uma linha, sem mexer
+em template. Duas regras seguram a honestidade: modelo sem rota aparece como
+*em construção* e **não ganha botão**, e todo modelo marcado *no ar* tem
+teste que abre a rota dele.
+
+O filtro por **cores** é o que faz esta tela ser sua e não genérica: ele
+pergunta *o que dá para fazer sem trocar filamento* — cada troca custa 6 g de
+purga mais o tempo de parar a máquina. Hoje a resposta é dois modelos de oito.
+
+**Entra:** tela `/criar` com um cartão por modelo · busca por tema ("princesa",
+"halloween", "empresa") e não só por nome · filtros de categoria, cores e
+situação · o cartão abre o gerador **no modelo escolhido** · volta do gerador
+para o catálogo · o menu passa a ter um item "Criar" no lugar dos dois.
+
+**Eu testo:** cartão que promete um modelo que o gerador não conhece é
+barrado · modelo que existe no gerador e não está no catálogo é barrado (venda
+parada) · toda rota marcada *no ar* responde · modelo em construção não ganha
+botão · **e no navegador de verdade: filtrar esconde mesmo o que sobrou de
+fora**.
+
+**Você confere:** clique em "1 cor" e veja sobrar só o Clássico e o Logo.
+Depois clique no cartão do Terror: o gerador tem que abrir já no Terror.
+
 ## Sprint C1 — Soltar o núcleo
 **Tamanho M · sem dependência · pode andar em paralelo com a trilha de gestão**
 

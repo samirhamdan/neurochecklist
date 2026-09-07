@@ -19,7 +19,7 @@ from flask import (
     Flask, redirect, render_template, request, send_from_directory, session, url_for,
 )
 
-from . import analise, auth, custo, dados
+from . import analise, auth, criar, custo, dados
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -425,6 +425,15 @@ def criar_app() -> Flask:
             abort(404)
         dados.apagar_compra(id_)
         return redirect(url_for("lista_compras"))
+
+    # ------------------------------------------------------------------ criar
+    @app.route("/criar")
+    @auth.exige_login
+    def tela_criar():
+        return render_template("criar.html", aba="criar", modelos=criar.MODELOS,
+                               categorias=criar.categorias(), cores=criar.cores_possiveis(),
+                               conta=criar.contagem(), no_ar=criar.NO_AR,
+                               em_obra=criar.EM_OBRA)
 
     # ------------------------------------------------------------ ferramentas
     @app.route("/letreiros")

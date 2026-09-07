@@ -15,6 +15,9 @@ body{margin:0;background:var(--concreto);color:var(--tinta);font-family:var(--sa
 .topo{background:var(--painel);border-bottom:1px solid var(--regua);padding:14px 22px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 .marca{font-family:"LetreiroFonte",var(--sans);font-size:26px;letter-spacing:.5px}
 .topo p{margin:0;color:var(--tinta2);font-size:13.5px}
+.topo .volta{margin-left:auto;font-size:14px;color:#0040F0;text-decoration:none;
+  border:1px solid var(--regua);border-radius:5px;padding:6px 12px}
+.topo .volta:hover{border-color:#0040F0}
 .grade{display:grid;grid-template-columns:352px 1fr;gap:20px;padding:20px;align-items:start;max-width:1400px;margin:0 auto}
 @media (max-width:900px){.grade{grid-template-columns:1fr}}
 .painel,.mesa-area{background:var(--painel);border:1px solid var(--regua);border-radius:10px;padding:18px}
@@ -57,6 +60,7 @@ canvas{width:100%;height:auto;display:block;border-radius:6px}
 <header class="topo">
   <span class="marca">Morumbi 3D</span>
   <p>Digite o nome, confira se cabe na mesa e baixe os arquivos.</p>
+  <a class="volta" href="/criar">← Criar</a>
 </header>
 
 <div class="grade">
@@ -8592,6 +8596,17 @@ canvas{width:100%;height:auto;display:block;border-radius:6px}
     }
     G = MorumbiNucleo.Gerador({ luckiest: opentype.parse(b1), gamer: opentype.parse(b2),
       cinema: opentype.parse(b3), futuro: opentype.parse(b4), terror: opentype.parse(b5) });
+    // O catalogo (/criar) tem um cartao por modelo. Sem isto, os seis cartoes
+    // largavam a pessoa na mesma tela em Classico, e a escolha que ela ja
+    // tinha feito no cartao se perdia no caminho.
+    const pedido = new URLSearchParams(location.search).get("modelo");
+    if (pedido) {
+      const b = $("prod").querySelector(`.opt[data-v="${CSS.escape(pedido)}"]`);
+      if (b) {
+        [...$("prod").children].forEach(x => x.setAttribute("aria-pressed", x === b));
+        est.produto = b.dataset.v;
+      }
+    }
     ajustarControles(); rodar();
   }catch(err){
     $("estado").textContent = "Não consegui carregar as fontes: " + err.message;
