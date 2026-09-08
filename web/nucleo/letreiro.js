@@ -9,7 +9,8 @@
 // percorre, sete sao do nucleo. Esta e a oitava.
 (function (root, fabrica) {
   const N = (typeof module === 'object' && module.exports)
-    ? require('./nucleo.js') : root.MorumbiNucleo;
+    ? Object.assign({}, require('./nucleo.js'), require('./texto.js'))
+    : Object.assign({}, root.MorumbiNucleo, root.MorumbiTexto);
   const M = fabrica(root, N);
   if (typeof module === 'object' && module.exports) module.exports = M;
   else root.MorumbiLetreiro = M;
@@ -97,87 +98,10 @@
   }
 
   function Gerador(fontes) {
-    const cacheG = {}, cacheO = {};
-    let F = fontes.luckiest, FN = 'luckiest';
-
-    function letra(ch) {
-      const k = FN + ch;
-      if (cacheG[k]) return cacheG[k];
-      let paths = uniao([pathToPolys(F.charToGlyph(ch).getPath(0,0,SIZE))]);
-      let dil = 0;
-      if (analisar(paths).corpos > 1) {
-        for (const d of [0.4,0.8,1.2,1.6,2.0,2.6,3.2,4.0]) {
-          const t = uniao([inflar(paths, d)]);
-          if (analisar(t).corpos === 1) { paths = t; dil = d; break; }
-        }
-      }
-      return (cacheG[k] = { paths, dil, bb: caixa(paths) });
-    }
-
-    function encaixeMinimo(a, b) {
-      const k = FN + a + b;
-      if (k in cacheO) return cacheO[k];
-      const A = letra(a), B = letra(b);
-      const ok = ov => analisar(uniao([A.paths, mover(B.paths, (A.bb.maxX-ov)-B.bb.minX, 0)])).corpos === 1;
-      let lo=0, hi=2, achou=false;
-      while (hi <= 48) { if (ok(hi)) { achou=true; break; } lo=hi; hi*=2; }
-      if (!achou) return (cacheO[k] = null);
-      for (let i=0;i<14;i++){ const m=(lo+hi)/2; ok(m) ? hi=m : lo=m; }
-      return (cacheO[k] = hi);
-    }
-
-    function linhaEncaixada(txt, margem) {
-      const lista = []; let cursor = 0, prev = null;
-      for (const ch of txt.replace(/ /g, '')) {
-        const G = letra(ch);
-        let tx;
-        if (prev === null) tx = cursor - G.bb.minX;
-        else {
-          const P = letra(prev);
-          const min = encaixeMinimo(prev, ch) || 0;
-          const fina = Math.min(P.bb.maxX - P.bb.minX, G.bb.maxX - G.bb.minX);
-          // a margem de seguranca nunca pode comer mais de 28% da letra mais fina
-          const limite = 0.28 * fina;
-          let ov = min + margem;
-          if (ov > limite) ov = Math.max(limite, min + margem * 0.2);
-          tx = (cursor - ov) - G.bb.minX;
-        }
-        lista.push(mover(G.paths, tx, 0));
-        cursor = tx + G.bb.maxX; prev = ch;
-      }
-      const P = uniao(lista);
-      return { paths: P, bb: caixa(P) };
-    }
-
-    function linhaNatural(txt) {
-      const k = SIZE / F.unitsPerEm;
-      const lista = []; let x = 0, ant = null;
-      for (const ch of txt.replace(/ /g, '')) {
-        const g = F.charToGlyph(ch);
-        if (ant) x += (F.getKerningValue(ant, g) || 0) * k;
-        lista.push(mover(letra(ch).paths, x, 0));
-        x += g.advanceWidth * k; ant = g;
-      }
-      const P = uniao(lista);
-      return { paths: P, bb: caixa(P) };
-    }
-
-    // empilha duas linhas centralizadas; se exigirContato, procura o maior
-    // afastamento que ainda deixa a peca em um corpo so
-    function empilhar(linhas, folga, exigirContato) {
-      if (linhas.length === 1) return { paths: linhas[0].paths, folga: 0 };
-      const larg = Math.max(...linhas.map(l => l.bb.w));
-      const c0 = mover(linhas[0].paths, (larg - linhas[0].bb.w)/2 - linhas[0].bb.minX, 0);
-      const c1 = mover(linhas[1].paths, (larg - linhas[1].bb.w)/2 - linhas[1].bb.minX, 0);
-      const b0 = linhas[0].bb, b1 = linhas[1].bb;
-      const monta = f => uniao([ mover(c0, 0, (b1.maxY - b1.minY) + f - b0.minY), mover(c1, 0, -b1.minY) ]);
-      if (!exigirContato) return { paths: monta(folga), folga };
-      if (analisar(monta(folga)).corpos === 1) return { paths: monta(folga), folga };
-      let lo = -0.28 * (b0.maxY - b0.minY), hi = folga;
-      if (analisar(monta(lo)).corpos !== 1) return { paths: monta(lo), folga: lo, falhou: true };
-      for (let i=0;i<16;i++){ const m=(lo+hi)/2; analisar(monta(m)).corpos === 1 ? lo=m : hi=m; }
-      return { paths: monta(lo), folga: lo };
-    }
+    // A maquina de texto e da plataforma desde o C2: o topo de bolo precisa
+    // dela letra por letra, com a mesma garantia de que as letras se tocam.
+    const T = N.Texto(fontes, SIZE);
+    const { letra, linhaEncaixada, linhaNatural, empilhar } = T;
 
     // 1o garante que a moldura une tudo numa peca so;
     // 2o, dentro do que une, pega a maior que ainda preserva os vazados
@@ -212,12 +136,11 @@
       // interface sempre prometeu. Da para forcar dos dois lados passando o
       // ultimo argumento.
       if (luminaria === undefined) luminaria = espessura >= 40;
-      FN = cfg.fonte; F = fontes[FN] || fontes.luckiest;
+      T.usar(cfg.fonte);
       const word = nome.toUpperCase().trim().replace(/\s+/g, ' ');
       const linhas = duasLinhas === false ? [word] : dividirLinhas(word);
 
-      const dils = {};
-      for (const ch of new Set(word.replace(/ /g,''))) { const d = letra(ch).dil; if (d) dils[ch] = d; }
+      const dils = T.dilatacoes(word);
 
       const altUsada = alturaMax === 'auto' ? alturaAuto(linhas, larguraAlvo) : alturaMax;
       const tetoAlt = altUsada ? altUsada * linhas.length : Infinity;

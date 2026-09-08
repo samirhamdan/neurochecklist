@@ -142,6 +142,44 @@ Há teste que reprova `'magia'` dentro do núcleo. Sem ele a divisão dura um
 sprint: alguém precisa de um ajuste rápido, põe um `if` do letreiro no núcleo,
 e o próximo gerador herda uma regra que não é dele.
 
+### Polígono no sentido horário vira FURO
+
+O Clipper com preenchimento NonZero trata caminho horário como buraco. Unir
+uma forma enrolada ao contrário ao resto da peça **subtrai** ela. O canvas
+desenha igual nos dois sentidos, então isso é invisível na tela: sai peça em
+dois corpos e aresta não-manifold no STL.
+
+Toda forma nova passa por `antiHorario()` em `topo.js`, e há teste que calcula
+a área com sinal de cada uma.
+
+### Duas partes que só se encostam não estão ligadas
+
+`analisar().corpos === 1` não basta: duas formas tangentes são um corpo só em
+2D e viram aresta não-manifold ao extrudar — o fatiador recusa. `conexaoFragil`
+(em `oficina.js`) encolhe 0,05 mm e vê se a peça se parte. Ela **não** detecta
+peça já separada; para isso é `corpos`, e os dois são cobrados.
+
+O `empilhar` do `texto.js` aceita um parâmetro `sobrepor` justamente por isso:
+sem ele converge no ponto do toque, que é a ligação mais fraca possível.
+
+### Geradores: as três pastas partilhadas
+
+`web/libs/` (opentype, ClipperLib, earcut), `web/fontes/` (as cinco em base64)
+e `web/nucleo/` são carregadas por **caminho relativo** pelas duas páginas de
+gerador. Por isso as rotas terminam em barra (`/letreiros/`, `/topo/`) e as
+ferramentas copiam as três pastas para a página temporária.
+
+Arquivo `.js` e não `.ttf` nas fontes: as ferramentas abrem a página como
+`file://`, e ali o navegador bloqueia `fetch` mas deixa `<script src>` passar.
+
+### Mexeu no topo de bolo? Rode a matriz
+
+    node ferramentas/conferir_topos.js /tmp/topos          # 192 peças, ~6 min
+    node ferramentas/conferir_topos.js /tmp/topos --rapido # os extremos, ~65 s
+
+Depois passe os STL pelo `analisar_arquivo` do pacote. É o §16 do documento do
+Samir traduzido: "o modelo fatia sem erros". A suíte roda a versão curta.
+
 ### Mexeu em geometria? Confira a impressão digital
 
     node ferramentas/impressao_digital.js --conferir docs/impressao-digital.txt

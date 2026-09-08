@@ -436,6 +436,12 @@ def criar_app() -> Flask:
                                em_obra=criar.EM_OBRA)
 
     # ------------------------------------------------------------ ferramentas
+    # As pastas que os geradores carregam por caminho RELATIVO. Sao servidas sob
+    # cada gerador porque e assim que o navegador as pede a partir de
+    # /letreiros/ ou /topo/ -- e e o mesmo caminho que funciona quando a
+    # ferramenta abre a pagina como file://.
+    PARTILHADAS = ("nucleo", "fontes", "libs")
+
     # A barra no fim nao e enfeite: desde o C1 a pagina carrega o nucleo por
     # caminho RELATIVO, e sem ela "nucleo/nucleo.js" cairia na raiz do site.
     # Flask redireciona /letreiros para ca sozinho, entao link antigo continua
@@ -445,10 +451,29 @@ def criar_app() -> Flask:
     def letreiros():
         return send_from_directory(os.path.join(RAIZ, "web"), "gerador-letreiros.html")
 
-    @app.route("/letreiros/nucleo/<path:arquivo>")
+    @app.route("/topo/")
     @auth.exige_login
-    def letreiros_nucleo(arquivo):
-        return send_from_directory(os.path.join(RAIZ, "web", "nucleo"), arquivo)
+    def topo_de_bolo():
+        return send_from_directory(os.path.join(RAIZ, "web"), "topo-de-bolo.html")
+
+    @app.route("/letreiros/<any(nucleo, fontes, libs):pasta>/<path:arquivo>")
+    @app.route("/topo/<any(nucleo, fontes, libs):pasta>/<path:arquivo>")
+    @auth.exige_login
+    def partilhado(pasta, arquivo):
+        return send_from_directory(os.path.join(RAIZ, "web", pasta), arquivo)
+
+    @app.route("/topo/marca")
+    @auth.exige_login
+    def topo_marca():
+        """§18: termo de marca no nome do CLIENTE, e nao so no template.
+
+        A exposicao maior nao e o template que voce escolhe: e o cliente
+        digitando "Homem Aranha" no campo de nome de uma peca que VOCE vende.
+        A curadoria ja sabia detectar isso; aqui os dois se encontram.
+        """
+        from morumbi3d import brands
+        achados = brands.detectar(request.args.get("nome", ""))
+        return {"termos": [{"termo": t, "categoria": c} for t, c in achados]}
 
     @app.route("/saude")
     def saude():

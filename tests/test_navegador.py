@@ -164,20 +164,33 @@ class TesteFiltroDeCriar(NoNavegador):
         self.assertEqual(len(self.nomes_visiveis()), len(criar.MODELOS))
         self.assertFalse(self.visivel("#nada"), "o cartao de vazio apareceu com a lista cheia")
 
+    def esperado(self, prova):
+        """O que o catalogo diz que deveria sobrar. Assim o teste cobra o
+        FILTRO, e nao a lista de modelos do dia -- que cresce a cada sprint."""
+        from sistema import criar
+        return sorted(m.nome for m in criar.MODELOS if prova(m))
+
     def test_filtrar_por_uma_cor_esconde_os_de_duas(self):
         """A pergunta real: o que dá para fazer sem trocar filamento?"""
         self.chip("cores", "1")
-        self.assertEqual(sorted(self.nomes_visiveis()), ["Letreiro Clássico", "Logo 3D"])
+        esperado = self.esperado(lambda m: 1 in m.cores)
+        self.assertEqual(sorted(self.nomes_visiveis()), esperado)
+        self.assertTrue(esperado, "nenhum modelo de uma cor: o teste perdeu o sentido")
+        self.assertNotIn("Letreiro Terror", esperado)
 
     def test_filtrar_por_categoria(self):
         self.chip("categoria", "Identidade")
-        self.assertEqual(self.nomes_visiveis(), ["Logo 3D"])
+        self.assertEqual(sorted(self.nomes_visiveis()),
+                         self.esperado(lambda m: m.categoria == "Identidade"))
 
     def test_filtrar_por_situacao_mostra_so_o_que_da_para_gerar(self):
         from sistema import criar
         self.chip("status", criar.NO_AR)
-        self.assertNotIn("Topo de bolo", self.nomes_visiveis())
-        self.assertEqual(len(self.nomes_visiveis()), criar.contagem()["no_ar"])
+        self.assertEqual(sorted(self.nomes_visiveis()),
+                         self.esperado(lambda m: m.status == criar.NO_AR))
+        for m in criar.MODELOS:
+            if m.status != criar.NO_AR:
+                self.assertNotIn(m.nome, self.nomes_visiveis())
 
     def test_a_busca_acha_pelo_tema(self):
         self.pg.fill("#busca", "halloween")
@@ -193,7 +206,8 @@ class TesteFiltroDeCriar(NoNavegador):
     def test_os_filtros_se_somam(self):
         self.chip("categoria", "Festa")
         self.chip("cores", "1")
-        self.assertEqual(self.nomes_visiveis(), ["Letreiro Clássico"])
+        self.assertEqual(sorted(self.nomes_visiveis()),
+                         self.esperado(lambda m: m.categoria == "Festa" and 1 in m.cores))
 
     def test_o_cartao_abre_o_gerador_no_modelo_certo(self):
         """O cartao promete um modelo; o gerador tem que abrir NELE."""
@@ -380,6 +394,59 @@ class TesteImpressaoDigital(unittest.TestCase):
             env={**os.environ, "CHROME_BIN": CHROMIUM})
         self.assertEqual(r.returncode, 0,
                          "a geometria mudou:\n" + (r.stderr or r.stdout)[:4000])
+
+
+class TesteMalhaDoTopoDeBolo(unittest.TestCase):
+    """§16 do documento: "o modelo fatia sem erros".
+
+    Gera os topos num navegador de verdade e passa cada STL pelo analisador de
+    malha do pacote -- o mesmo criterio do fatiador. E o unico teste do sprint
+    que fala a lingua da impressora.
+
+    Foi ele que achou o pior bug do C2: oito pecas APROVADAS pelo gerador com
+    aresta nao-manifold, porque o coracao saia no sentido horario e o Clipper
+    o tratava como furo. Na tela o desenho parecia certo -- canvas nao liga
+    para sentido de poligono.
+
+    Roda a matriz curta (~65 s): os nomes e tamanhos extremos, que e onde
+    quebra. A matriz inteira e `node ferramentas/conferir_topos.js`.
+    """
+
+    @unittest.skipUnless(TEM_NAVEGADOR, SEM_NAVEGADOR)
+    def test_todo_topo_gerado_tem_malha_que_o_fatiador_aceita(self):
+        import subprocess
+        import tempfile
+        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        node = shutil.which("node") or "/opt/node22/bin/node"
+        if not os.path.exists(node):
+            self.skipTest("node nao instalado")
+        pasta = tempfile.mkdtemp(prefix="topos-")
+        r = subprocess.run(
+            [node, os.path.join(raiz, "ferramentas", "conferir_topos.js"), pasta, "--rapido"],
+            capture_output=True, text=True, timeout=600, cwd=raiz,
+            env={**os.environ, "CHROME_BIN": CHROMIUM})
+        self.assertEqual(r.returncode, 0, (r.stderr or r.stdout)[:3000])
+        self.assertNotIn("REPROVADA", r.stdout,
+                         "o gerador aprovou peca que nao passa na propria vistoria")
+
+        import sys
+        sys.path.insert(0, raiz)
+        from morumbi3d.config import carregar_config
+        from morumbi3d.mesh import analisar_arquivo
+        import pathlib
+
+        cfg = carregar_config()
+        arquivos = sorted(pathlib.Path(pasta).glob("*.stl"))
+        self.assertGreaterEqual(len(arquivos), 12, "quase nada foi gerado")
+        ruins = []
+        for a in arquivos:
+            m = analisar_arquivo(a, cfg)
+            if not m.fechada or m.partes_soltas > 1:
+                ruins.append(f"{a.name}: abertas={m.arestas_abertas} "
+                             f"nao-manifold={m.arestas_nao_manifold} "
+                             f"partes={m.partes_soltas}")
+        self.assertEqual(ruins, [], f"{len(ruins)} de {len(arquivos)} nao imprimem:\n"
+                                    + "\n".join(ruins[:8]))
 
 
 class TesteQuadroELista(NoNavegador):

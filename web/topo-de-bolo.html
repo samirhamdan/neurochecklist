@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Topo de bolo — Morumbi 3D</title>
+<style>
+/* Mobile-first (§15): uma coluna, poucos campos por vez. O desktop ganha uma
+   segunda coluna la embaixo, e nao o contrario. */
+:root{
+  --azul:#0040F0; --azul-escuro:#0030B0; --azul-fundo:#E8EEFF;
+  --laranja:#F03000; --grafite:#15191D;
+  --tinta:#15191D; --tinta2:#4A5058; --suave:#7A828C;
+  --mesa:#FFFFFF; --bancada:#F1F3F5; --linha:#DFE3E8;
+  --verde:#1F7A4D; --verde-fundo:#E7F3EC;
+  --vermelho:#C0271B; --vermelho-fundo:#FCEBE9;
+  --ambar:#9A6B12; --ambar-fundo:#FDF3E0;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bancada);color:var(--tinta);
+  font:16px/1.5 Barlow,"Segoe UI",system-ui,sans-serif;
+}
+.topo{
+  background:var(--grafite);color:#EDEFF2;padding:12px 16px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.topo .marca{font-weight:700;font-size:19px;letter-spacing:.01em}
+.topo .marca span{color:var(--laranja)}
+.topo .marca b{color:#6E9BFF;font-weight:700}
+.topo .volta{
+  margin-left:auto;font-size:14px;color:#EDEFF2;text-decoration:none;
+  border:1px solid #3A3F47;border-radius:6px;padding:6px 12px;
+}
+.topo .volta:hover{border-color:#6E9BFF;color:#6E9BFF}
+main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
+.passo{
+  background:var(--mesa);border:1px solid var(--linha);border-radius:8px;
+  padding:16px;margin-bottom:14px;
+}
+.passo > h2{
+  margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--suave);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+}
+.passo > h2 i{color:var(--azul);font-style:normal}
+.modelos{display:grid;gap:8px}
+.modelo{
+  display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;
+  background:var(--mesa);border:1px solid var(--linha);border-radius:7px;
+  padding:11px 13px;cursor:pointer;font:inherit;color:inherit;
+}
+.modelo:hover{border-color:var(--azul)}
+.modelo[aria-pressed="true"]{border-color:var(--azul);background:var(--azul-fundo)}
+.modelo .txt{flex:1;min-width:0}
+.modelo b{display:block;font-size:15.5px;font-weight:600}
+.modelo small{display:block;color:var(--tinta2);font-size:13.5px;line-height:1.35}
+.modelo .sku{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
+  color:var(--suave);white-space:nowrap;
+}
+.campo{display:block;margin-bottom:12px}
+.campo:last-child{margin-bottom:0}
+.campo > span{
+  display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+  font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--suave);margin-bottom:5px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+}
+.campo .conta{font-weight:500;letter-spacing:0;text-transform:none;font-size:12px}
+.campo .conta.estourou{color:var(--vermelho);font-weight:700}
+.campo input{
+  width:100%;padding:12px 13px;font:inherit;font-size:17px;
+  border:1px solid var(--linha);border-radius:7px;background:var(--mesa);color:var(--tinta);
+}
+.campo input:focus{border-color:var(--azul);outline:2px solid var(--azul-fundo)}
+.opcoes{display:flex;gap:8px;flex-wrap:wrap}
+.opt{
+  flex:1 1 auto;min-width:66px;padding:11px 10px;font:inherit;font-size:15px;
+  border:1px solid var(--linha);border-radius:7px;background:var(--mesa);
+  color:var(--tinta2);cursor:pointer;text-align:center;
+}
+.opt:hover{border-color:var(--azul);color:var(--azul)}
+.opt[aria-pressed="true"]{background:var(--azul);border-color:var(--azul);color:#fff;font-weight:600}
+.previa{
+  background:var(--mesa);border:1px solid var(--linha);border-radius:8px;
+  padding:14px;margin-bottom:14px;
+}
+.previa canvas{width:100%;height:auto;display:block;border-radius:6px;background:#FAFBFC}
+.medidas{
+  display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:14px 0 0;
+  font-size:14.5px;
+}
+.medidas dt{color:var(--suave);font-size:13px}
+.medidas dd{margin:0;font-family:"IBM Plex Mono",ui-monospace,monospace}
+.medidas dd.preco{font-size:22px;font-weight:700;color:var(--azul);font-family:inherit}
+.avisos{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.aviso{padding:11px 13px;border-radius:7px;font-size:14.5px;border-left:3px solid}
+.aviso.bem{background:var(--verde-fundo);color:var(--verde);border-color:var(--verde)}
+.aviso.mal{background:var(--vermelho-fundo);color:var(--vermelho);border-color:var(--vermelho)}
+.aviso.marca{background:var(--ambar-fundo);color:var(--ambar);border-color:var(--ambar)}
+/* Sem `position:sticky`. Grudado no rodape ele flutuava POR CIMA da previa --
+   no celular voce apertava "gerar" sem conseguir ver a peca que estava
+   decidindo. O §15 pede que o botao seja o principal, e nao que ele tape o
+   assunto; no fluxo do celular ele ja e a ultima coisa da pagina. */
+.gerar{
+  display:block;width:100%;padding:16px;font:inherit;
+  font-size:17px;font-weight:700;letter-spacing:.04em;border:none;border-radius:8px;
+  background:var(--azul);color:#fff;cursor:pointer;
+}
+.gerar:hover{background:var(--azul-escuro)}
+.gerar:disabled{background:#B9BEC4;cursor:not-allowed;box-shadow:none}
+.gerar small{display:block;font-size:12px;font-weight:500;letter-spacing:0;opacity:.85;
+  margin-top:3px;font-family:"IBM Plex Mono",ui-monospace,monospace}
+.zap{
+  display:block;width:100%;margin-top:10px;padding:13px;text-align:center;
+  font-size:15px;text-decoration:none;border-radius:8px;
+  border:1px solid var(--linha);background:var(--mesa);color:var(--tinta2);
+}
+.zap:hover{border-color:var(--azul);color:var(--azul)}
+.estado{color:var(--suave);font-size:14px;margin:0}
+.rodape{
+  color:var(--suave);font-size:12.5px;line-height:1.45;margin:18px 0 0;
+}
+@media(min-width:900px){
+  main{max-width:1000px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .coluna{display:contents}
+  .lado-direito{position:sticky;top:16px}
+}
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <span class="marca">Morumbi <b>3</b><span>D</span></span>
+  <span style="font-size:14px;color:#B9BEC4">topo de bolo</span>
+  <a class="volta" href="/criar">← Criar</a>
+</header>
+
+<main>
+  <div class="esquerda">
+    <section class="passo">
+      <h2><i>1.</i> Escolha o modelo</h2>
+      <div class="modelos" id="modelos"></div>
+    </section>
+
+    <section class="passo">
+      <h2><i>2.</i> Escreva o que vai no topo</h2>
+      <label class="campo">
+        <span>Nome <em class="conta" id="conta-nome"></em></span>
+        <input id="nome" type="text" value="Maria" autocomplete="off" spellcheck="false"
+               enterkeyhint="done">
+      </label>
+      <label class="campo" id="caixa-numero">
+        <span>Idade ou número <em class="conta" id="conta-numero"></em></span>
+        <input id="numero" type="text" inputmode="numeric" value="5" autocomplete="off">
+      </label>
+    </section>
+
+    <section class="passo">
+      <h2><i>3.</i> Escolha o tamanho</h2>
+      <div class="opcoes" id="tamanhos"></div>
+    </section>
+  </div>
+
+  <div class="lado-direito">
+    <section class="previa">
+      <canvas id="desenho" width="1000" height="700"
+              aria-label="Prévia do topo de bolo"></canvas>
+      <p class="estado" id="estado">Carregando as fontes…</p>
+      <dl class="medidas" id="medidas"></dl>
+    </section>
+
+    <div class="avisos" id="avisos"></div>
+
+    <button class="gerar" id="gerar" disabled>GERAR MEU TOPO<small id="arquivo"></small></button>
+    <a class="zap" id="zap" href="#" target="_blank" rel="noopener">Mandar no WhatsApp</a>
+
+    <p class="rodape">Modelo <b>em teste</b>: o desenho está pronto e a peça é gerada, mas
+    ela ainda não foi impressa e aprovada. Nenhum template vai para venda antes de sair da
+    impressora e passar na mão — é a regra do §6 do documento.</p>
+  </div>
+</main>
+
+<script src="libs/libs.js"></script>
+<script src="fontes/fontes.js"></script>
+<script src="nucleo/nucleo.js"></script>
+<script src="nucleo/texto.js"></script>
+<script src="nucleo/oficina.js"></script>
+<script src="nucleo/topo.js"></script>
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const O = MorumbiOficina, TP = MorumbiTopo;
+
+  const PADRAO = { sku: TP.TEMPLATES[0].sku, tamanho: 180 };
+  const CHAVE = "morumbi3d.topo";
+  let est = Object.assign({}, PADRAO);
+  let G = null, R = null, timer = null;
+
+  function guardado(){
+    try{
+      const g = JSON.parse(localStorage.getItem(CHAVE) || "null");
+      if (!g) return null;
+      const limpo = {};
+      for (const k of Object.keys(PADRAO)) if (k in g) limpo[k] = g[k];
+      return { est: limpo, nome: typeof g.nome === "string" ? g.nome : null,
+               numero: typeof g.numero === "string" ? g.numero : null };
+    }catch(e){ return null; }
+  }
+  function guardar(){
+    try{ localStorage.setItem(CHAVE, JSON.stringify(
+      Object.assign({}, est, { nome: $("nome").value, numero: $("numero").value })));
+    }catch(e){}
+  }
+
+  // ---------- passo 1: os modelos ----------
+  $("modelos").innerHTML = TP.TEMPLATES.map(t => `
+    <button type="button" class="modelo" data-sku="${t.sku}" aria-pressed="false">
+      <span class="txt"><b>${t.modelo}</b><small>${t.resumo}</small></span>
+      <span class="sku">${t.sku}</span>
+    </button>`).join("");
+
+  $("modelos").addEventListener("click", e => {
+    const b = e.target.closest(".modelo"); if(!b) return;
+    est.sku = b.dataset.sku;
+    marcarModelo(); ajustarCampos(); agendar(); guardar();
+  });
+
+  function marcarModelo(){
+    for (const b of $("modelos").children) {
+      b.setAttribute("aria-pressed", b.dataset.sku === est.sku);
+    }
+  }
+
+  // ---------- passo 3: os tamanhos ----------
+  $("tamanhos").innerHTML = TP.TAMANHOS.map(t =>
+    `<button type="button" class="opt" data-v="${t}" aria-pressed="false">${t/10} cm</button>`
+  ).join("");
+  $("tamanhos").addEventListener("click", e => {
+    const b = e.target.closest(".opt"); if(!b) return;
+    est.tamanho = +b.dataset.v;
+    marcarTamanho(); agendar(); guardar();
+  });
+  function marcarTamanho(){
+    for (const b of $("tamanhos").children) {
+      b.setAttribute("aria-pressed", +b.dataset.v === est.tamanho);
+    }
+  }
+
+  // ---------- os campos seguem o template (§7: `campos`) ----------
+  function modelo(){ return TP.template(est.sku) || TP.TEMPLATES[0]; }
+
+  function ajustarCampos(){
+    const t = modelo();
+    $("caixa-numero").hidden = !t.campos.includes("numero");
+    contar();
+  }
+
+  function contar(){
+    const t = modelo(), lim = t.limites || {};
+    for (const [campo, alvo] of [["nome","conta-nome"], ["numero","conta-numero"]]) {
+      const max = lim[campo];
+      const el = $(alvo);
+      if (!max) { el.textContent = ""; continue; }
+      const n = $(campo).value.trim().length;
+      el.textContent = `${n}/${max}`;
+      el.classList.toggle("estourou", n > max);
+    }
+  }
+
+  for (const id of ["nome","numero"]) {
+    $(id).addEventListener("input", () => { contar(); agendar(); guardar(); });
+  }
+
+  // ---------- gerar ----------
+  function agendar(){ clearTimeout(timer); timer = setTimeout(rodar, 160); }
+
+  function rodar(){
+    if (!G) return;
+    const t = modelo(), lim = t.limites || {};
+    const nome = $("nome").value.trim();
+    const numero = t.campos.includes("numero") ? $("numero").value.trim() : "";
+
+    // §10: alertar nomes longos ANTES de gerar, nao depois.
+    const estouros = [];
+    if (lim.nome && nome.length > lim.nome) {
+      estouros.push(`O nome passa de ${lim.nome} letras neste modelo. ` +
+                    `Com mais que isso a letra sai fina demais e quebra.`);
+    }
+    if (lim.numero && numero.length > lim.numero) {
+      estouros.push(`O número passa de ${lim.numero} dígitos neste modelo.`);
+    }
+    if (estouros.length) { falhar(estouros); return; }
+
+    $("estado").textContent = "Desenhando…";
+    setTimeout(() => {
+      let r;
+      try {
+        r = G.gerar({ nome, numero, frase: t.frase, tamanho: est.tamanho,
+                      fonte: t.fonte, base: t.base, forma: t.forma, arco: t.arco });
+      } catch (e) {
+        falhar(["Não consegui desenhar: " + (e && e.message || e)]); return;
+      }
+      R = r;
+      if (!r.viavel) { falhar([r.motivo], r.avisos); return; }
+      pintar(); conferirMarca(nome);
+    }, 0);
+  }
+
+  function falhar(motivos, avisos){
+    R = null;
+    $("estado").textContent = "";
+    $("medidas").innerHTML = "";
+    $("gerar").disabled = true; $("arquivo").textContent = "";
+    const ctx = $("desenho").getContext("2d");
+    ctx.clearRect(0,0,$("desenho").width,$("desenho").height);
+    $("avisos").innerHTML = motivos.map(m => `<div class="aviso mal">${m}</div>`).join("")
+      + (avisos || []).map(([t,m]) => `<div class="aviso ${t}">${m}</div>`).join("");
+  }
+
+  function pintar(){
+    const c = $("desenho"), ctx = c.getContext("2d"), W = c.width, H = c.height;
+    ctx.clearRect(0,0,W,H);
+    const m = 40, bb = R.bb;
+    const k = Math.min((W - m*2) / bb.w, (H - m*2) / bb.h);
+    const ox = (W - bb.w*k)/2 - bb.minX*k, oy = H - (H - bb.h*k)/2 + bb.minY*k;
+
+    // a mesa por tras, para a escala ser visivel sem ler numero
+    const km = Math.min((W-m*2)/MorumbiNucleo.MESA, (H-m*2)/MorumbiNucleo.MESA);
+    ctx.strokeStyle = "#E4E8EC"; ctx.lineWidth = 1;
+    ctx.strokeRect((W-MorumbiNucleo.MESA*km)/2, (H-MorumbiNucleo.MESA*km)/2,
+                   MorumbiNucleo.MESA*km, MorumbiNucleo.MESA*km);
+
+    ctx.beginPath();
+    for (const p of R.paths) {
+      p.forEach((pt,i) => {
+        const x = ox + (pt.X/MorumbiNucleo.S)*k, y = oy - (pt.Y/MorumbiNucleo.S)*k;
+        i ? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+      });
+      ctx.closePath();
+    }
+    ctx.fillStyle = "#15191D"; ctx.fill("evenodd");
+
+    const vol = O.volume(R.camadas);
+    const e = O.estimar(vol, R.espessura, false);
+    const preco = O.precoComercial(e.g, O.PISO, O.POR_GRAMA);
+    const h = Math.floor(e.min/60), min = Math.round(e.min%60);
+    $("estado").textContent = "";
+    $("medidas").innerHTML = `
+      <dt>Modelo</dt><dd>${modelo().modelo}</dd>
+      <dt>Peça</dt><dd>${(R.bb.w/10).toFixed(1)} × ${(R.bb.h/10).toFixed(1)} cm · ${R.espessura} mm</dd>
+      <dt>Hastes</dt><dd>${R.hastes} de ${TP.MEDIDAS.haste.altura} mm</dd>
+      <dt>Estimativa</dt><dd>${e.g.toFixed(0)} g · ${h}h${String(min).padStart(2,"0")}</dd>
+      <dt>Preço</dt><dd class="preco">R$ ${preco}</dd>`;
+
+    const vist = O.vistoriar(R);
+    const msgs = (R.avisos || []).slice();
+    for (const m of vist.motivos) msgs.push(["mal", m]);
+    if (!msgs.some(x => x[0] === "mal")) msgs.unshift(["bem","Peça inteira, com haste firme e dentro da mesa."]);
+    $("avisos").innerHTML = msgs.map(([t,m]) => `<div class="aviso ${t}">${m}</div>`).join("");
+
+    const arq = TP.nomeDeArquivo(est.sku, R.nome, R.numero, est.tamanho, "stl");
+    $("gerar").disabled = !vist.ok;
+    $("arquivo").textContent = vist.ok ? arq : "corrija os avisos acima";
+    $("zap").href = "https://wa.me/?text=" + encodeURIComponent(
+      `Quero este topo de bolo da Morumbi 3D: ${modelo().modelo} — ` +
+      `${R.nome}${R.numero ? " " + R.numero : ""}, ${(R.bb.w/10).toFixed(0)} cm. ` +
+      `Preço estimado R$ ${preco}.`);
+  }
+
+  // §18: termo de marca no nome do CLIENTE, e nao so no template.
+  let ultimaMarca = "";
+  function conferirMarca(nome){
+    if (nome === ultimaMarca) return;
+    ultimaMarca = nome;
+    fetch("marca?nome=" + encodeURIComponent(nome))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d || !d.termos || !d.termos.length || $("nome").value.trim() !== nome) return;
+        const lista = d.termos.map(t => `${t.termo} (${t.categoria})`).join(", ");
+        $("avisos").insertAdjacentHTML("afterbegin",
+          `<div class="aviso marca"><b>Atenção:</b> ${lista}. Peça encomendada pelo dono
+           da marca pode ser feita; catálogo e vitrine, não.</div>`);
+      })
+      .catch(() => {});
+  }
+
+  // ---------- baixar ----------
+  $("gerar").addEventListener("click", () => {
+    if (!R) return;
+    const stl = MorumbiNucleo.stlBinario(R.camadas);
+    const blob = new Blob([stl.buffer], { type: "model/stl" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = TP.nomeDeArquivo(est.sku, R.nome, R.numero, est.tamanho, "stl");
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+
+  // ---------- comeco ----------
+  const salvo = guardado();
+  if (salvo) {
+    Object.assign(est, salvo.est);
+    if (!TP.template(est.sku)) est.sku = PADRAO.sku;
+    if (!TP.TAMANHOS.includes(est.tamanho)) est.tamanho = PADRAO.tamanho;
+    if (salvo.nome) $("nome").value = salvo.nome;
+    if (salvo.numero) $("numero").value = salvo.numero;
+  }
+  const pedido = new URLSearchParams(location.search).get("modelo");
+  if (pedido && TP.template(pedido)) est.sku = pedido;
+
+  marcarModelo(); marcarTamanho(); ajustarCampos();
+
+  try {
+    G = TP.Gerador(MorumbiFontes.carregar(opentype));
+    rodar();
+  } catch (err) {
+    $("estado").textContent = "Não consegui carregar as fontes: " + err.message;
+  }
+})();
+</script>
+</body>
+</html>

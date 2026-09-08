@@ -18,22 +18,30 @@ const path = require("path");
 const CHROME =
   process.env.CHROME_BIN || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 const WEB = path.join(__dirname, "..", "web");
-const PAGINA = path.join(WEB, "gerador-letreiros.html");
+const PAGINAS = {
+  letreiro: path.join(WEB, "gerador-letreiros.html"),
+  topo: path.join(WEB, "topo-de-bolo.html"),
+};
+const PAGINA = PAGINAS.letreiro;      // o padrao, para quem ja usava
 const MARCA = "RESULTADO_TESTE";
 
 /** Copia a pagina e o nucleo para uma pasta temporaria, com o script injetado. */
-function montar(injecao) {
-  const html = fs.readFileSync(PAGINA, "utf8").replace("</body>", injecao + "</body>");
+function montar(injecao, qual) {
+  const pagina = PAGINAS[qual || "letreiro"];
+  if (!pagina) throw new Error(`pagina desconhecida: ${qual}`);
+  const html = fs.readFileSync(pagina, "utf8").replace("</body>", injecao + "</body>");
   const pasta = fs.mkdtempSync(path.join(os.tmpdir(), "letreiro-"));
-  fs.cpSync(path.join(WEB, "nucleo"), path.join(pasta, "nucleo"), { recursive: true });
+  for (const dir of ["nucleo", "fontes", "libs"]) {
+    fs.cpSync(path.join(WEB, dir), path.join(pasta, dir), { recursive: true });
+  }
   const arquivo = path.join(pasta, "pagina.html");
   fs.writeFileSync(arquivo, html);
   return { pasta, arquivo };
 }
 
 /** Abre a pagina, espera o script injetado terminar e devolve o JSON dele. */
-function rodar(injecao, { minutos = 3 } = {}) {
-  const { pasta, arquivo } = montar(injecao);
+function rodar(injecao, { minutos = 3, pagina = "letreiro" } = {}) {
+  const { pasta, arquivo } = montar(injecao, pagina);
   let dom;
   try {
     dom = execFileSync(
@@ -58,27 +66,14 @@ function rodar(injecao, { minutos = 3 } = {}) {
 
 /** As cinco fontes vem embutidas na pagina em base64; todo injetado precisa disto. */
 const PRELUDIO = `
-  function carregar(id) {
-    const bin = atob(document.getElementById(id).textContent.trim());
-    const buf = new ArrayBuffer(bin.length), u8 = new Uint8Array(buf);
-    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    return buf;
-  }
   function b64(buffer) {
     const u8 = new Uint8Array(buffer);
     let s = "";
     for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
     return btoa(s);
   }
-  function gerador() {
-    return MorumbiLetreiro.Gerador({
-      luckiest: opentype.parse(carregar("fonte1")),
-      gamer:    opentype.parse(carregar("fonte2")),
-      cinema:   opentype.parse(carregar("fonte3")),
-      futuro:   opentype.parse(carregar("fonte4")),
-      terror:   opentype.parse(carregar("fonte5"))
-    });
-  }
+  function fontes() { return MorumbiFontes.carregar(opentype); }
+  function gerador() { return MorumbiLetreiro.Gerador(fontes()); }
   function entregar(saida) {
     const alvo = document.createElement("div");
     alvo.id = ${JSON.stringify(MARCA)};
@@ -87,4 +82,4 @@ const PRELUDIO = `
   }
 `;
 
-module.exports = { rodar, montar, PRELUDIO, CHROME, PAGINA, WEB };
+module.exports = { rodar, montar, PRELUDIO, CHROME, PAGINA, PAGINAS, WEB };

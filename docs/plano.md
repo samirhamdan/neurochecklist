@@ -422,8 +422,43 @@ nada os renderiza ainda. Formulário genérico escrito contra **um** formulário
 acerta por acaso. O C2 traz o segundo: aí ele se escreve contra duas
 exigências reais em vez de uma imaginada.
 
-## Sprint C2 — Gerador de topo de bolo
+## Sprint C2 — Gerador de topo de bolo ✅ FEITO (o código)
 **Tamanho G · depende do C1 · o gargalo não é código**
+
+**O que ficou pronto:** a tela `/topo/`, mobile-first, com o fluxo do seu §3;
+seis templates paramétricos; a nomenclatura do §11; o alerta de marca do §18
+ligado ao `brands.py` da curadoria; e a validação do §10 — nome longo barrado
+**antes** de gerar, traço fino detectado, e malha reprovada sem botão.
+
+**A prova:** 192 peças — 6 templates × 8 nomes × 4 tamanhos — geradas num
+navegador de verdade e passadas pelo analisador de malha do pacote. Todas
+fechadas, manifold, em uma peça só, cabendo na mesa. **Nota 100 em todas.**
+
+**O que o C1 provou valer:** o topo de bolo não reescreveu uma linha de
+geometria, de estimativa, de preço ou de nome de arquivo. Ele declarou o
+desenho e herdou o resto. Duas coisas subiram da peça para a plataforma no
+caminho, porque o segundo gerador mostrou que eram de todos: a **máquina de
+texto** (letra vira geometria, com a garantia de que as letras se tocam) e a
+**regra de conexão** (`conexaoFragil`: duas partes que só se encostam não
+estão ligadas).
+
+**Os três bugs que só a impressora acusaria:**
+
+1. **O coração saía no sentido horário.** Com preenchimento NonZero, o Clipper
+   trata caminho horário como *furo* — unir o coração ao nome estava
+   **subtraindo** ele. Na tela o desenho parecia certo (canvas ignora sentido
+   de polígono) e doze arquivos foram para o disco com aresta não-manifold.
+2. **O empilhamento parava no ponto exato do toque.** Duas linhas que *começam*
+   a se tocar são um corpo só para o Clipper e uma aresta não-manifold depois
+   de extrudar. Agora entram 1,5 mm além do toque.
+3. **Dois pedidos diferentes viravam o mesmo arquivo.** O nome usava a largura
+   medida; 180 mm e 175 mm arredondavam ambos para 17CM e um sobrescrevia o
+   outro na pasta de downloads.
+
+**O que falta, e é seu:** o §6 — **imprimir**. Os seis templates nascem
+marcados *em teste* e nenhum vai para venda antes de sair da mesa e passar na
+mão. O código está pronto antes dos templates, exatamente como este plano
+previu.
 
 O MVP do seu documento: 10 templates, nome, idade, tamanho, prévia, preço,
 pedido.

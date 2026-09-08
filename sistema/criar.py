@@ -105,12 +105,14 @@ MODELOS: tuple[Modelo, ...] = (
                 "comercial — só peça encomendada pelo dono da marca.",
            busca=("marca", "empresa", "placa", "fachada", "brinde")),
     Modelo(slug="topo-de-bolo", nome="Topo de bolo", categoria=FESTA,
-           resumo="Nome, idade e tema em cima do bolo, a partir de um template testado.",
-           gerador="Gerador de topo de bolo", cores=(), cores_rotulo="a definir",
-           saida="3MF",
-           nota="Especificação escrita em docs/topo-de-bolo-requisitos.md. O gargalo é "
-                "imprimir os 10 templates, não o código.",
-           busca=("bolo", "aniversário", "festa", "idade")),
+           resumo="Nome, idade e tema em cima do bolo, a partir de um template.",
+           # Uma camada, uma cor: o gerador emite UMA peca. Topo de duas cores
+           # pede desenho em duas camadas, que e outro sprint.
+           gerador="Gerador de topo de bolo", rota="/topo/", cores=(1,), saida="STL",
+           nota="Os seis templates estão EM TESTE: o desenho sai, mas nenhum foi "
+                "impresso e aprovado ainda. O §6 do documento manda testar na mesa "
+                "antes de vender.",
+           busca=("bolo", "aniversário", "festa", "idade", "topo")),
 )
 
 

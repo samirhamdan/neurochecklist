@@ -32,6 +32,10 @@
     60: { infill:  6, rot: "luminaria" },
   };
 
+  // Traco mais fino que isto sai com poucas linhas de perimetro e quebra na
+  // mao. E medida da impressora, nao do produto: todo gerador obedece.
+  const TRACO_MINIMO = 1.6;   // mm
+
   // Cada troca de cor descarta filamento antes de voltar a imprimir a peca.
   // Sai do custo de toda peca de duas cores, e e o motivo de "1 cor" ser um
   // filtro de verdade na tela Criar.
@@ -90,6 +94,37 @@
     return `${slug}_${rotulo}_${cor}_${Math.round(bb.w)}x${Math.round(bb.h)}x${t}mm_inf${inf}.stl`;
   }
 
+  /** Duas partes que so se ENCOSTAM, sem area de contato, nao estao ligadas.
+   *
+   * O Clipper conta isso como um corpo so -- e conta certo, em duas dimensoes.
+   * Mas extrudar um contorno que se toca num ponto produz aresta nao-manifold,
+   * e o fatiador recusa. Foi assim que oito topos de bolo passaram pela
+   * vistoria e falharam no analisador de malha: o coracao encostava no nome
+   * num ponto.
+   *
+   * O teste: encolhe um fio de cabelo. Se a peca se parte, o que parecia
+   * ligacao era um beijo.
+   */
+  function conexaoFragil(paths, folga) {
+    const f = folga == null ? 0.05 : folga;
+    const antes = N.analisar(paths).corpos;
+    const magra = N.uniao([N.inflar(paths, -f)]);
+    if (!magra.length) return { fragil: true, corpos: antes, depois: 0 };
+    const depois = N.analisar(magra).corpos;
+    return { fragil: depois > antes, corpos: antes, depois };
+  }
+
+  /** Quanto da peca esta mais fino que o traco minimo. §10 e §6. */
+  function tracosFinos(paths, minimo) {
+    const m = minimo == null ? TRACO_MINIMO : minimo;
+    const total = N.area(paths);
+    const encolhida = N.uniao([N.inflar(paths, -m / 2)]);
+    if (!encolhida.length) return { area: total, fracao: 1, tudo: true };
+    const devolta = N.uniao([N.inflar(encolhida, m / 2)]);
+    const sumiu = Math.max(total - N.area(devolta), 0);
+    return { area: sumiu, fracao: total ? sumiu / total : 0, tudo: false };
+  }
+
   // A vistoria: a unica porta entre a peca e o download.
   //
   // Antes do C1 a tela AVISAVA que a peca tinha saido em partes soltas e
@@ -109,6 +144,7 @@
     return { ok: motivos.length === 0, motivos, enc };
   }
 
-  return { ESPESSURAS, PURGA_POR_TROCA, PISO, POR_GRAMA, MESA,
-           volume, estimar, cabe, purga, precoComercial, nomeDeArquivo, vistoriar };
+  return { ESPESSURAS, PURGA_POR_TROCA, PISO, POR_GRAMA, MESA, TRACO_MINIMO,
+           volume, estimar, cabe, purga, precoComercial, nomeDeArquivo, vistoriar,
+           conexaoFragil, tracosFinos };
 });

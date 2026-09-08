@@ -167,11 +167,25 @@ class TesteTela(unittest.TestCase):
         self.assertIsNotNone(achado, "o cartao do Terror mudou de forma")
         self.assertEqual(achado.group(1).split(), ["2"])
 
-    def test_modelo_em_construcao_nao_ganha_botao(self):
-        bloco = re.search(r'<article class="modelo planejado".*?</article>',
-                          self.pagina, re.S)
-        self.assertIsNotNone(bloco, "nenhum cartao marcado como planejado")
-        self.assertNotIn('class="botao"', bloco.group(0))
+    def test_so_quem_esta_no_ar_ganha_botao(self):
+        """A regra, e nao o inventario do dia.
+
+        A primeira versao exigia que EXISTISSE um cartao planejado, e quebrou
+        no dia em que o topo de bolo ficou pronto -- reprovando uma boa
+        noticia. O que precisa valer e a equivalencia: cartao planejado nao
+        tem botao, cartao no ar tem.
+        """
+        cartoes = re.findall(r'<article class="modelo([^"]*)".*?</article>',
+                             self.pagina, re.S)
+        blocos = re.findall(r'<article class="modelo[^"]*".*?</article>',
+                            self.pagina, re.S)
+        self.assertEqual(len(blocos), len(self.c.MODELOS))
+        for classe, bloco in zip(cartoes, blocos):
+            planejado = "planejado" in classe
+            tem_botao = 'class="botao"' in bloco
+            with self.subTest(planejado=planejado):
+                self.assertEqual(tem_botao, not planejado,
+                                 "planejado com botao, ou no ar sem botao")
 
     def test_toda_rota_prometida_como_no_ar_responde(self):
         """A promessa do cartao verde, cobrada uma por uma."""

@@ -51,6 +51,28 @@
     c.Execute(L.ClipType.ctDifference, sol, FT, FT);
     return sol;
   }
+  function interseccao(a, b) {
+    const L=api(), c=new L.Clipper(), sol=new L.Paths();
+    c.AddPaths(a,0,true); c.AddPaths(b,1,true);
+    c.Execute(L.ClipType.ctIntersection, sol, FT, FT);
+    return sol;
+  }
+  function area(paths) {
+    const L=api();
+    let a = 0;
+    for (const p of paths) a += L.Clipper.Area(p);
+    return a / (S*S);
+  }
+  // Gira em torno de um ponto. O topo de bolo em arco precisa disto letra por
+  // letra: cada glifo entra reto e sai inclinado no angulo do proprio lugar.
+  function rotacionar(paths, graus, cx, cy) {
+    const r = graus * Math.PI / 180, co = Math.cos(r), si = Math.sin(r);
+    const ix = Math.round((cx || 0) * S), iy = Math.round((cy || 0) * S);
+    return paths.map(p => p.map(pt => {
+      const x = pt.X - ix, y = pt.Y - iy;
+      return { X: Math.round(x*co - y*si) + ix, Y: Math.round(x*si + y*co) + iy };
+    }));
+  }
   function inflar(paths, d) {
     const L=api(), co=new L.ClipperOffset(2, 0.25), sol=new L.Paths();
     co.AddPaths(paths, L.JoinType.jtRound, L.EndType.etClosedPolygon);
@@ -234,6 +256,7 @@
     return { buffer: buf, n: tris.length };
   }
 
-  return { S, FT, MESA, cub, qua, pathToPolys, uniao, diferenca, inflar, mover,
-           escalar, caixa, analisar, retangulo, grupos, stlBinario };
+  return { S, FT, MESA, cub, qua, pathToPolys, uniao, diferenca, interseccao, area,
+           rotacionar, inflar, mover, escalar, caixa, analisar, retangulo, grupos,
+           stlBinario };
 });
