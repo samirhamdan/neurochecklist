@@ -1,0 +1,439 @@
+<title>Morumbi 3D — Plano de Interface</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* A folha do sistema, aplicada a um documento. Mesmas familias, mesmas cores
+   medidas no arquivo da marca: azul e acao, laranja e atencao, grafite e tinta.
+   Os neutros sao frios, como manda o CLAUDE.md do projeto -- cinza quente ao
+   lado do azul puxa para o esverdeado. */
+:root{
+  --azul:#0040F0; --azul-fundo:#E8EEFF; --azul-borda:#C3D3FF;
+  --laranja:#F03000; --grafite:#15191D;
+  --tinta:#15191D; --tinta-2:#3E454E; --suave:#6C757F;
+  --mesa:#FFFFFF; --bancada:#F2F4F6; --linha:#DEE3E8; --linha-forte:#C2C9D1;
+  --vermelho:#C0271B; --vermelho-fundo:#FBEAE8;
+  --ambar:#8A5D0B;   --ambar-fundo:#FCF3E2;
+  --verde:#1B6E45;   --verde-fundo:#E6F1EA;
+  --sombra:0 1px 2px rgba(21,25,29,.05), 0 1px 1px rgba(21,25,29,.04);
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){
+    --azul:#7EA3FF; --azul-fundo:#151E38; --azul-borda:#2B3B63;
+    --laranja:#FF8A5C; --grafite:#0E1114;
+    --tinta:#E8EBEF; --tinta-2:#B4BCC6; --suave:#828C99;
+    --mesa:#16191E; --bancada:#0E1114; --linha:#272C34; --linha-forte:#3A414B;
+    --vermelho:#FF8478; --vermelho-fundo:#2B1614;
+    --ambar:#E0AC4E;   --ambar-fundo:#2A2013;
+    --verde:#5FC08D;   --verde-fundo:#122419;
+    --sombra:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --azul:#7EA3FF; --azul-fundo:#151E38; --azul-borda:#2B3B63;
+  --laranja:#FF8A5C; --grafite:#0E1114;
+  --tinta:#E8EBEF; --tinta-2:#B4BCC6; --suave:#828C99;
+  --mesa:#16191E; --bancada:#0E1114; --linha:#272C34; --linha-forte:#3A414B;
+  --vermelho:#FF8478; --vermelho-fundo:#2B1614;
+  --ambar:#E0AC4E;   --ambar-fundo:#2A2013;
+  --verde:#5FC08D;   --verde-fundo:#122419;
+  --sombra:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bancada); color:var(--tinta);
+  font:16.5px/1.6 Barlow,"Segoe UI",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.folha{max-width:820px; margin:0 auto; padding:44px 22px 96px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace}
+
+/* ---------- abertura ---------- */
+.abre{border-bottom:2px solid var(--tinta); padding-bottom:22px; margin-bottom:30px}
+.selo{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--suave); margin:0 0 10px;
+}
+h1{
+  font-family:"Barlow Condensed",Barlow,sans-serif; font-weight:700;
+  font-size:clamp(34px,6.4vw,50px); line-height:1.04; letter-spacing:-.012em;
+  margin:0 0 12px; text-wrap:balance;
+}
+h1 em{font-style:normal; color:var(--azul)}
+.sub{margin:0; font-size:17.5px; color:var(--tinta-2); max-width:62ch}
+
+/* ---------- secoes ---------- */
+h2{
+  font-family:"Barlow Condensed",Barlow,sans-serif; font-weight:700;
+  font-size:30px; letter-spacing:-.008em; margin:44px 0 6px; text-wrap:balance;
+}
+h2 + .desce{margin:0 0 18px; color:var(--tinta-2); max-width:64ch}
+h3{font-size:17px; font-weight:600; margin:0 0 6px; letter-spacing:-.005em}
+p{margin:0 0 14px; max-width:66ch}
+b,strong{font-weight:600}
+a{color:var(--azul)}
+:focus-visible{outline:2px solid var(--azul); outline-offset:2px; border-radius:3px}
+
+/* ---------- o achado, em destaque ---------- */
+.achado{
+  display:grid; gap:2px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  background:var(--linha); border:1px solid var(--linha); border-radius:8px;
+  overflow:hidden; margin:0 0 12px;
+}
+.achado > div{background:var(--mesa); padding:16px 18px}
+.achado .n{
+  font-family:"Barlow Condensed",Barlow,sans-serif; font-weight:700; font-size:38px;
+  line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums;
+  display:block; margin-bottom:4px;
+}
+.achado .ruim .n{color:var(--vermelho)}
+.achado .n small{font-size:17px; font-weight:600; letter-spacing:0}
+.achado .q{font-size:13.5px; color:var(--suave); line-height:1.35; display:block}
+
+/* ---------- tabela de medicao ---------- */
+.rolagem{overflow-x:auto; margin:0 0 10px}
+table{border-collapse:collapse; width:100%; font-size:14.5px}
+th,td{text-align:left; padding:7px 12px 7px 0; border-bottom:1px solid var(--linha)}
+th{
+  font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600;
+  letter-spacing:.11em; text-transform:uppercase; color:var(--suave);
+  border-bottom-color:var(--linha-forte);
+}
+td.num{text-align:right; font-family:"IBM Plex Mono",monospace;
+       font-variant-numeric:tabular-nums; white-space:nowrap}
+td.alerta{color:var(--vermelho); font-weight:600}
+.nota{font-size:13.5px; color:var(--suave); max-width:64ch; line-height:1.5; margin:0 0 14px}
+
+/* ---------- grafico ---------- */
+.grafico{
+  background:var(--mesa); border:1px solid var(--linha); border-radius:8px;
+  padding:20px 22px 16px; box-shadow:var(--sombra); margin:0 0 12px;
+}
+.grafico .titulo{font-weight:600; font-size:16px; margin:0 0 2px}
+.grafico .eixo-nome{font-size:13px; color:var(--suave); margin:0 0 16px}
+.barras{display:grid; gap:11px}
+.barra{display:grid; grid-template-columns:1fr; gap:4px}
+.barra .cima{display:flex; justify-content:space-between; align-items:baseline; gap:12px}
+.barra .quem{font-size:14.5px; color:var(--tinta-2)}
+.barra .val{
+  font-family:"IBM Plex Mono",monospace; font-size:14px; font-weight:600;
+  font-variant-numeric:tabular-nums; color:var(--tinta);
+}
+.barra .trilho{height:11px; background:var(--bancada); border-radius:2px 6px 6px 2px}
+.barra .fita{height:100%; background:var(--azul); border-radius:2px 6px 6px 2px; display:block}
+.barra.pico .quem{color:var(--tinta); font-weight:600}
+.regua{
+  display:flex; justify-content:space-between; font-family:"IBM Plex Mono",monospace;
+  font-size:11px; color:var(--suave); margin-top:12px;
+  border-top:1px solid var(--linha); padding-top:6px;
+}
+
+/* ---------- sprints ---------- */
+.sprints{display:flex; flex-direction:column; gap:16px; margin-top:8px}
+.sprint{
+  background:var(--mesa); border:1px solid var(--linha); border-left:3px solid var(--azul);
+  border-radius:6px; padding:20px 22px 18px; box-shadow:var(--sombra);
+}
+.sprint.depois{border-left-color:var(--linha-forte)}
+.cab{display:flex; align-items:baseline; gap:13px; flex-wrap:wrap; margin-bottom:8px}
+.cab .num{
+  font-family:"Barlow Condensed",Barlow,sans-serif; font-weight:700; font-size:29px;
+  line-height:1; color:var(--azul); letter-spacing:-.01em;
+}
+.depois .cab .num{color:var(--linha-forte)}
+.cab h3{margin:0; font-size:20px; flex:1 1 220px; font-weight:600}
+.custo{
+  font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--suave); white-space:nowrap;
+}
+.sprint p{font-size:15.5px}
+.sprint p:last-child{margin-bottom:0}
+.lista{margin:0 0 14px; padding-left:19px; font-size:15px; max-width:64ch}
+.lista li{margin:5px 0}
+.lista li::marker{color:var(--azul)}
+.rotulo{
+  font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600;
+  letter-spacing:.11em; text-transform:uppercase; color:var(--suave);
+  display:block; margin:14px 0 6px;
+}
+.confere{
+  background:var(--azul-fundo); border-left:2px solid var(--azul); border-radius:0 4px 4px 0;
+  padding:11px 14px; font-size:14.5px; color:var(--tinta-2); margin-top:14px;
+}
+.confere b{color:var(--tinta); display:block; margin-bottom:2px; font-size:12px;
+  font-family:"IBM Plex Mono",monospace; letter-spacing:.1em; text-transform:uppercase}
+
+/* ---------- consertos e recados ---------- */
+.recado{
+  border-left:2px solid var(--ambar); background:var(--ambar-fundo);
+  border-radius:0 5px 5px 0; padding:14px 16px; margin:0 0 14px; font-size:15px;
+}
+.recado b{color:var(--ambar)}
+.pequenos{display:grid; gap:2px; background:var(--linha); border:1px solid var(--linha);
+  border-radius:7px; overflow:hidden}
+.pequenos > div{background:var(--mesa); padding:13px 16px; font-size:14.5px}
+.pequenos code{
+  font-family:"IBM Plex Mono",monospace; font-size:12.5px; background:var(--bancada);
+  padding:1px 5px; border-radius:3px; color:var(--tinta-2);
+}
+.fim{
+  margin-top:44px; padding-top:18px; border-top:1px solid var(--linha);
+  font-size:14px; color:var(--suave); max-width:64ch;
+}
+</style>
+
+<div class="folha">
+
+<header class="abre">
+  <p class="selo">Morumbi 3D · levantamento e plano · 09/2026</p>
+  <h1>O sistema não cabe<br>no <em>seu telefone</em></h1>
+  <p class="sub">Nove sprints construíram a operação inteira: custo, produção, estoque,
+  compras e quatro geradores. Antes de construir a décima coisa, medi as telas que já
+  existem. Este é o resultado, e o que fazer com ele.</p>
+</header>
+
+<h2>O que eu medi</h2>
+<p class="desce">Abri cada tela num navegador de 420 px de largura — um celular comum — e
+medi. Não é opinião de gosto: são três números.</p>
+
+<div class="achado">
+  <div class="ruim">
+    <span class="n">920<small> px</small></span>
+    <span class="q">de largura em cada tela, num aparelho de 420 px. A página inteira rola
+    de lado.</span>
+  </div>
+  <div class="ruim">
+    <span class="n">500<small> px</small></span>
+    <span class="q">de conteúdo empurrado para fora da tela. É o menu que força isso, e ele
+    empurra tudo o mais junto.</span>
+  </div>
+  <div class="ruim">
+    <span class="n">12–32</span>
+    <span class="q">botões e links por tela com menos de 44 px de altura — abaixo do que um
+    dedo acerta.</span>
+  </div>
+</div>
+
+<div class="rolagem">
+<table>
+  <thead><tr><th>Tela</th><th class="num">Largura em 420 px</th><th class="num">Sobra</th><th class="num">Alvos pequenos</th></tr></thead>
+  <tbody>
+    <tr><td>Painel</td><td class="num">920</td><td class="num alerta">+500</td><td class="num">12</td></tr>
+    <tr><td>Produção</td><td class="num">923</td><td class="num alerta">+503</td><td class="num">18</td></tr>
+    <tr><td>Pedidos</td><td class="num">922</td><td class="num alerta">+502</td><td class="num">23</td></tr>
+    <tr><td>Um pedido</td><td class="num">922</td><td class="num alerta">+502</td><td class="num">32</td></tr>
+    <tr><td>Produtos</td><td class="num">924</td><td class="num alerta">+504</td><td class="num">22</td></tr>
+    <tr><td>Filamentos</td><td class="num">924</td><td class="num alerta">+504</td><td class="num">25</td></tr>
+    <tr><td>Criar</td><td class="num">920</td><td class="num alerta">+500</td><td class="num">30</td></tr>
+    <tr><td>Templates</td><td class="num">923</td><td class="num alerta">+503</td><td class="num">29</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="nota">Nenhuma tela escapa, e a causa é a mesma em todas: a barra de menu tem onze
+itens em linha, não sabe quebrar, e estica o corpo da página. O conteúdo abaixo dela fica
+espremido no lado esquerdo — a tabela de pedidos abertos, por exemplo, é cortada no meio da
+coluna de valor.</p>
+
+<h2>O que o sistema sabe e não mostra</h2>
+<p class="desce">O outro lado do levantamento. Estes números já existem, calculados e
+testados, dentro do <span class="mono">custo.py</span>. Nenhuma tela põe os cinco lado a
+lado — e é essa comparação que decide o que vale a pena empurrar.</p>
+
+<div class="grafico">
+  <p class="titulo">Retorno por hora de impressora</p>
+  <p class="eixo-nome">Preço menos custo, dividido pelas horas de máquina · seus cinco produtos cadastrados</p>
+  <div class="barras">
+    <div class="barra pico">
+      <div class="cima"><span class="quem">Chaveiro personalizado</span><span class="val">R$ 22,02/h</span></div>
+      <div class="trilho"><span class="fita" style="width:100%"></span></div>
+    </div>
+    <div class="barra">
+      <div class="cima"><span class="quem">Luminária LOVE 60 mm</span><span class="val">R$ 6,53/h</span></div>
+      <div class="trilho"><span class="fita" style="width:29.7%"></span></div>
+    </div>
+    <div class="barra">
+      <div class="cima"><span class="quem">Topo formatura</span><span class="val">R$ 5,97/h</span></div>
+      <div class="trilho"><span class="fita" style="width:27.1%"></span></div>
+    </div>
+    <div class="barra">
+      <div class="cima"><span class="quem">Letreiro MORUMBI 22 cm</span><span class="val">R$ 5,93/h</span></div>
+      <div class="trilho"><span class="fita" style="width:26.9%"></span></div>
+    </div>
+    <div class="barra">
+      <div class="cima"><span class="quem">Topo de bolo ANA</span><span class="val">R$ 5,50/h</span></div>
+      <div class="trilho"><span class="fita" style="width:25.0%"></span></div>
+    </div>
+  </div>
+  <div class="regua"><span>R$ 0</span><span>R$ 11</span><span>R$ 22/h</span></div>
+</div>
+<p class="nota">O chaveiro devolve <b>quatro vezes mais por hora de impressora</b> que o topo
+de bolo. Os dois têm margem parecida em porcentagem — 35% e 45% — e é por isso que a
+porcentagem engana: o topo ocupa a máquina por 5,8 h e o chaveiro por 0,4 h. Com a mesa
+cheia, a pergunta certa não é “quanto sobra”, é “quanto sobra por hora de mesa”.</p>
+
+<h2>Os sprints</h2>
+<p class="desce">Em ordem de dor. O primeiro conserta o que quebra todas as telas; o segundo
+é o que você pediu.</p>
+
+<div class="sprints">
+
+  <article class="sprint">
+    <div class="cab">
+      <span class="num">U1</span>
+      <h3>A navegação cabe no telefone</h3>
+      <span class="custo">Tamanho M · destrava o resto</span>
+    </div>
+    <p>Onze itens em linha não cabem em 420 px, e não vão caber em 12 nem em 15. A barra
+    superior vira <b>lateral no computador e gaveta no telefone</b> — o padrão que o seu
+    exemplo já apontava.</p>
+    <span class="rotulo">Entra</span>
+    <ul class="lista">
+      <li>Barra lateral fixa no computador, com os itens agrupados: <b>Operação</b>
+          (painel, produção, pedidos), <b>Cadastros</b> (clientes, produtos, filamentos,
+          insumos, compras), <b>Criação</b> (criar, templates)</li>
+      <li>No telefone, a lateral vira gaveta atrás de um botão — a página volta a ter a
+          largura do aparelho</li>
+      <li>Grupo aberto no que você está usando; os outros recolhidos</li>
+      <li>O item ativo marcado de um jeito só, em toda tela</li>
+    </ul>
+    <span class="rotulo">Eu testo</span>
+    <ul class="lista">
+      <li>Nenhuma tela passa da largura do aparelho, em 360, 420 e 768 px</li>
+      <li>A gaveta abre e fecha pelo teclado, e devolve o foco de onde saiu</li>
+      <li>Todo item do menu leva a uma rota que responde — o mesmo teste que a tela Criar
+          já tem</li>
+    </ul>
+    <div class="confere"><b>Você confere</b>
+      Abra qualquer tela no celular e tente arrastar para o lado. Não pode ter nada lá.</div>
+  </article>
+
+  <article class="sprint">
+    <div class="cab">
+      <span class="num">U2</span>
+      <h3>O painel responde “como vai o negócio?”</h3>
+      <span class="custo">Tamanho M · depende do U1</span>
+    </div>
+    <p>Hoje o painel abre com três avisos e duas listas. Ele conta o que está acontecendo,
+    mas não diz <b>como vai</b>. Os números para isso já existem — o levantamento acima saiu
+    do seu próprio banco, com uma consulta.</p>
+    <span class="rotulo">Entra</span>
+    <ul class="lista">
+      <li>Quatro números no topo, antes de qualquer lista: <b>a receber</b> (R$ 1.120 em
+          pedidos abertos), <b>na mesa</b> (horas previstas na fila), <b>parado em
+          filamento</b> (R$ 1.253), <b>entregue no mês</b></li>
+      <li>O gráfico de <b>retorno por hora de impressora</b>, com seus produtos ordenados —
+          a comparação que hoje não existe em tela nenhuma</li>
+      <li>Avisos ordenados por urgência, não por tipo: pedido atrasado acima de filamento
+          baixo</li>
+      <li>Cada número clicável, levando à tela que o explica</li>
+    </ul>
+    <span class="rotulo">Eu testo</span>
+    <ul class="lista">
+      <li>Cada número do painel bate com a tela que ele aponta — nenhum é calculado duas
+          vezes por caminhos diferentes</li>
+      <li>Painel vazio (sistema recém-instalado) não mostra zeros nem gráfico vazio: mostra
+          o que fazer primeiro</li>
+      <li>Produto sem preço de filamento não entra no gráfico, e a tela diz por quê — a
+          mesma regra do <span class="mono">Conta.completo</span></li>
+    </ul>
+    <div class="confere"><b>Você confere</b>
+      Olhe o gráfico e me diga se ele muda alguma decisão sua. Se não mudar, ele não devia
+      estar lá.</div>
+  </article>
+
+  <article class="sprint">
+    <div class="cab">
+      <span class="num">U3</span>
+      <h3>Tabelas que cabem na mão</h3>
+      <span class="custo">Tamanho M · depende do U1</span>
+    </div>
+    <p>Seis telas são tabelas de cinco a sete colunas. No computador funcionam; no telefone,
+    a coluna que importa é sempre a que fica de fora — foi o que aconteceu com “Situação”
+    na tela de templates, e eu só vi porque olhei a foto.</p>
+    <span class="rotulo">Entra</span>
+    <ul class="lista">
+      <li>Abaixo de 640 px, cada linha vira um cartão: título, o número que decide, e o
+          estado como etiqueta</li>
+      <li>Alvos de toque com 44 px, em todas as telas</li>
+      <li>Datas em <b>08/09/2026</b> e dinheiro em <b>R$ 1.120,00</b> — hoje saem
+          <span class="mono">2026-09-08</span> e <span class="mono">R$ 1120.00</span></li>
+      <li>Ordenar e filtrar onde a lista cresce: pedidos, produtos, gerações</li>
+    </ul>
+    <span class="rotulo">Eu testo</span>
+    <ul class="lista">
+      <li>Nenhum alvo de toque abaixo de 44 px, medido no navegador e não no olho</li>
+      <li>Cartão e linha mostram a mesma informação — nada some no telefone</li>
+      <li>Toda data e todo valor da tela passam pela mesma função de formatar</li>
+    </ul>
+    <div class="confere"><b>Você confere</b>
+      Abra Pedidos no celular e ache o valor do pedido da Ana sem rolar para o lado.</div>
+  </article>
+
+  <article class="sprint">
+    <div class="cab">
+      <span class="num">U4</span>
+      <h3>Formulários que perdoam</h3>
+      <span class="custo">Tamanho P</span>
+    </div>
+    <p>A ficha de pedido tem 32 alvos pequenos e nenhuma proteção contra fechar a aba no
+    meio. As telas de cadastro já avisam bem <em>depois</em> do erro; falta avisarem
+    <em>antes</em>.</p>
+    <span class="rotulo">Entra</span>
+    <ul class="lista">
+      <li>Teclado numérico nos campos de número no celular — hoje abre o alfabético</li>
+      <li>Aviso ao sair com alteração não salva</li>
+      <li>Erro apontando o campo, e não só no topo da página</li>
+      <li>O botão principal de cada tela sempre alcançável com o polegar</li>
+    </ul>
+    <div class="confere"><b>Você confere</b>
+      Comece um pedido no celular, escreva o nome do cliente e tente sair. Tem que perguntar.</div>
+  </article>
+
+  <article class="sprint depois">
+    <div class="cab">
+      <span class="num">U5</span>
+      <h3>Telas vazias que ensinam</h3>
+      <span class="custo">Tamanho P · por último</span>
+    </div>
+    <p>O quadro de produção com cinco colunas vazias não diz o que fazer. As telas de lista
+    já têm um recado de vazio bom; o quadro, os gráficos e o gerador sem template ainda não.</p>
+    <span class="rotulo">Entra</span>
+    <ul class="lista">
+      <li>Coluna vazia do quadro convida em vez de ficar em branco</li>
+      <li>Totais por coluna no quadro: peças, horas e gramas</li>
+      <li>Estado de carregando onde a tela demora — o gerador leva alguns segundos para
+          desenhar e hoje fica parado sem explicar</li>
+    </ul>
+  </article>
+
+</div>
+
+<h2>Três consertos que o levantamento achou</h2>
+<p class="desce">Pequenos, e nenhum é de gosto. Entram junto com o U2.</p>
+
+<div class="pequenos">
+  <div><b>O painel está desatualizado.</b> A seção “Criar”, no rodapé do painel, lista dois
+  geradores — letreiro e logo. A tela Criar tem nove. São duas listas, e uma parou no tempo.</div>
+  <div><b>Datas em formato de máquina.</b> <code>2026-09-08</code> aparece no painel e nas
+  compras. O sistema é para ler rápido, no meio de uma festa.</div>
+  <div><b>Ponto no lugar da vírgula.</b> <code>R$ 1120.00</code> em toda tela de valor. É a
+  convenção da casa desde o começo, e ficou errada desde o começo.</div>
+</div>
+
+<h2>O que eu não vou fazer</h2>
+<p>Não vou trocar a identidade visual. O azul, o laranja, o grafite e as três famílias de
+letra foram medidos no arquivo da sua marca, e a folha de estilo é coerente — o problema
+não é como o sistema se parece, é como ele se comporta em 420 px.</p>
+<p>Não vou trazer framework de interface. O sistema hoje são páginas servidas por Flask, sem
+dependência de front-end, e isso é parte de por que ele cabe em 800 MB de memória na VPS.
+Barra lateral e cartões se fazem com CSS.</p>
+<p>Não vou mexer nos geradores. As telas do letreiro, do logo, do topo e do chaveiro têm o
+próprio desenho, pensado para quem <em>cria</em> e não para quem administra. O U1 e o U3
+param na porta delas.</p>
+
+<p class="fim">Levantamento feito em 09/09/2026 sobre o sistema em produção, com o banco
+semeado com pedidos, produtos, compras e gerações realistas. As medidas de largura e de
+alvo de toque saíram de um navegador de verdade a 420 px; os números de custo e retorno
+saíram do <span class="mono">custo.py</span> com os seus parâmetros — R$ 2,39 por hora de
+máquina, R$ 25 por hora de pessoa, 10% de reserva de falha.</p>
+
+</div>

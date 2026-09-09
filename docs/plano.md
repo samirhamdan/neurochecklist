@@ -274,6 +274,16 @@ duas contas e me passar as credenciais.
 
 ---
 
+# Trilha de Interface — o que já existe, visto de perto
+
+> Levantamento e plano em `docs/plano-interface.html`, medido em 09/2026 sobre o
+> sistema em produção. O resumo: **toda tela tem 920 px de largura num celular
+> de 420 px**, por causa da barra de menu com onze itens; e o retorno por hora
+> de impressora — que o `custo.py` já calcula — não aparece em tela nenhuma.
+> Cinco sprints, U1 a U5, em ordem de dor.
+
+---
+
 # Trilha de Criação — a plataforma de geradores
 
 ## A descoberta que barateia tudo
