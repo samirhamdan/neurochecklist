@@ -94,7 +94,8 @@
 (function () {
   const corpo = document.getElementById("corpo-itens");
   const total = document.getElementById("total");
-  const money = n => "R$ " + Number(n).toFixed(2);
+  const money = n => "R$ " + Number(n).toLocaleString("pt-BR",
+        {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
   function somar() {
     let t = 0;

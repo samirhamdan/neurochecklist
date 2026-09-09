@@ -27,7 +27,7 @@
           <td class="num mono {{ 'alerta' if i.minimo and i.quantidade <= i.minimo }}">
             {{ i.quantidade|round(2) }} {{ i.unidade }}</td>
           <td class="num mono fraco">{{ i.minimo|round(2) }}</td>
-          <td class="num mono">R$ {{ '%.2f'|format(i.valor_unit) }}
+          <td class="num mono">{{ i.valor_unit|dinheiro }}
             {% if i.veio_de_compra %}<span class="etiqueta" title="Preço da última compra lançada">nota</span>{% endif %}
           </td>
           <td class="num"><a href="{{ url_for('editar_insumo', id_=i.id) }}">editar</a></td>

@@ -82,6 +82,11 @@ def setUpModule():
         {"nome": "PLA Rosa", "cor": "Rosa", "gramas": 1000, "preco_kg": 118}, "samir")
     prod = dados.salvar_produto(
         {"nome": "Topo ANA", "gramas": 83.7, "horas": 5.77, "filamento_id": fil}, "samir")
+    # Segundo produto para o grafico do U2 ter o que comparar -- e e a
+    # comparacao que motivou o grafico: o chaveiro paga a hora melhor.
+    dados.salvar_produto(
+        {"nome": "Chaveiro", "gramas": 9, "horas": 0.4, "minutos": 5,
+         "filamento_id": fil}, "samir")
     cli = dados.salvar_cliente({"nome": "Ana", "canal": "Instagram"}, "samir")
     ped = dados.salvar_pedido({"cliente_id": cli}, "samir", itens=[{
         "produto_id": prod, "descricao": "Topo ANA", "cor": "Rosa", "quantidade": 1,
@@ -267,6 +272,73 @@ class TesteNadaSaiDaTela(NoNavegador):
         for largura in (768, 1280):
             with self.subTest(largura=largura):
                 self.assertEqual(self.larguras(largura), [])
+
+
+class TesteOPlacarEOGrafico(NoNavegador):
+    """O U2 medido onde ele vale: numa tela de verdade.
+
+    O grafico e feito de `left` e `width` em porcentagem. Porcentagem errada
+    nao da erro em lugar nenhum: a barra passa por cima do numero, ou fica em
+    zero e some. O HTML servido nao denuncia nem um nem outro.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.abrir("/")
+        self.pg.wait_for_selector(".placar")
+
+    def caixa(self, seletor):
+        return self.pg.eval_on_selector(seletor, "e => e.getBoundingClientRect().toJSON()")
+
+    def test_os_quatro_numeros_estao_na_tela(self):
+        for ident in ("v-a-receber", "v-na-mesa", "v-parado", "v-entregue"):
+            self.assertTrue(self.visivel(f"#{ident}"), f"{ident} sem caixa na tela")
+
+    def test_cada_numero_e_um_alvo_de_toque(self):
+        """44 px e o minimo que um dedo acerta -- a regra que o U1 estabeleceu."""
+        self.pg.set_viewport_size({"width": 420, "height": 900})
+        self.pg.wait_for_timeout(120)
+        alturas = self.pg.eval_on_selector_all(
+            ".placar a", "e => e.map(x => x.getBoundingClientRect().height)")
+        self.assertEqual(len(alturas), 4)
+        for h in alturas:
+            self.assertGreaterEqual(h, 44)
+
+    def test_a_barra_nao_passa_do_trilho(self):
+        """Barra que vaza do trilho passa por cima do numero ao lado."""
+        for largura in (420, 1280):
+            self.pg.set_viewport_size({"width": largura, "height": 900})
+            self.pg.wait_for_timeout(120)
+            sobras = self.pg.eval_on_selector_all(".linha-h", """e => e.map(l => {
+                const t = l.querySelector('.trilho').getBoundingClientRect();
+                const b = l.querySelector('i').getBoundingClientRect();
+                return Math.max(t.left - b.left, b.right - t.right);
+            })""")
+            self.assertTrue(sobras, "nenhuma barra desenhada")
+            for sobra in sobras:
+                self.assertLessEqual(sobra, 0.5, f"barra fora do trilho em {largura}px")
+
+    def test_nenhuma_barra_nasce_invisivel(self):
+        """Retorno pequeno da barra curta -- curta nao pode virar nenhuma."""
+        larguras = self.pg.eval_on_selector_all(
+            ".linha-h i", "e => e.map(x => x.getBoundingClientRect().width)")
+        self.assertTrue(larguras)
+        for w in larguras:
+            self.assertGreaterEqual(w, 2)
+
+    def test_a_barra_maior_e_a_do_produto_que_paga_melhor(self):
+        """O grafico so serve se o comprimento seguir o numero."""
+        pares = self.pg.eval_on_selector_all(".linha-h", """e => e.map(l => [
+            l.querySelector('.nome').textContent.trim(),
+            l.querySelector('i').getBoundingClientRect().width])""")
+        pares.sort(key=lambda x: -x[1])
+        self.assertEqual(pares[0][0], "Chaveiro")
+
+    def test_a_tabela_do_leitor_de_tela_nao_ocupa_espaco(self):
+        """Fora da tela, e nao display:none -- leitor de tela pula o que some."""
+        caixa = self.caixa("div.so-leitor")
+        self.assertLessEqual(caixa["width"], 2)
+        self.assertLessEqual(caixa["height"], 2)
 
 
 class TesteAGaveta(NoNavegador):

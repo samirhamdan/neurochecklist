@@ -38,7 +38,7 @@
             <option value="">Herdar do cliente</option>
             {% for c in canais %}
             <option value="{{ c.nome }}" data-comissao="{{ c.comissao }}"
-                    {{ 'selected' if atual and atual.canal == c.nome }}>{{ c.nome }}{% if c.comissao %} — {{ '%.1f'|format(c.comissao) }}%{% endif %}</option>
+                    {{ 'selected' if atual and atual.canal == c.nome }}>{{ c.nome }}{% if c.comissao %} — {{ c.comissao|numero(1) }}%{% endif %}</option>
             {% endfor %}
           </select>
         </label>
@@ -141,7 +141,8 @@
 (function () {
   const corpo = document.getElementById("corpo-itens");
   const total = document.getElementById("total");
-  const money = n => "R$ " + Number(n).toFixed(2);
+  const money = n => "R$ " + Number(n).toLocaleString("pt-BR",
+        {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
   function somar() {
     let t = 0;

@@ -10,6 +10,9 @@
       <a href="#" data-modo="quadro" class="aqui">Quadro</a>
       <a href="#" data-modo="lista">Lista</a>
     </span>
+    {# O mesmo numero que o painel mostra em "na mesa": dados.horas_na_mesa,
+       so das etapas que ocupam a bancada. "A entregar" ja saiu da impressora. #}
+    <span class="nota" id="horas-na-mesa">{{ horas_na_mesa|numero(1) }} h na mesa</span>
   </div>
 
   {% if not pecas %}
@@ -46,7 +49,7 @@
           </div>
           <div class="ficha-nums mono">
             {% if p.gramas_est %}{{ p.gramas_est|round|int }} g{% endif %}
-            {% if p.horas_est %} · {{ p.horas_est|round(1) }} h{% endif %}
+            {% if p.horas_est %} · {{ p.horas_est|numero(1) }} h{% endif %}
           </div>
           <button type="button" class="refugar" data-peca="{{ p.id }}"
                   data-nome="{{ p.descricao }}" title="Registrar refugo">refugo</button>
@@ -76,7 +79,7 @@
             <td><span class="bolinha" style="background:{{ cores.get(p.cor, '#B9BEC4') }}"></span>{{ p.cor or '—' }}</td>
             <td><span class="etiqueta {{ 'azul' if p.status == 'imprimindo' else 'cinza' }}">{{ rotulos[p.status] }}</span></td>
             <td class="num mono">{{ p.gramas_est|round|int if p.gramas_est else '—' }} g</td>
-            <td class="num mono">{{ p.horas_est|round(1) if p.horas_est else '—' }} h</td>
+            <td class="num mono">{{ p.horas_est|numero(1) if p.horas_est else '—' }} h</td>
             <td>
               {%- if p.dias is none %}<span class="fraco">—</span>
               {%- elif p.dias < 0 %}<span class="etiqueta vermelha">{{ -p.dias }} d</span>

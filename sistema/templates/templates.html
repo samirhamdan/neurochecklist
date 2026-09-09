@@ -64,12 +64,12 @@
       <tbody>
         {% for g in geracoes %}
         <tr>
-          <td class="mono fraco" style="margin:0">{{ g.criado_em[:16].replace('T', ' ') }}</td>
+          <td class="mono fraco" style="margin:0">{{ g.criado_em|datahora }}</td>
           <td>{{ g.modelo or g.sku }}</td>
           <td>{{ g.nome }}{% if g.numero %} · {{ g.numero }}{% endif %}</td>
           <td class="num mono">{{ (g.tamanho / 10)|round|int }} cm</td>
           <td class="num mono">{{ g.gramas|round|int }} g</td>
-          <td class="num mono forte">R$ {{ '%.2f'|format(g.preco) }}</td>
+          <td class="num mono forte">{{ g.preco|dinheiro }}</td>
           <td class="mono fraco" style="margin:0">{{ g.arquivo }}</td>
         </tr>
         {% endfor %}

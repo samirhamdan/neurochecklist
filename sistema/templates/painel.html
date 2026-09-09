@@ -7,21 +7,33 @@
 
 <main id="conteudo" class="pagina">
 
-{% if atrasados or filamento_baixo or not com_senha %}
+{% if avisos or not com_senha %}
   <div class="avisos">
     {% if not com_senha %}
-      <div class="aviso atencao">Sem <b>MORUMBI_SENHA</b> configurada: qualquer
+      {# Fica fora da lista ordenada de proposito: nao e um aviso da operacao,
+         e a maquina inteira aberta. Nada abaixo importa se qualquer um entra. #}
+      <div class="aviso mal">Sem <b>MORUMBI_SENHA</b> configurada: qualquer
         pessoa que alcance este endereço entra. Só permitido rodando no próprio
         computador.</div>
     {% endif %}
-    {% for p in atrasados %}
-      <div class="aviso mal">Pedido de <b>{{ p.cliente }}</b> passou do prazo
-        ({{ p.prazo }}).</div>
-    {% endfor %}
-    {% for f in filamento_baixo %}
-      <div class="aviso atencao">Filamento <b>{{ f.cor }}</b> em
-        {{ f.gramas|round|int }} g — abaixo do mínimo de
-        {{ f.minimo|round|int }} g.</div>
+    {# Ordenados por urgencia em dados.avisos() -- rolo zerado, atraso, rolo
+       acabando. Antes eram tres blocos por TIPO, e uma cor em 0 g aparecia
+       embaixo de um pedido que atrasou ontem. #}
+    {% for a in avisos %}
+      {% if a.tipo == 'filamento_zero' %}
+        <div class="aviso mal"><a href="{{ url_for('lista_filamentos') }}">Filamento
+          <b>{{ a.item.nome }}</b> zerado</a> — a impressora para na próxima peça
+          dessa cor.</div>
+      {% elif a.tipo == 'atraso' %}
+        <div class="aviso mal"><a href="{{ url_for('lista_pedidos') }}">Pedido de
+          <b>{{ a.item.cliente }}</b> passou do prazo</a> ({{ a.item.prazo|data }},
+          {{ -a.item.dias }} d).</div>
+      {% else %}
+        <div class="aviso atencao">
+          <a href="{{ url_for('lista_filamentos') }}">Filamento <b>{{ a.item.nome }}</b>
+          em {{ a.item.gramas|numero(0) }} g</a>
+          — abaixo do mínimo de {{ a.item.minimo|numero(0) }} g.</div>
+      {% endif %}
     {% endfor %}
   </div>
 {% endif %}
@@ -49,12 +61,87 @@
 
 {% else %}
 
+  {# Os quatro numeros vem antes de qualquer lista. Cada um leva a tela que o
+     explica, e o total dessa tela e somado pela MESMA funcao -- por isso os
+     dois nao tem como discordar. #}
+  <div class="placar">
+    <a href="{{ url_for('lista_pedidos') }}">
+      <span class="rotulo" id="n-a-receber">A receber</span>
+      <b class="valor" id="v-a-receber">{{ a_receber|dinheiro }}</b>
+      <span class="nota">{{ pedidos|length }} pedido(s) em aberto</span>
+    </a>
+    <a href="{{ url_for('producao') }}">
+      <span class="rotulo" id="n-na-mesa">Na mesa</span>
+      <b class="valor" id="v-na-mesa">{{ horas_fila|numero(1) }} h</b>
+      <span class="nota">{{ fila|length }} peça(s) · {{ trocas_de_cor }} troca(s) de cor</span>
+    </a>
+    <a href="{{ url_for('lista_filamentos') }}">
+      <span class="rotulo" id="n-parado">Parado em filamento</span>
+      <b class="valor" id="v-parado">{{ parado|dinheiro }}</b>
+      <span class="nota">
+        {%- if cores_sem_preco %}{{ cores_sem_preco }} cor(es) sem preço, fora da conta
+        {%- else %}{{ filamento|length }} cor(es) em estoque{% endif -%}
+      </span>
+    </a>
+    <a href="{{ url_for('lista_pedidos', ver='entregues') }}">
+      <span class="rotulo" id="n-entregue">Entregue em {{ mes }}</span>
+      <b class="valor" id="v-entregue">{{ entregue_no_mes|dinheiro }}</b>
+      <span class="nota">{{ entregues|length }} pedido(s) entregue(s)</span>
+    </a>
+  </div>
+
+  {% if retorno.itens %}
+  <h2 class="secao">Retorno por hora de impressora</h2>
+  <div class="cartao grafico">
+    <p class="nota">A impressora é uma só. A peça que ocupa ela doze horas impede
+    todas as outras — por isso a comparação que decide não é a margem por peça, é
+    quanto sobra em cada hora de mesa.</p>
+    <div class="barras-h" role="img"
+         aria-label="Retorno por hora de impressora, do maior para o menor">
+      {% for i in retorno.itens %}
+        <div class="linha-h">
+          <span class="nome">{{ i.nome }}</span>
+          <span class="trilho">
+            <i class="{{ 'perde' if i.conta.por_hora < 0 }}"
+               style="left:{{ i.esquerda }}%;width:{{ i.largura }}%"></i>
+            {% if retorno.tem_prejuizo %}<u style="left:{{ retorno.zero }}%"></u>{% endif %}
+          </span>
+          <span class="valor mono por-hora">{{ i.conta.por_hora|dinheiro }}</span>
+        </div>
+      {% endfor %}
+    </div>
+    {# A classe vai no DIV, e nao na tabela: `width:1px` numa <table> e so um
+       minimo -- ela cresce ate caber o conteudo, e o teste do navegador mediu
+       265 px de caixa invisivel solta por cima da tela. #}
+    <div class="so-leitor"><table>
+      <caption>Retorno por hora de impressora</caption>
+      <thead><tr><th>Produto</th><th>Horas</th><th>Margem</th><th>Por hora</th></tr></thead>
+      <tbody>
+        {% for i in retorno.itens %}
+          <tr><td>{{ i.nome }}</td><td>{{ i.conta.horas|numero(1) }} h</td>
+            <td>{{ i.conta.margem|dinheiro }}</td>
+            <td>{{ i.conta.por_hora|dinheiro }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% if retorno.de_fora %}
+      <p class="nota">
+        {%- if retorno.sem_filamento %}<b>{{ retorno.sem_filamento|length }}</b> produto(s)
+        ficaram de fora por falta do preço por kg do filamento — sem o material, a maior
+        parcela do custo, o retorno sairia inventado.{% endif %}
+        {%- if retorno.sem_horas %} <b>{{ retorno.sem_horas|length }}</b> produto(s) ficaram
+        de fora por não terem o tempo de impressão medido.{% endif %}
+        <a href="{{ url_for('lista_produtos') }}">Ver produtos</a>.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="painel">
 
     <section class="bloco">
       <header>
         <h3>Fila de produção</h3>
-        <span class="nota">{{ '%.1f'|format(horas_fila) }} h previstas ·
+        <span class="nota">{{ horas_fila|numero(1) }} h previstas ·
           {{ trocas_de_cor }} troca(s) de cor · {{ purga_g }} g de purga</span>
       </header>
       <div class="corpo">
@@ -70,7 +157,7 @@
                 <li>
                   <span>{{ peca.descricao }}</span>
                   <span class="hora">
-                    {% if peca.horas_est %}{{ '%.1f'|format(peca.horas_est) }} h{% else %}—{% endif %}
+                    {% if peca.horas_est %}{{ peca.horas_est|numero(1) }} h{% else %}—{% endif %}
                   </span>
                 </li>
               {% endfor %}
@@ -109,7 +196,10 @@
 
   <h2 class="secao">Pedidos abertos</h2>
   <div class="bloco">
-    <div class="corpo">
+    {# A tabela rola DENTRO do proprio quadro. Sem isto a coluna de valor
+       ficava cortada em 420 px -- e o corte nao aparece na medida de largura
+       da pagina, porque quem transborda e a tabela, nao o corpo. #}
+    <div class="corpo"><div class="rolagem">
       <table class="lista">
         <thead>
           <tr><th>Cliente</th><th>Canal</th><th>Situação</th><th>Prazo</th>
@@ -127,29 +217,37 @@
                 {% elif p.dias == 0 %}<span class="etiqueta hoje">hoje</span>
                 {% else %}em {{ p.dias }} d{% endif %}
               </td>
-              <td class="num">{% if p.valor %}R$ {{ '%.2f'|format(p.valor) }}{% else %}—{% endif %}</td>
+              <td class="num">{% if p.valor %}{{ p.valor|dinheiro }}{% else %}—{% endif %}</td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
-    </div>
+    </div></div>
   </div>
 
 {% endif %}
 
-  <h2 class="secao">Criar</h2>
-  <div class="atalhos">
-    <a class="atalho" href="{{ url_for('letreiros') }}">
-      <b>Gerador de letreiros</b>
-      <span>Nome digitado vira placa com letras conectadas. 6 temas, 3 tamanhos,
-        luminária de 60 mm.</span>
-    </a>
-    <a class="atalho" href="/logo/">
-      <b>Gerador de logo 3D</b>
-      <span>Imagem do logo vira STL: recorte de fundo, vetorização e checagem
-        de traço fino.</span>
-    </a>
+  {# Sai de criar.MODELOS, a MESMA lista da tela Criar. Escrita a mao, esta
+     secao parou em dois geradores enquanto o catalogo chegava a nove -- e
+     duas listas da mesma coisa sempre acabam com uma parada no tempo. #}
+  <div class="cabecalho-lista">
+    <h2 class="secao">Criar</h2>
+    <a href="{{ url_for('tela_criar') }}">Ver os {{ criar_conta.total }} modelos</a>
   </div>
+  <div class="atalhos">
+    {% for m in modelos if m.rota %}
+      <a class="atalho {{ 'empresa' if m.categoria == 'Identidade' }}" href="{{ m.rota }}">
+        <b>{{ m.nome }}</b>
+        <span>{{ m.resumo }}</span>
+        <span class="tipo-peca">{{ m.categoria }} · {{ m.cor_rotulo }}</span>
+      </a>
+    {% endfor %}
+  </div>
+  {% if criar_conta.em_obra %}
+    <p class="nota">Mais {{ criar_conta.em_obra }} modelo(s) planejados, ainda sem
+    gerador. Eles aparecem na tela <a href="{{ url_for('tela_criar') }}">Criar</a>,
+    marcados como em construção.</p>
+  {% endif %}
 
 </main>
 {% endblock %}

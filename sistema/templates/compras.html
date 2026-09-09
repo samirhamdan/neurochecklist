@@ -16,11 +16,11 @@
       <tbody>
         {% for c in compras %}
         <tr>
-          <td class="mono">{{ c.data }}</td>
+          <td class="mono">{{ c.data|data }}</td>
           <td><a href="{{ url_for('editar_compra', id_=c.id) }}">{{ c.fornecedor or 'sem fornecedor' }}</a></td>
           <td class="mono fraco" style="margin:0">{{ c.nota or '—' }}</td>
           <td class="num mono">{{ c.itens }}</td>
-          <td class="num mono forte">R$ {{ '%.2f'|format(c.valor) }}</td>
+          <td class="num mono forte">{{ c.valor|dinheiro }}</td>
           <td class="num"><a href="{{ url_for('editar_compra', id_=c.id) }}">abrir</a></td>
         </tr>
         {% endfor %}

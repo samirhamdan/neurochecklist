@@ -346,7 +346,7 @@ class TesteTelaDeCompras(unittest.TestCase):
         pagina = self.cliente.get(f"/filamentos/{self.fil}").get_data(as_text=True)
         self.assertEqual(self.campo(pagina, "preco_kg"), "118.00")
         self.assertNotEqual(self.campo(pagina, "preco_kg"), "95.00")
-        self.assertTrue("R$ 95.00/kg" in pagina,
+        self.assertTrue("R$ 95,00/kg" in pagina,
                         "a ficha precisa dizer qual preco esta valendo hoje")
 
     def test_salvar_a_ficha_como_o_navegador_manda_nao_mexe_no_preco(self):

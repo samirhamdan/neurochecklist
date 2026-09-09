@@ -255,6 +255,44 @@ marca, `display:none`. O foco simplesmente ficava fora da gaveta recém-aberta.
 Pior: o teste do Escape passava, porque "voltar o foco para o botão" era um
 no-op. Filtre por `getClientRects().length > 0`.
 
+### Um número que a tela também mostra sai da MESMA função
+
+Desde o U2, `dados.somar_valor`, `dados.horas_na_mesa`,
+`dados.parado_em_filamento` e `custo.retorno_por_hora` são chamadas pelo
+painel **e** pela tela para onde o número aponta. Não é preciosismo: um total
+somado aqui por uma consulta e lá por outra passa a discordar no dia em que
+uma das duas ganhar um filtro — e quem olha não tem como saber qual vale.
+
+Os testes de `tests/test_painel.py` seguem o link e comparam os dois lados.
+Por isso os valores têm `id` no HTML: `v-a-receber`, `v-na-mesa`, `v-parado`,
+`v-entregue`, `total-pedidos`, `parado-total`, `horas-na-mesa`.
+
+### Dinheiro e data têm filtro; `<input>` continua em formato de máquina
+
+`|dinheiro`, `|numero(n)`, `|data`, `|datahora` (em `sistema/formato.py`).
+`<input type="number">` **só** aceita ponto decimal — quem lê ali é o
+navegador, não o Samir — então `value="{{ '%.2f'|format(x) }}"` está certo e
+o teste que varre os templates ignora atributos `value`.
+
+`agora()` grava em UTC e `|datahora` converte para o relógio daqui. O
+`criado_em[:16].replace('T',' ')` que existia antes não errava o formato:
+errava o **fuso**, em silêncio, e só depois das 20h — quando a data também
+troca de dia.
+
+### `width:1px` numa `<table>` é só um mínimo
+
+A tabela do gráfico para leitor de tela ficou com 265 px de caixa invisível
+solta por cima da tela: `<table>` cresce até caber o conteúdo, e ignora um
+`width` menor. A classe de esconder vai num `<div>` em volta. Quem achou foi
+o teste de navegador medindo `getBoundingClientRect`.
+
+### Regra escrita para dois itens quebra no terceiro
+
+`a.atalho:nth-of-type(2){border-left-color:laranja}` foi escrita quando havia
+dois atalhos no painel — letreiro azul, logo laranja, as duas metades do M.
+Com nove cartões, o segundo ficou laranja por acaso. Cor por **posição** é
+uma bomba-relógio; cor por **categoria** não é.
+
 ### Nome de classe curto é barato até colidir
 
 Chamei a barra do celular de `.barra`. `.barra` já era das barras de estoque do

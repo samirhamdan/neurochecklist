@@ -282,6 +282,21 @@ duas contas e me passar as credenciais.
 > de impressora — que o `custo.py` já calcula — não aparece em tela nenhuma.
 > Cinco sprints, U1 a U5, em ordem de dor.
 
+| Sprint | O que entrega | Estado |
+| --- | --- | --- |
+| U1 | A navegação cabe no telefone — lateral no computador, gaveta no celular | ✅ **FEITO** — de 500 px de sobra para 0 em 360, 420, 768 e 1280 |
+| U2 | O painel responde "como vai o negócio?" | ✅ **FEITO** — quatro números clicáveis, gráfico de retorno por hora, avisos por urgência, e dinheiro/data em português |
+| U3 | Tabela vira cartão no telefone; alvos de 44 px | a fazer |
+| U4 | Formulário que perdoa | a fazer |
+| U5 | Tela vazia que ensina | a fazer |
+
+**O que o U2 estabeleceu, e vale para o resto:** cada número do painel sai da
+**mesma função** que a tela para onde ele aponta — `dados.somar_valor`,
+`dados.horas_na_mesa`, `dados.parado_em_filamento`, `custo.retorno_por_hora`.
+Um total somado no painel por uma consulta e na tela por outra passa a
+discordar no dia em que uma das duas ganhar um filtro, e quem olha não tem
+como saber qual das duas está certa. Os testes seguem o link e comparam.
+
 ---
 
 # Trilha de Criação — a plataforma de geradores

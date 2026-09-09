@@ -354,9 +354,11 @@ a.atalho{
   background:var(--mesa);border:1px solid var(--linha);border-radius:6px;
   padding:16px 18px;border-left:3px solid var(--azul);
 }
-/* Um atalho por metade do M: letreiro no azul, logo no laranja. Sao as
-   duas coisas que o sistema cria, e a marca ja separa as duas cores. */
-a.atalho:nth-of-type(2){border-left-color:var(--laranja)}
+/* As duas metades do M: Festa no azul, Identidade no laranja. Ate o U2 isto
+   era `:nth-of-type(2)` -- escrito quando havia DOIS atalhos, um de cada
+   lado. Com nove, o segundo cartao ficava laranja por acaso. A cor agora
+   segue a categoria, que e o que ela sempre quis dizer. */
+a.atalho.empresa{border-left-color:var(--laranja)}
 a.atalho:hover{border-color:var(--linha-forte)}
 a.atalho b{font-size:16px;font-weight:600}
 a.atalho span{font-size:14px;color:var(--suave);line-height:1.4}
@@ -639,3 +641,74 @@ dialog::backdrop{background:rgba(21,25,29,.45)}
 }
 .modelo .acoes{margin-top:auto;padding-top:4px}
 .etiqueta.verde{background:var(--verde-fundo);color:var(--verde)}
+
+/* ---------------------------------------------------- U2: o placar do painel
+   Quatro numeros antes de qualquer lista. Cada um e um LINK para a tela que o
+   explica -- por isso a area toda do cartao e clicavel, e nao so o numero.
+
+   `.placar` e nao `.numeros`: `dl.numeros` ja existe na ficha do produto. Foi
+   assim que a barra do celular apagou as barras de estoque no U1. */
+.placar{
+  display:grid;gap:12px;margin-bottom:6px;
+  grid-template-columns:repeat(auto-fit,minmax(178px,1fr));
+}
+.placar > *{min-width:0}          /* item de grid nasce com min-width:auto */
+.placar a{
+  display:flex;flex-direction:column;gap:3px;text-decoration:none;color:inherit;
+  background:var(--mesa);border:1px solid var(--linha);border-radius:6px;
+  border-left:3px solid var(--azul);padding:14px 16px 13px;min-height:44px;
+}
+.placar a:hover{border-color:var(--linha-forte);border-left-color:var(--azul)}
+.placar a:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+.placar .rotulo{font-size:13.5px;color:var(--suave)}
+/* Numero grande usa a figura PROPORCIONAL da fonte: tabular-nums da a todo
+   digito a largura do zero, e a 27px isso deixa o numero frouxo. */
+.placar .valor{
+  font-size:27px;font-weight:600;letter-spacing:-.02em;line-height:1.15;
+  color:var(--tinta);
+}
+.placar .nota{font-size:12.5px;color:var(--suave);margin:0}
+
+/* -------------------------------------------- U2: retorno por hora de mesa
+   Barra horizontal a partir do ZERO, que e onde a peca deixa de pagar a hora
+   que ocupa. Quem da prejuizo cresce para a esquerda, em vermelho -- direcao
+   E cor E o sinal no numero, tres canais para a mesma informacao. */
+.grafico{display:flex;flex-direction:column;gap:12px}
+.grafico > .nota{margin:0;max-width:72ch}
+.barras-h{display:flex;flex-direction:column;gap:9px}
+.linha-h{display:grid;grid-template-columns:minmax(0,9.5rem) 1fr auto;gap:12px;align-items:center}
+.linha-h .nome{
+  font-size:14px;color:var(--tinta);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.linha-h .trilho{position:relative;display:block;height:16px;min-width:0}
+.linha-h .trilho i{
+  position:absolute;top:1px;height:14px;min-width:2px;
+  background:var(--azul);border-radius:0 3px 3px 0;
+}
+.linha-h .trilho i.perde{background:var(--vermelho);border-radius:3px 0 0 3px}
+/* O zero so aparece quando ha barra dos dois lados: sem prejuizo ele coincide
+   com a borda esquerda e viraria enfeite. */
+.linha-h .trilho u{
+  position:absolute;top:-1px;bottom:-1px;width:1px;
+  background:var(--linha-forte);text-decoration:none;
+}
+.linha-h .valor{font-size:13.5px;color:var(--tinta);font-variant-numeric:tabular-nums}
+@media(max-width:520px){
+  .linha-h{grid-template-columns:1fr auto;gap:2px 10px}
+  .linha-h .nome{grid-column:1}
+  .linha-h .valor{grid-column:2;grid-row:1}
+  .linha-h .trilho{grid-column:1 / -1}
+}
+
+/* A mesma tabela do grafico, para leitor de tela e para quem nao enxerga cor.
+   Fica fora da tela, e nao `display:none` -- o leitor pula o que esta oculto. */
+.so-leitor{
+  position:absolute;width:1px;height:1px;overflow:hidden;
+  clip-path:inset(50%);white-space:nowrap;
+}
+
+.atalho .tipo-peca{
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--suave);
+  margin-top:auto;padding-top:4px;
+}

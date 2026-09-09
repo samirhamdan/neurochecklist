@@ -193,12 +193,16 @@ class TestePainel(unittest.TestCase):
                 " VALUES ('PLA Vermelho', 'PLA', 'Vermelho', 120, 300, ?)", (agora(),))
 
         corpo = self.cliente.get("/").get_data(as_text=True)
-        self.assertIn("Ana Paula", corpo)
-        self.assertIn("Fila de produção", corpo)
-        self.assertIn("7.3 h", corpo)          # 3,4 + 2,1 + 1,8
-        self.assertIn("6 g de purga", corpo)   # duas cores = uma troca
-        self.assertIn("abaixo do mínimo", corpo)
-        self.assertNotIn("Ainda não há nada", corpo)
+        # assertIn com pagina inteira despeja a pagina no relatorio de falha.
+        def tem(agulha, porque):
+            self.assertTrue(agulha in corpo, porque)
+
+        tem("Ana Paula", "o cliente do pedido aberto")
+        tem("Fila de produção", "o bloco da fila")
+        tem("7,3 h", "horas da fila (3,4 + 2,1 + 1,8), com virgula")
+        tem("6 g de purga", "duas cores = uma troca")
+        tem("abaixo do mínimo", "o aviso de filamento baixo")
+        self.assertTrue("Ainda não há nada" not in corpo, "painel com dados nao e vazio")
 
 
 if __name__ == "__main__":

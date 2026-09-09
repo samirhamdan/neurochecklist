@@ -145,6 +145,29 @@ td.alerta{color:var(--vermelho); font-weight:600}
   font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.1em;
   text-transform:uppercase; color:var(--suave); white-space:nowrap;
 }
+.custo.feito{
+  color:var(--verde); background:var(--verde-fundo); border-radius:3px;
+  padding:3px 8px; font-weight:600;
+}
+.depois-medido{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 18px;
+  background:var(--verde-fundo); border-left:2px solid var(--verde);
+  border-radius:0 4px 4px 0; padding:11px 14px; margin:0 0 14px;
+  font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--verde);
+}
+.depois-medido b{
+  font-size:10.5px; letter-spacing:.11em; text-transform:uppercase;
+  margin-right:4px; font-weight:600;
+}
+.depois-medido i{font-style:normal; color:var(--tinta-2); margin-right:5px}
+.sprint code{
+  font-family:"IBM Plex Mono",monospace; font-size:13px;
+  background:var(--bancada); padding:1px 5px; border-radius:3px; color:var(--tinta-2);
+}
+.pequenos > div.resolvido{color:var(--suave)}
+.pequenos > div.resolvido b{color:var(--verde)}
+.pequenos > div.resolvido b::before{content:"✓ "}
+.lista s{color:var(--suave)}
 .sprint p{font-size:15.5px}
 .sprint p:last-child{margin-bottom:0}
 .lista{margin:0 0 14px; padding-left:19px; font-size:15px; max-width:64ch}
@@ -271,8 +294,8 @@ porcentagem engana: o topo ocupa a máquina por 5,8 h e o chaveiro por 0,4 h. Co
 cheia, a pergunta certa não é “quanto sobra”, é “quanto sobra por hora de mesa”.</p>
 
 <h2>Os sprints</h2>
-<p class="desce">Em ordem de dor. O primeiro conserta o que quebra todas as telas; o segundo
-é o que você pediu.</p>
+<p class="desce">Em ordem de dor. O primeiro consertou o que quebrava todas as telas; o
+segundo é o que você pediu. Os dois já estão no ar.</p>
 
 <div class="sprints">
 
@@ -280,11 +303,28 @@ cheia, a pergunta certa não é “quanto sobra”, é “quanto sobra por hora 
     <div class="cab">
       <span class="num">U1</span>
       <h3>A navegação cabe no telefone</h3>
-      <span class="custo">Tamanho M · destrava o resto</span>
+      <span class="custo feito">✓ no ar</span>
     </div>
     <p>Onze itens em linha não cabem em 420 px, e não vão caber em 12 nem em 15. A barra
-    superior vira <b>lateral no computador e gaveta no telefone</b> — o padrão que o seu
+    superior virou <b>lateral no computador e gaveta no telefone</b> — o padrão que o seu
     exemplo já apontava.</p>
+    <div class="depois-medido">
+      <b>Medido depois</b>
+      <span><i>360 px</i> 0 de sobra</span><span><i>420 px</i> 0</span>
+      <span><i>768 px</i> 0</span><span><i>1280 px</i> 0</span>
+    </div>
+    <p>O menu virou <b>dado</b>, num lugar só, e há teste que abre cada rota dele — item
+    apontando para o lugar errado, numa lista de links escritos à mão, só aparece quando
+    alguém clica. Os grupos são <code>&lt;details&gt;</code>: abrem pelo teclado sozinhos,
+    sem uma linha de script.</p>
+    <p><b>Três bugs apareceram construindo.</b> Chamei a barra do celular de
+    <code>.barra</code> — e <code>.barra</code> já era das barras de estoque do painel, que
+    sumiram da tela sem um erro sequer no console. Um cartão de 594 px cabia numa coluna de
+    372 px, porque item de grid nasce com “no mínimo a largura do conteúdo”: foi o último
+    transbordo, e só aparece em tela estreita. E o foco, ao abrir a gaveta, mirava o link da
+    marca — escondido no telefone; <code>focus()</code> em elemento escondido não faz nada e
+    não dá erro, então o menu abria com o foco fora dele. Esse eu achei quebrando o código
+    de propósito e vendo o teste <em>passar</em>.</p>
     <span class="rotulo">Entra</span>
     <ul class="lista">
       <li>Barra lateral fixa no computador, com os itens agrupados: <b>Operação</b>
@@ -310,16 +350,50 @@ cheia, a pergunta certa não é “quanto sobra”, é “quanto sobra por hora 
     <div class="cab">
       <span class="num">U2</span>
       <h3>O painel responde “como vai o negócio?”</h3>
-      <span class="custo">Tamanho M · depende do U1</span>
+      <span class="custo feito">✓ no ar</span>
     </div>
-    <p>Hoje o painel abre com três avisos e duas listas. Ele conta o que está acontecendo,
-    mas não diz <b>como vai</b>. Os números para isso já existem — o levantamento acima saiu
-    do seu próprio banco, com uma consulta.</p>
+    <p>O painel abria com três avisos e duas listas. Ele contava o que estava acontecendo,
+    mas não dizia <b>como vai</b>. Os números para isso já existiam — o levantamento acima
+    saiu do seu próprio banco, com uma consulta.</p>
+    <div class="depois-medido">
+      <b>Medido depois</b>
+      <span><i>4 números</i> conferidos contra a tela que cada um aponta</span>
+      <span><i>420 px</i> 0 de sobra</span>
+      <span><i>11/11</i> mutações mortas</span>
+    </div>
+    <p><b>A regra que faz o painel poder ser acreditado:</b> cada número sai da
+    <b>mesma função</b> que a tela para onde ele leva. “A receber” e o rodapé de Pedidos são
+    a mesma soma; “na mesa” e o cabeçalho de Produção são a mesma conta de horas; “parado em
+    filamento” e o rodapé de Filamentos, idem. Um total somado no painel por um caminho e na
+    tela por outro passa a discordar no dia em que um dos dois ganhar um filtro — e quem
+    olha não tem como saber qual dos dois está certo. Os testes seguem o link e comparam os
+    dois lados.</p>
+    <p>O gráfico ganhou uma coisa que o levantamento não tinha previsto: peça que
+    <b>não paga</b> a hora que ocupa tem barra para a <em>esquerda</em> do zero, em vermelho.
+    Direção, cor e o sinal no número — três canais para a mesma informação, porque um deles
+    sozinho não chega a quem não distingue as duas cores. E há uma tabela do gráfico,
+    invisível na tela, que o leitor de tela lê.</p>
+    <p><b>Três testes meus estavam passando pelo motivo errado</b>, e eu só descobri
+    quebrando o código de propósito para ver os testes ficarem vermelhos. O da data de
+    entrega passava porque a edição acontecia no mesmo segundo da entrega. O de “a receber”
+    passava porque nenhum pedido do teste tinha comissão, então somar a coluna certa e a
+    errada dava o mesmo número. O de “na mesa” passava porque nenhuma peça tinha saído da
+    impressora ainda. Os três agora falham quando devem.</p>
+    <p>Dois defeitos velhos apareceram junto. O cartão nº 2 da seção Criar era laranja por
+    acaso: a regra dizia <code>:nth-of-type(2)</code>, escrita quando havia <em>dois</em>
+    atalhos — letreiro azul, logo laranja, as duas metades do M. Cor por posição quebra no
+    terceiro item; agora ela segue a categoria. E a tabela do leitor de tela ficava com
+    265 px de caixa invisível solta por cima da página, porque <code>width:1px</code> numa
+    <code>&lt;table&gt;</code> é só um mínimo — quem achou foi o teste medindo no navegador.</p>
     <span class="rotulo">Entra</span>
     <ul class="lista">
-      <li>Quatro números no topo, antes de qualquer lista: <b>a receber</b> (R$ 1.120 em
-          pedidos abertos), <b>na mesa</b> (horas previstas na fila), <b>parado em
-          filamento</b> (R$ 1.253), <b>entregue no mês</b></li>
+      <li>Quatro números no topo, antes de qualquer lista: <b>a receber</b> (pedidos em
+          aberto), <b>na mesa</b> (horas previstas na fila), <b>parado em filamento</b>
+          (gramas × preço do rolo), <b>entregue no mês</b></li>
+      <li>“Entregue no mês” exigiu uma coluna nova: <code>entregue_em</code>. A data de
+          criação não serve — um pedido de festa entra até dois meses antes de ser
+          entregue. O mês vira à meia-noite <em>daqui</em>, e não em UTC: uma entrega das
+          21h de 31 de agosto está gravada como 1º de setembro</li>
       <li>O gráfico de <b>retorno por hora de impressora</b>, com seus produtos ordenados —
           a comparação que hoje não existe em tela nenhuma</li>
       <li>Avisos ordenados por urgência, não por tipo: pedido atrasado acima de filamento
@@ -354,15 +428,15 @@ cheia, a pergunta certa não é “quanto sobra”, é “quanto sobra por hora 
       <li>Abaixo de 640 px, cada linha vira um cartão: título, o número que decide, e o
           estado como etiqueta</li>
       <li>Alvos de toque com 44 px, em todas as telas</li>
-      <li>Datas em <b>08/09/2026</b> e dinheiro em <b>R$ 1.120,00</b> — hoje saem
-          <span class="mono">2026-09-08</span> e <span class="mono">R$ 1120.00</span></li>
+      <li><s>Datas em 08/09/2026 e dinheiro em R$ 1.120,00</s> — <b>saiu no U2</b>, junto
+          com o painel: os dois filtros valem para toda tela do sistema</li>
       <li>Ordenar e filtrar onde a lista cresce: pedidos, produtos, gerações</li>
     </ul>
     <span class="rotulo">Eu testo</span>
     <ul class="lista">
       <li>Nenhum alvo de toque abaixo de 44 px, medido no navegador e não no olho</li>
       <li>Cartão e linha mostram a mesma informação — nada some no telefone</li>
-      <li>Toda data e todo valor da tela passam pela mesma função de formatar</li>
+      <li>Ordenar e filtrar devolve a mesma contagem que o rodapé da tabela mostra</li>
     </ul>
     <div class="confere"><b>Você confere</b>
       Abra Pedidos no celular e ache o valor do pedido da Ana sem rolar para o lado.</div>
@@ -408,15 +482,19 @@ cheia, a pergunta certa não é “quanto sobra”, é “quanto sobra por hora 
 </div>
 
 <h2>Três consertos que o levantamento achou</h2>
-<p class="desce">Pequenos, e nenhum é de gosto. Entram junto com o U2.</p>
+<p class="desce">Pequenos, e nenhum era de gosto. Entraram junto com o U2.</p>
 
 <div class="pequenos">
-  <div><b>O painel está desatualizado.</b> A seção “Criar”, no rodapé do painel, lista dois
-  geradores — letreiro e logo. A tela Criar tem nove. São duas listas, e uma parou no tempo.</div>
-  <div><b>Datas em formato de máquina.</b> <code>2026-09-08</code> aparece no painel e nas
-  compras. O sistema é para ler rápido, no meio de uma festa.</div>
-  <div><b>Ponto no lugar da vírgula.</b> <code>R$ 1120.00</code> em toda tela de valor. É a
-  convenção da casa desde o começo, e ficou errada desde o começo.</div>
+  <div class="resolvido"><b>O painel estava desatualizado.</b> A seção “Criar” listava dois
+  geradores — letreiro e logo — enquanto a tela Criar tinha nove. Agora sai da mesma lista
+  que a tela Criar usa: uma fonte só, e nenhuma das duas pode parar no tempo de novo.</div>
+  <div class="resolvido"><b>Datas em formato de máquina.</b> <code>08/09/2026</code>, e a
+  hora convertida para o relógio de Campo Grande. O recorte de texto que existia antes não
+  errava o formato: errava o <em>fuso</em>, em silêncio, e só depois das 20h — quando a data
+  também troca de dia.</div>
+  <div class="resolvido"><b>Ponto no lugar da vírgula.</b> <code>R$ 1.120,00</code> em toda
+  tela de valor, por um filtro só. E há um teste que varre os templates atrás do padrão
+  antigo — sem ele, a próxima tela nasce com ponto de novo, copiada de uma das outras.</div>
 </div>
 
 <h2>O que eu não vou fazer</h2>

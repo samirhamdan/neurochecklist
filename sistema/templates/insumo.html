@@ -32,7 +32,7 @@
       </label>
     </div>
     {% if atual and atual.veio_de_compra %}
-    <p class="nota">Em uso hoje: <b>R$ {{ '%.2f'|format(atual.valor_unit) }}</b> por
+    <p class="nota">Em uso hoje: <b>{{ atual.valor_unit|dinheiro }}</b> por
     {{ atual.unidade }}, da última compra lançada. O campo acima é o preço de reserva:
     vale enquanto não houver compra deste insumo.</p>
     {% endif %}

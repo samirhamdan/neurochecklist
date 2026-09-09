@@ -289,8 +289,9 @@ class TesteTelas(unittest.TestCase):
         self.dados.salvar_produto(
             {"nome": "Topo ANA 18", "gramas": 85, "horas": 3.4, "filamento_id": fil}, "samir")
         corpo = self.cliente.get("/produtos").get_data(as_text=True)
-        self.assertIn("Topo ANA 18", corpo)
-        self.assertIn("R$ 70.00", corpo)      # ceil((18 + 85*0,6)/5)*5 = 70
+        self.assertTrue("Topo ANA 18" in corpo, "o nome do produto")
+        self.assertTrue("R$ 70,00" in corpo,   # ceil((18 + 85*0,6)/5)*5 = 70
+                        "preco sugerido, na convencao da casa")
 
     def test_produto_sem_filamento_nao_mostra_custo_falso(self):
         """Custo sem material nao e custo baixo: e custo desconhecido.
@@ -301,9 +302,10 @@ class TesteTelas(unittest.TestCase):
         """
         self.dados.salvar_produto({"nome": "Chaveiro", "gramas": 9, "horas": 0.4}, "samir")
         corpo = self.cliente.get("/produtos").get_data(as_text=True)
-        self.assertIn("sem filamento", corpo)
-        self.assertNotIn("93.8", corpo, "margem inventada sobre custo incompleto")
-        self.assertNotIn("R$ 1.54", corpo, "custo sem material nao pode aparecer como custo")
+        self.assertTrue("sem filamento" in corpo, "a tela precisa dizer o que falta")
+        self.assertTrue("93,8" not in corpo, "margem inventada sobre custo incompleto")
+        self.assertTrue("R$ 1,54" not in corpo,
+                        "custo sem material nao pode aparecer como custo")
 
     def test_medir_devolve_medida_e_conta(self):
         import io

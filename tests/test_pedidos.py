@@ -253,9 +253,9 @@ class TesteTelas(unittest.TestCase):
         self._criar(2)
         self.cliente.post("/pedidos/1/situacao", data={"situacao": "aprovado"})
         corpo = self.cliente.get("/").get_data(as_text=True)
-        self.assertNotIn("Ainda não há nada", corpo)
-        self.assertIn("Ana Paula", corpo)
-        self.assertIn("11.5 h", corpo)          # 2 x 5,77
+        self.assertTrue("Ainda não há nada" not in corpo, "o pedido aprovado enche o painel")
+        self.assertTrue("Ana Paula" in corpo, "o cliente do pedido")
+        self.assertTrue("11,5 h" in corpo, "2 x 5,77 h, com virgula")
 
     def test_linha_de_item_vazia_e_descartada(self):
         """O formulario sempre tem uma linha em branco no fim."""

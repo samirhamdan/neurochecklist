@@ -18,6 +18,8 @@ import sqlite3
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+from . import formato
+
 PASTA = Path(os.environ.get("MORUMBI_DADOS", "/var/lib/morumbi3d"))
 
 ESQUEMA = """
@@ -343,6 +345,22 @@ def _migrar(conn: sqlite3.Connection) -> None:
         if coluna not in colunas:
             conn.execute(f"ALTER TABLE pedidos ADD COLUMN {coluna} {tipo}")
 
+    # QUANDO o pedido foi entregue. `criado_em` diz quando ele ENTROU, que num
+    # pedido de festa e ate dois meses antes -- e sem esta coluna o painel nao
+    # tem como responder "quanto entregamos neste mes".
+    if "entregue_em" not in colunas:
+        conn.execute("ALTER TABLE pedidos ADD COLUMN entregue_em TEXT")
+        # Pedido ja entregue antes desta coluna: a melhor data disponivel e a
+        # do historico, quando a ultima peca dele chegou em "entregue". Quem
+        # foi marcado entregue direto na tela do pedido nao tem historico e
+        # fica sem data -- e fica FORA do mes, que e melhor do que entrar num
+        # mes inventado.
+        conn.execute(
+            "UPDATE pedidos SET entregue_em = (SELECT MAX(h.criado_em) FROM historico h"
+            " JOIN pecas p ON p.id = h.peca_id"
+            " WHERE p.pedido_id = pedidos.id AND h.para = 'entregue')"
+            " WHERE status = 'entregue'")
+
     for tabela, coluna in (("filamentos", "preco_manual"), ("insumos", "valor_manual")):
         colunas = {r[1] for r in conn.execute(f"PRAGMA table_info({tabela})")}
         if colunas and coluna not in colunas:
@@ -514,6 +532,97 @@ def _dias_ate(prazo: str | None) -> int | None:
         return None
 
 
+# ------------------------------------------------- os numeros que o topo mostra
+#
+# Cada numero do painel sai da MESMA funcao que a tela para onde ele aponta.
+# Nao e preciosismo. Um total somado no painel por uma consulta e na tela por
+# outra passa a discordar no dia em que uma das duas ganhar um filtro -- e
+# quem olha nao tem como saber qual das duas esta certa. Entao a funcao e uma
+# so, e recebe a LISTA que a tela ja tem em maos.
+
+def somar_valor(pedidos_: list[dict]) -> float:
+    """O quanto vale uma lista de pedidos. Serve ao painel e ao rodape da tabela."""
+    return round(sum(p["valor"] or 0 for p in pedidos_), 2)
+
+
+def horas_na_mesa(fila: list[dict]) -> float:
+    """Horas previstas do que esta na bancada. A entregar ja saiu da impressora."""
+    return round(sum(p["horas_est"] or 0 for p in fila), 2)
+
+
+def parado_em_filamento(filamentos_: list[dict]) -> float:
+    """Quanto dinheiro esta dormindo em rolo.
+
+    So conta rolo COM preco: filamento sem preco de compra nao vale zero, vale
+    desconhecido -- e somar zero faria o estoque parecer mais barato do que e.
+    Quantos ficaram de fora e o que `sem_preco` conta, para a tela dizer.
+    """
+    return round(sum((f["gramas"] or 0) / 1000.0 * f["preco_kg"]
+                     for f in filamentos_ if f["preco_kg"]), 2)
+
+
+def sem_preco(filamentos_: list[dict]) -> int:
+    return sum(1 for f in filamentos_ if not f["preco_kg"])
+
+
+def limites_do_mes(quando: date | None = None) -> tuple[str, str]:
+    """O primeiro instante deste mes e o do proximo, em UTC.
+
+    O mes vira a meia-noite DAQUI e o banco grava em UTC: uma entrega das 21h
+    de 31 de agosto esta gravada como 1º de setembro. Comparar o texto cru
+    jogaria essa venda no mes errado.
+    """
+    quando = quando or formato.hoje()
+    ano, mes = quando.year, quando.month
+    seguinte = (ano + 1, 1) if mes == 12 else (ano, mes + 1)
+    inicio = datetime(ano, mes, 1, tzinfo=formato.AQUI)
+    fim = datetime(seguinte[0], seguinte[1], 1, tzinfo=formato.AQUI)
+    return (inicio.astimezone(timezone.utc).isoformat(),
+            fim.astimezone(timezone.utc).isoformat())
+
+
+def entregues_no_mes(quando: date | None = None) -> list[dict]:
+    """Os pedidos entregues no mes corrente -- a lista, nao o total.
+
+    Pedido entregue antes de a coluna `entregue_em` existir, e sem historico
+    de onde tirar a data, fica de fora. Melhor faltar do que aparecer num mes
+    que nao foi o dele.
+    """
+    inicio, fim = limites_do_mes(quando)
+    with conectar() as conn:
+        linhas = conn.execute(
+            "SELECT d.*, (SELECT COUNT(*) FROM pecas WHERE pedido_id = d.id) AS itens"
+            " FROM pedidos d WHERE d.status = 'entregue'"
+            " AND d.entregue_em >= ? AND d.entregue_em < ?"
+            " ORDER BY d.entregue_em DESC, d.id DESC", (inicio, fim)).fetchall()
+    return [dict(l, dias=_dias_ate(l["prazo"])) for l in linhas]
+
+
+def avisos(pedidos_: list[dict], filamentos_: list[dict]) -> list[dict]:
+    """Um aviso so, ordenado por URGENCIA -- nao por tipo.
+
+    A versao anterior tinha tres blocos: senha, depois TODO atraso, depois
+    TODO filamento baixo. Entao um rolo ZERADO -- que para a impressora agora,
+    no meio de uma peca -- aparecia embaixo de um pedido que atrasou ontem, e
+    duas cores em 5 g apareciam na ordem alfabetica do nome do rolo.
+
+    A urgencia parte o filamento em dois: acabou (para tudo) e esta acabando
+    (da tempo de comprar). O atraso mora entre os dois, porque o cliente ja
+    esta esperando mas a bancada nao parou.
+    """
+    fora = []
+    for f in filamentos_:
+        if (f["gramas"] or 0) <= 0:
+            fora.append({"tipo": "filamento_zero", "nivel": "mal", "ordem": (1, 0), "item": f})
+        elif f["gramas"] <= f["minimo"]:
+            sobra = f["gramas"] / f["minimo"] if f["minimo"] else 1
+            fora.append({"tipo": "filamento", "nivel": "atencao", "ordem": (3, sobra), "item": f})
+    for p in pedidos_:
+        if (p.get("dias") if p.get("dias") is not None else 99) < 0:
+            fora.append({"tipo": "atraso", "nivel": "mal", "ordem": (2, p["dias"]), "item": p})
+    return sorted(fora, key=lambda a: a["ordem"])
+
+
 def resumo() -> dict:
     """Tudo que o painel mostra, numa consulta so por bloco."""
 
@@ -556,19 +665,28 @@ def resumo() -> dict:
     por_cor = dict(sorted(por_cor.items(), key=urgencia))
     fila = [peca for grupo in por_cor.values() for peca in grupo]
 
-    horas = sum(p["horas_est"] or 0 for p in fila)
-    atrasados = [p for p in pedidos if (_dias_ate(p["prazo"]) or 99) < 0]
+    pedidos = [dict(p, dias=_dias_ate(p["prazo"])) for p in pedidos]
+    fila = [dict(p) for p in fila]
+    filamento = [dict(f) for f in filamento]
+    entregues = entregues_no_mes()
 
     return {
-        "pedidos": [dict(p, dias=_dias_ate(p["prazo"])) for p in pedidos],
-        "fila": [dict(p) for p in fila],
+        "pedidos": pedidos,
+        "fila": fila,
         "fila_por_cor": {c: [dict(p) for p in v] for c, v in por_cor.items()},
-        "horas_fila": horas,
+        "horas_fila": horas_na_mesa(fila),
         "trocas_de_cor": max(0, len(por_cor) - 1),
         "purga_g": max(0, len(por_cor) - 1) * 6,
-        "filamento": [dict(f) for f in filamento],
-        "filamento_baixo": [dict(f) for f in filamento if f["gramas"] <= f["minimo"]],
-        "atrasados": [dict(p) for p in atrasados],
+        "filamento": filamento,
+        "filamento_baixo": [f for f in filamento if f["gramas"] <= f["minimo"]],
+        "atrasados": [p for p in pedidos if (p["dias"] or 99) < 0],
+        "avisos": avisos(pedidos, filamento),
+        "a_receber": somar_valor(pedidos),
+        "parado": parado_em_filamento(filamento),
+        "cores_sem_preco": sem_preco(filamento),
+        "entregues": entregues,
+        "entregue_no_mes": somar_valor(entregues),
+        "mes": formato.mes_por_extenso(),
         "vazio": not pedidos and not fila and not filamento,
         "cores": CORES,
     }
@@ -897,6 +1015,19 @@ def _comissao_do_canal(conn, canal: str) -> float:
     return float(linha["comissao"]) if linha else 0.0
 
 
+def _carimbar_entrega(conn, id_: int, situacao: str) -> None:
+    """Grava QUANDO o pedido virou entregue -- ou apaga, se ele voltou atras.
+
+    COALESCE de proposito: editar um pedido ja entregue nao pode mover a data
+    da entrega para a data da edicao.
+    """
+    if situacao == "entregue":
+        conn.execute("UPDATE pedidos SET entregue_em = COALESCE(entregue_em, ?)"
+                     " WHERE id = ?", (agora(), id_))
+    else:
+        conn.execute("UPDATE pedidos SET entregue_em = NULL WHERE id = ?", (id_,))
+
+
 def salvar_pedido(dados: dict, autor: str, id_: int | None = None,
                   itens: list[dict] | None = None) -> int:
     """Grava o pedido e seus itens.
@@ -956,6 +1087,8 @@ def salvar_pedido(dados: dict, autor: str, id_: int | None = None,
                 {**campos, "criado_em": agora(), "criado_por": autor})
             id_ = int(cur.lastrowid)
 
+        _carimbar_entrega(conn, id_, situacao)
+
         conn.execute("DELETE FROM pecas WHERE pedido_id = ?", (id_,))
         for i in itens:
             conn.execute(
@@ -975,6 +1108,7 @@ def mudar_situacao(id_: int, situacao: str, autor: str) -> None:
         raise ValueError(f"situacao desconhecida: {situacao}")
     with conectar() as conn:
         conn.execute("UPDATE pedidos SET status = ? WHERE id = ?", (situacao, id_))
+        _carimbar_entrega(conn, id_, situacao)
         if situacao == "aprovado":
             conn.execute(
                 "UPDATE pecas SET status = 'na fila' WHERE pedido_id = ? AND status = 'orcamento'",
@@ -1152,6 +1286,8 @@ def quadro() -> dict:
         "rotulos": ROTULOS,
         "por_etapa": {e: [p for p in pecas if p["status"] == e] for e in ETAPAS},
         "pecas": pecas,
+        # O mesmo numero que o painel mostra em "na mesa", pela mesma funcao.
+        "horas_na_mesa": horas_na_mesa([p for p in pecas if p["status"] in EM_PRODUCAO]),
         "cores": CORES,
     }
 

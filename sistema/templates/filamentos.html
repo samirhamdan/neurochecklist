@@ -28,17 +28,28 @@
           <td>{{ f.tipo }}</td>
           <td class="num mono {{ 'alerta' if f.gramas <= f.minimo }}">{{ f.gramas|round|int }} g</td>
           <td class="num mono fraco">{{ f.minimo|round|int }} g</td>
-          <td class="num mono">{{ 'R$ %.2f'|format(f.preco_kg) if f.preco_kg else '—' }}
+          <td class="num mono">{{ f.preco_kg|dinheiro }}
             {% if f.veio_de_compra %}<span class="etiqueta" title="Preço da última compra lançada">nota</span>{% endif %}
           </td>
           <td class="num"><a href="{{ url_for('editar_filamento', id_=f.id) }}">editar</a></td>
         </tr>
         {% endfor %}
       </tbody>
+      {# O mesmo numero que o painel mostra em "parado em filamento", pela
+         mesma funcao (dados.parado_em_filamento) e sobre os rolos ATIVOS. #}
+      <tfoot>
+        <tr>
+          <td colspan="4" class="num">Parado em filamento (rolos ativos)</td>
+          <td class="num mono forte" id="parado-total">{{ parado|dinheiro }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
     </table>
   </div></div>
   <p class="nota">O <b>R$/kg</b> é o que alimenta o custo de todo produto que usa o
-  filamento. Sem ele o custo sai zero, e o sistema avisa em vez de inventar um número.</p>
+  filamento. Sem ele o custo sai zero, e o sistema avisa em vez de inventar um número.
+  {% if cores_sem_preco %}<b>{{ cores_sem_preco }}</b> cor(es) estão sem preço e ficam
+  fora do total — rolo sem preço não vale zero, vale desconhecido.{% endif %}</p>
   {% else %}
   <div class="cartao cartao-vazio">
     <b>Nenhum filamento cadastrado.</b>

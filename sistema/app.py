@@ -19,7 +19,7 @@ from flask import (
     Flask, redirect, render_template, request, send_from_directory, session, url_for,
 )
 
-from . import analise, auth, criar, custo, dados
+from . import analise, auth, criar, custo, dados, formato
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -113,6 +113,11 @@ def criar_app() -> Flask:
         MAX_CONTENT_LENGTH=25 * 1024 * 1024,
     )
 
+    # Dinheiro e data em portugues, num lugar so. Ha teste que varre os
+    # templates atras do padrao antigo -- sem ele a proxima tela nasce com
+    # `R$ 1120.00` de novo.
+    app.jinja_env.filters.update(formato.FILTROS)
+
     @app.context_processor
     def comuns():
         return {
@@ -127,7 +132,17 @@ def criar_app() -> Flask:
     @app.route("/")
     @auth.exige_login
     def painel():
-        return render_template("painel.html", aba="painel", **dados.resumo())
+        # O grafico sai da MESMA conta que a lista de produtos usa. Se o painel
+        # fizesse a sua propria, o retorno por hora do painel e o da tela de
+        # produtos podiam discordar sem que ninguem soubesse qual valia.
+        #
+        # So os ATIVOS: produto desativado nao disputa hora de impressora, e
+        # deixa-lo no grafico faria a comparacao ser com peca que nao se vende
+        # mais. A tela de produtos lista todos, por isso mostra mais linhas.
+        retorno = custo.retorno_por_hora(dados.produtos(), dados.parametros())
+        return render_template("painel.html", aba="painel", retorno=retorno,
+                               modelos=criar.MODELOS, criar_conta=criar.contagem(),
+                               **dados.resumo())
 
     @app.route("/entrar", methods=["GET", "POST"])
     def entrar():
@@ -175,17 +190,16 @@ def criar_app() -> Flask:
         return redirect(url_for("entrar"))
 
     # ------------------------------------------------------------- cadastros
-    def _conta_do_produto(prod: dict, param: dict) -> custo.Conta:
-        insumos = sum(v["quantidade"] * v["valor_unit"] for v in prod.get("insumos", []))
-        return custo.calcular(prod.get("gramas") or 0, prod.get("horas") or 0,
-                              prod.get("filamento_preco_kg"), insumos,
-                              prod.get("minutos"), param=param)
-
     @app.route("/filamentos")
     @auth.exige_login
     def lista_filamentos():
-        return render_template("filamentos.html", aba="filamentos",
-                               filamentos=dados.filamentos(False), cores=dados.CORES)
+        lista = dados.filamentos(False)
+        # Ativos apenas: o painel conta o que esta em uso, e rolo desativado
+        # nao e dinheiro parado, e dinheiro que ja saiu.
+        ativos = [f for f in lista if f["ativo"]]
+        return render_template("filamentos.html", aba="filamentos", filamentos=lista,
+                               parado=dados.parado_em_filamento(ativos),
+                               cores_sem_preco=dados.sem_preco(ativos), cores=dados.CORES)
 
     @app.route("/filamentos/novo", methods=["GET", "POST"])
     @app.route("/filamentos/<int:id_>", methods=["GET", "POST"])
@@ -233,9 +247,10 @@ def criar_app() -> Flask:
         param = dados.parametros()
         itens = dados.produtos(False)
         for p in itens:
-            p["conta"] = custo.calcular(p.get("gramas") or 0, p.get("horas") or 0,
-                                        p.get("filamento_preco_kg"),
-                                        minutos=p.get("minutos"), param=param)
+            # com_preco: quando o produto tem preco digitado, e ele que manda na
+            # margem e no retorno por hora. Sem isto a coluna Preco mostrava um
+            # numero e a coluna Margem era calculada sobre outro.
+            p["conta"] = custo.conta_de_produto(p, param).com_preco(p.get("preco"))
         return render_template("produtos.html", aba="produtos", produtos=itens,
                                cores=dados.CORES)
 
@@ -259,7 +274,7 @@ def criar_app() -> Flask:
                     atual=dados.campos_produto(request.form),
                     filamentos=dados.filamentos(), insumos=dados.insumos()), 400
             return redirect(url_for("editar_produto", id_=novo_id))
-        conta = _conta_do_produto(atual, param) if atual else None
+        conta = custo.conta_de_produto(atual, param) if atual else None
         return render_template("produto.html", aba="produtos", atual=atual, conta=conta,
                                param=param, filamentos=dados.filamentos(),
                                insumos=dados.insumos())
@@ -342,10 +357,16 @@ def criar_app() -> Flask:
     @app.route("/pedidos")
     @auth.exige_login
     def lista_pedidos():
+        # "entregues" e o mes CORRENTE, e nao tudo que ja foi entregue: e para
+        # onde o numero "entregue em <mes>" do painel aponta, e o rodape desta
+        # tela tem que fechar com ele.
         ver = request.args.get("ver", "abertos")
-        situacoes = dados.SITUACOES if ver == "todos" else dados.ABERTOS
-        return render_template("pedidos.html", aba="pedidos", ver=ver,
-                               pedidos=dados.pedidos(situacoes))
+        if ver == "entregues":
+            lista = dados.entregues_no_mes()
+        else:
+            lista = dados.pedidos(dados.SITUACOES if ver == "todos" else dados.ABERTOS)
+        return render_template("pedidos.html", aba="pedidos", ver=ver, pedidos=lista,
+                               total=dados.somar_valor(lista), mes=formato.mes_por_extenso())
 
     @app.route("/pedidos/novo", methods=["GET", "POST"])
     @app.route("/pedidos/<int:id_>", methods=["GET", "POST"])
