@@ -1,31 +1,106 @@
-{# A barra de cima, uma vez so. Antes ela morava dentro do painel.html; com
-   seis telas, copiar a navegacao em cada uma garante que uma delas fica para
-   tras no dia em que entrar um item novo. #}
-<header class="topo">
-  <div class="dentro">
-    <a class="logo" href="{{ url_for('painel') }}">
-      {% if marca_simbolo %}
-        <img src="{{ url_for('static', filename=marca_simbolo) }}" alt="" height="30">
-      {% endif %}
-      <span>Morumbi <span class="tres">3</span><span class="de">D</span></span>
-    </a>
-    <nav>
-      <a href="{{ url_for('painel') }}" {{ 'class=aqui' if aba == 'painel' }}>Painel</a>
-      <a href="{{ url_for('producao') }}" {{ 'class=aqui' if aba == 'producao' }}>Produção</a>
-      <a href="{{ url_for('lista_pedidos') }}" {{ 'class=aqui' if aba == 'pedidos' }}>Pedidos</a>
-      <a href="{{ url_for('lista_clientes') }}" {{ 'class=aqui' if aba == 'clientes' }}>Clientes</a>
-      <a href="{{ url_for('lista_produtos') }}" {{ 'class=aqui' if aba == 'produtos' }}>Produtos</a>
-      <a href="{{ url_for('lista_compras') }}" {{ 'class=aqui' if aba == 'compras' }}>Compras</a>
-      <a href="{{ url_for('lista_filamentos') }}" {{ 'class=aqui' if aba == 'filamentos' }}>Filamentos</a>
-      <a href="{{ url_for('lista_insumos') }}" {{ 'class=aqui' if aba == 'insumos' }}>Insumos</a>
-      <a href="{{ url_for('tela_criar') }}" {{ 'class=aqui' if aba == 'criar' }}>Criar</a>
-      <a href="{{ url_for('lista_templates') }}" {{ 'class=aqui' if aba == 'templates' }}>Templates</a>
-      {% if com_senha %}
-        <span class="quem">{{ usuario }}</span>
-        <form method="post" action="{{ url_for('sair') }}">
-          <button type="submit">Sair</button>
-        </form>
-      {% endif %}
-    </nav>
-  </div>
+{# A casca de toda tela do painel: lateral no computador, gaveta no telefone.
+
+   Ate o U1 isto era uma barra horizontal com dez links. Dez nao cabem em
+   420 px, e a barra nao sabia quebrar: ela esticava o corpo da pagina para
+   920 px e TODA tela rolava de lado. O menu agora vem de `MENU`, em app.py.
+
+   Os grupos sao <details>/<summary> de proposito: abrem e fecham pelo teclado
+   sozinhos, sem uma linha de JavaScript, e continuam funcionando se o script
+   nao carregar. O unico JavaScript aqui e o da gaveta -- e ate ele tem o
+   cuidado de devolver o foco de onde saiu. #}
+
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+<header class="barra-topo">
+  <button type="button" class="abrir" id="abrir-menu"
+          aria-expanded="false" aria-controls="lateral">
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+      <path d="M2 5h16M2 10h16M2 15h16" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" fill="none"/>
+    </svg>
+    Menu
+  </button>
+  <a class="logo" href="{{ url_for('painel') }}">
+    {% if marca_simbolo %}
+      <img src="{{ url_for('static', filename=marca_simbolo) }}" alt="" height="26">
+    {% endif %}
+    <span>Morumbi <span class="tres">3</span><span class="de">D</span></span>
+  </a>
 </header>
+
+<nav class="lateral" id="lateral" aria-label="Navegação principal">
+  <a class="logo" href="{{ url_for('painel') }}">
+    {% if marca_simbolo %}
+      <img src="{{ url_for('static', filename=marca_simbolo) }}" alt="" height="28">
+    {% endif %}
+    <span>Morumbi <span class="tres">3</span><span class="de">D</span></span>
+  </a>
+
+  {% for titulo, chave, itens in menu %}
+  <details class="grupo" {{ 'open' if chave == grupo_aberto }}>
+    <summary>
+      {{ titulo }}
+      <svg class="seta" width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"
+           focusable="false">
+        <path d="M3 4.5L6 8l3-3.5" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </summary>
+    <div class="itens">
+      {% for endereco, rotulo, marca in itens %}
+      <a href="{{ url_for(endereco) }}" {{ 'class=aqui' if aba == marca }}
+         {{ 'aria-current=page' if aba == marca }}>{{ rotulo }}</a>
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+
+  {% if com_senha %}
+  <div class="quem-sai">
+    <span class="quem">{{ usuario }}</span>
+    <form method="post" action="{{ url_for('sair') }}">
+      <button type="submit">Sair</button>
+    </form>
+  </div>
+  {% endif %}
+</nav>
+
+<button type="button" class="veu" id="veu" hidden tabindex="-1"
+        aria-label="Fechar menu"></button>
+
+<script>
+(function () {
+  const botao = document.getElementById("abrir-menu");
+  const lateral = document.getElementById("lateral");
+  const veu = document.getElementById("veu");
+  if (!botao) return;
+
+  function abrir(sim) {
+    document.body.classList.toggle("com-gaveta", sim);
+    botao.setAttribute("aria-expanded", sim ? "true" : "false");
+    veu.hidden = !sim;
+    if (sim) {
+      // O primeiro item VISIVEL da gaveta. A primeira versao pegava
+      // `querySelector("a, summary")`, que no telefone acha o link da marca --
+      // escondido por CSS. Chamar focus() nele nao faz nada e nao da erro: o
+      // foco simplesmente ficava fora da gaveta que acabou de abrir.
+      const primeiro = [...lateral.querySelectorAll("summary, a")]
+        .find(e => e.getClientRects().length > 0);
+      (primeiro || lateral).focus();
+    } else {
+      botao.focus();   // devolve o foco de onde ele saiu
+    }
+  }
+
+  botao.addEventListener("click", () => abrir(!document.body.classList.contains("com-gaveta")));
+  veu.addEventListener("click", () => abrir(false));
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && document.body.classList.contains("com-gaveta")) abrir(false);
+  });
+  // Clicou num link: a gaveta ja vai embora com a navegacao, mas fechar antes
+  // evita o pisca da lateral por cima da tela nova.
+  lateral.addEventListener("click", e => {
+    if (e.target.closest("a")) document.body.classList.remove("com-gaveta");
+  });
+})();
+</script>

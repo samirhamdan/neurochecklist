@@ -231,6 +231,36 @@ peça mudou e por quê:
 
     node ferramentas/impressao_digital.js > docs/impressao-digital.txt
 
+### O menu é dado, em `app.py`
+
+`MENU` é uma tupla de grupos; `_grupo_de(endpoint)` diz qual abre. A lateral se
+desenha a partir disso, e há teste que **abre cada rota do menu**. Numa lista de
+links escritos a mão, um item apontando para o lugar errado só aparece quando
+alguém clica.
+
+Os grupos são `<details>/<summary>`: abrem pelo teclado sozinhos, sem
+JavaScript. O único script da casca é o da gaveta.
+
+### Item de grid e de flex nasce com `min-width:auto`
+
+Que significa "no mínimo a largura do conteúdo" — e é por isso que um cartão de
+594 px cabia numa coluna de 372 px e empurrava a página inteira para fora da
+tela. Foi o último transbordo que sobrou depois da lateral, e só aparece em
+tela estreita. `.duas-colunas > *{min-width:0}`.
+
+### `focus()` em elemento escondido não faz nada, e não dá erro
+
+A gaveta focava `querySelector("a, summary")` — que no telefone é o link da
+marca, `display:none`. O foco simplesmente ficava fora da gaveta recém-aberta.
+Pior: o teste do Escape passava, porque "voltar o foco para o botão" era um
+no-op. Filtre por `getClientRects().length > 0`.
+
+### Nome de classe curto é barato até colidir
+
+Chamei a barra do celular de `.barra`. `.barra` já era das barras de estoque do
+painel: elas sumiram da tela, sem um erro sequer no console. Antes de criar uma
+classe, `grep` nos templates.
+
 ### `display` de classe ganha do `[hidden]` do navegador
 
 `el.hidden = true` põe o atributo, e o atributo só esconde porque a folha do

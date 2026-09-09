@@ -142,38 +142,119 @@ button.principal:disabled{background:#26303C;color:#78828E;cursor:not-allowed}
 
 /* ===================== bancada: o painel ===================== */
 body.bancada{background:var(--bancada);color:var(--tinta)}
-.topo{
-  background:var(--mesa);border-bottom:1px solid var(--linha);
-  padding:0 24px;position:sticky;top:0;z-index:5;
+/* ---------- a casca: lateral no computador, gaveta no telefone ----------
+
+   O problema que isto resolve, medido: a barra horizontal com dez links tinha
+   896 px de largura propria e esticava o corpo da pagina para 920 px num
+   aparelho de 420. Nao era so o menu que saia da tela -- era TUDO, porque o
+   corpo inteiro ficava mais largo que o aparelho.
+
+   A lateral nao estica nada: ela e `fixed`, sai do fluxo, e a pagina ganha um
+   respiro do lado esquerdo. No telefone ela nem ocupa lugar -- fica fora da
+   tela ate voce chamar. */
+
+.pular{
+  position:absolute;left:-9999px;top:0;z-index:30;
+  background:var(--azul);color:#fff;padding:11px 16px;border-radius:0 0 5px 0;
+  font-size:14.5px;font-weight:600;
 }
-.topo .dentro{
-  max-width:1180px;margin:0 auto;display:flex;align-items:center;
-  gap:20px;min-height:60px;flex-wrap:wrap;
+.pular:focus{left:0}
+
+.lateral{
+  position:fixed;top:0;left:0;bottom:0;width:var(--lateral,232px);z-index:20;
+  background:var(--mesa);border-right:1px solid var(--linha);
+  display:flex;flex-direction:column;gap:2px;padding:18px 14px 14px;
+  overflow-y:auto;overscroll-behavior:contain;
 }
-/* O nome fica dentro de um <span> proprio, e nao solto: como item de flex
-   solto, "Morumbi " perde o espaco do fim e vira "Morumbi3D". */
-.topo .logo{
-  font-weight:700;letter-spacing:-.02em;font-size:19px;line-height:1;
-  display:flex;align-items:center;gap:9px;
+.lateral .logo{
+  display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--tinta);
+  font-weight:700;letter-spacing:-.02em;font-size:18px;line-height:1;
+  padding:4px 8px 18px;
 }
-.topo .logo img{height:30px;width:auto;display:block}
-.topo .logo .tres{color:var(--laranja-escuro)}
-.topo .logo .de{color:var(--azul)}
-.topo nav{display:flex;gap:4px;margin-left:auto;align-items:center}
-.topo nav a{
-  color:var(--tinta);text-decoration:none;font-size:14.5px;font-weight:500;
-  padding:7px 11px;border-radius:4px;
+.lateral .logo img{height:28px;width:auto;display:block}
+.lateral .logo .tres{color:var(--laranja-escuro)}
+.lateral .logo .de{color:var(--azul)}
+
+.grupo{border:none}
+.grupo > summary{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  list-style:none;cursor:pointer;user-select:none;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--suave);padding:11px 8px;border-radius:5px;min-height:44px;
 }
-.topo nav a:hover{background:var(--bancada)}
-.topo form{margin:0}
-.topo button{
+.grupo > summary::-webkit-details-marker{display:none}
+.grupo > summary:hover{background:var(--bancada);color:var(--tinta-2)}
+.grupo .seta{transition:transform .15s ease;flex:none}
+.grupo[open] > summary .seta{transform:rotate(180deg)}
+.grupo .itens{display:flex;flex-direction:column;gap:1px;padding:0 0 6px}
+.lateral .itens a{
+  display:flex;align-items:center;color:var(--tinta);text-decoration:none;
+  font-size:15px;font-weight:500;padding:0 12px;border-radius:5px;
+  min-height:44px;   /* o dedo acerta */
+}
+.lateral .itens a:hover{background:var(--bancada)}
+.lateral .itens a.aqui{background:var(--azul-fundo);color:var(--azul);font-weight:600}
+
+.quem-sai{
+  margin-top:auto;padding-top:14px;border-top:1px solid var(--linha);
+  display:flex;align-items:center;gap:10px;
+}
+.quem-sai form{margin:0}
+.quem-sai button{
   font:inherit;font-size:14px;background:none;border:1px solid var(--linha-forte);
-  color:var(--suave);padding:6px 12px;border-radius:4px;cursor:pointer;
+  color:var(--suave);padding:9px 14px;border-radius:5px;cursor:pointer;min-height:44px;
 }
-.topo button:hover{border-color:var(--azul);color:var(--azul)}
+.quem-sai button:hover{border-color:var(--azul);color:var(--azul)}
 .quem{font-size:13px;color:var(--suave)}
 
-.pagina{max-width:1180px;margin:0 auto;padding:26px 24px 72px}
+/* A barra fina de cima so existe no telefone: e onde mora o botao da gaveta.
+   Chama-se `barra-topo` e nao `barra` porque `.barra` ja era das barras de
+   estoque do painel -- eu tinha escolhido o nome curto, e as barras de
+   filamento sumiram da tela sem nenhum erro no console. */
+.barra-topo{display:none}
+.barra-topo .abrir{
+  display:flex;align-items:center;gap:8px;font:inherit;font-size:14.5px;font-weight:600;
+  background:none;border:1px solid var(--linha-forte);color:var(--tinta);
+  padding:0 14px;min-height:44px;border-radius:6px;cursor:pointer;
+}
+.barra-topo .abrir:hover{border-color:var(--azul);color:var(--azul)}
+.barra-topo .logo{
+  display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--tinta);
+  font-weight:700;letter-spacing:-.02em;font-size:17px;line-height:1;
+}
+.barra-topo .logo img{height:26px;width:auto;display:block}
+.barra-topo .logo .tres{color:var(--laranja-escuro)}
+.barra-topo .logo .de{color:var(--azul)}
+
+.veu{display:none}
+
+@media (max-width:900px){
+  .barra-topo{
+    display:flex;align-items:center;gap:12px;
+    background:var(--mesa);border-bottom:1px solid var(--linha);
+    padding:8px 14px;position:sticky;top:0;z-index:15;
+  }
+  .lateral{
+    transform:translateX(-100%);
+    transition:transform .18s ease;
+    box-shadow:0 0 0 100vmax transparent;
+    width:min(84vw, 300px);
+  }
+  .lateral .logo{display:none}       /* a marca ja esta na barra de cima */
+  body.com-gaveta .lateral{transform:none;box-shadow:2px 0 18px rgba(21,25,29,.16)}
+  .veu{
+    display:block;position:fixed;inset:0;z-index:18;border:none;padding:0;
+    background:rgba(21,25,29,.38);cursor:pointer;
+  }
+  body{padding-left:0 !important}
+}
+@media (prefers-reduced-motion:reduce){
+  .lateral,.grupo .seta{transition:none}
+}
+
+body.bancada{padding-left:var(--lateral,232px)}
+.pagina{max-width:1120px;margin:0 auto;padding:26px 24px 72px}
 h2.secao{
   font-size:13px;letter-spacing:.11em;text-transform:uppercase;
   color:var(--suave);font-weight:600;margin:34px 0 12px;
@@ -354,8 +435,14 @@ tr.inativo td{opacity:.55}
 /* ---------- formularios ---------- */
 .formulario{display:flex;flex-direction:column;gap:14px}
 .linha{display:flex;gap:14px;flex-wrap:wrap}
-.linha > .campo{flex:0 0 auto;min-width:130px}
-.linha > .campo.cresce{flex:1 1 220px}
+/* `flex-wrap` sozinho nao basta: um campo com largura propria maior que a
+   tela nao quebra, ele transborda. O `min-width:0` deixa o campo encolher, e
+   o `min(...)` da a ele um piso que nunca passa da largura disponivel -- era
+   um campo de 597 px numa tela de 420 na ficha de pedido. */
+.linha > .campo{flex:1 1 auto;min-width:min(130px,100%)}
+.linha > .campo.cresce{flex:1 1 220px;min-width:min(220px,100%)}
+.campo, .campo > *{min-width:0}
+.campo input, .campo select, .campo textarea{max-width:100%}
 .formulario .campo input, .formulario .campo select,
 .coluna-lado .campo input{
   font:inherit;font-size:15.5px;padding:9px 11px;border-radius:4px;
@@ -368,6 +455,11 @@ tr.inativo td{opacity:.55}
 .acoes{display:flex;gap:10px;align-items:center;margin-top:4px}
 
 .duas-colunas{display:grid;gap:18px;align-items:start}
+/* Item de grid e de flex nasce com `min-width:auto`, que significa "no minimo
+   a largura do conteudo" -- e por isso um cartao de 594 px ficava dentro de
+   uma coluna de 372 px e empurrava a pagina para fora da tela. Foi este o
+   ultimo transbordo que sobrou depois da lateral. */
+.duas-colunas > *{min-width:0}
 @media(min-width:900px){.duas-colunas{grid-template-columns:1fr 360px}}
 .coluna-lado{display:flex;flex-direction:column;gap:16px}
 

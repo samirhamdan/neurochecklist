@@ -229,6 +229,136 @@ class TesteFiltroDeCriar(NoNavegador):
         self.assertTrue(self.pg.url.endswith("/criar"), self.pg.url)
 
 
+class TesteNadaSaiDaTela(NoNavegador):
+    """A promessa do U1, medida onde ela vale: num navegador.
+
+    O levantamento achou 920 px de largura em cada tela de um aparelho de
+    420 -- 500 px de conteudo empurrado para fora, e a pagina inteira rolando
+    de lado. A causa era a barra de menu horizontal, que nao sabe quebrar e
+    estica o corpo da pagina.
+
+    Este teste roda em tres larguras porque a ultima sobra que restou nao era
+    do menu: era um cartao de 594 px dentro de uma coluna de 372, porque item
+    de grid nasce com `min-width:auto` -- "no minimo a largura do conteudo".
+    Isso so aparece em tela estreita.
+    """
+
+    TELAS = ("/", "/producao", "/pedidos", "/pedidos/1", "/clientes", "/produtos",
+             "/compras", "/filamentos", "/insumos", "/criar", "/templates")
+
+    def larguras(self, largura):
+        self.pg.set_viewport_size({"width": largura, "height": 900})
+        fora = []
+        for rota in self.TELAS:
+            self.abrir(rota)
+            self.pg.wait_for_timeout(120)
+            sobra = self.pg.evaluate("() => document.documentElement.scrollWidth") - largura
+            if sobra > 0:
+                fora.append(f"{rota}: +{sobra}px")
+        return fora
+
+    def test_nenhuma_tela_sai_da_tela_no_telefone(self):
+        for largura in (360, 420):
+            with self.subTest(largura=largura):
+                self.assertEqual(self.larguras(largura), [],
+                                 f"telas rolando de lado em {largura}px")
+
+    def test_nem_no_tablet_nem_no_computador(self):
+        for largura in (768, 1280):
+            with self.subTest(largura=largura):
+                self.assertEqual(self.larguras(largura), [])
+
+
+class TesteAGaveta(NoNavegador):
+    """A lateral no telefone: abre, fecha, e devolve o foco de onde saiu."""
+
+    def setUp(self):
+        super().setUp()
+        self.pg.set_viewport_size({"width": 420, "height": 900})
+        self.abrir("/filamentos")
+        self.pg.wait_for_selector("#abrir-menu")
+
+    def esquerda(self):
+        return self.pg.eval_on_selector(
+            ".lateral", "e => Math.round(e.getBoundingClientRect().left)")
+
+    def test_comeca_fora_da_tela(self):
+        self.assertLess(self.esquerda(), 0, "a gaveta comeca aberta")
+        self.assertEqual(self.pg.get_attribute("#abrir-menu", "aria-expanded"), "false")
+
+    def test_abre_e_cobre_a_pagina(self):
+        self.pg.click("#abrir-menu")
+        self.pg.wait_for_timeout(320)
+        self.assertEqual(self.esquerda(), 0)
+        self.assertEqual(self.pg.get_attribute("#abrir-menu", "aria-expanded"), "true")
+        # o veu tem que estar POR CIMA do conteudo, e nao so existir
+        self.assertEqual(self.pg.evaluate(
+            "() => { const e = document.elementFromPoint(390, 500); return e && e.id; }"),
+            "veu", "o veu nao esta cobrindo a pagina")
+
+    def test_ao_abrir_o_foco_entra_na_gaveta(self):
+        """Senao quem navega por teclado abre o menu e continua fora dele.
+
+        A primeira versao mirava o primeiro `a` da lateral -- que no telefone
+        e o link da marca, escondido por CSS. `focus()` em elemento escondido
+        nao faz nada e nao da erro: o foco ficava no botao, e o teste que so
+        olhava o Escape passava, porque voltar para o botao era um no-op.
+        """
+        self.pg.click("#abrir-menu")
+        self.pg.wait_for_timeout(320)
+        dentro = self.pg.evaluate(
+            "() => document.getElementById('lateral').contains(document.activeElement)")
+        self.assertTrue(dentro, "o foco nao entrou na gaveta")
+
+    def test_o_escape_fecha_e_devolve_o_foco(self):
+        self.pg.click("#abrir-menu")
+        self.pg.wait_for_timeout(320)
+        self.assertTrue(self.pg.evaluate(
+            "() => document.getElementById('lateral').contains(document.activeElement)"),
+            "o foco precisa estar DENTRO da gaveta para o retorno ser observavel")
+        self.pg.keyboard.press("Escape")
+        self.pg.wait_for_timeout(320)
+        self.assertLess(self.esquerda(), 0)
+        self.assertEqual(self.pg.evaluate("() => document.activeElement.id"), "abrir-menu",
+                         "o foco nao voltou para o botao que abriu")
+
+    def test_o_veu_fecha(self):
+        self.pg.click("#abrir-menu")
+        self.pg.wait_for_timeout(320)
+        self.pg.click("#veu", position={"x": 390, "y": 500})
+        self.pg.wait_for_timeout(320)
+        self.assertLess(self.esquerda(), 0)
+
+    def test_o_grupo_da_tela_atual_abre_sozinho(self):
+        self.pg.click("#abrir-menu")
+        self.pg.wait_for_timeout(320)
+        abertos = self.pg.eval_on_selector_all(
+            ".grupo[open] > summary", "e => e.map(x => x.textContent.trim())")
+        self.assertEqual(abertos, ["Cadastros"], "abriu o grupo errado em Filamentos")
+
+    def test_os_grupos_funcionam_sem_javascript(self):
+        """Sao <details>: abrem pelo teclado sozinhos. Se um dia isso virar
+        JavaScript, o menu para de funcionar quando o script nao carregar."""
+        self.assertEqual(self.pg.eval_on_selector_all(".grupo", "e => e.map(x => x.tagName)"),
+                         ["DETAILS", "DETAILS", "DETAILS"])
+
+    def test_no_computador_a_lateral_fica_a_vista(self):
+        self.pg.set_viewport_size({"width": 1280, "height": 900})
+        self.abrir("/filamentos")
+        self.pg.wait_for_timeout(200)
+        self.assertEqual(self.esquerda(), 0, "a lateral sumiu no computador")
+        self.assertFalse(self.pg.eval_on_selector("#veu", "e => !e.hidden"),
+                         "o veu aparece no computador")
+
+    def test_todo_item_do_menu_alcanca_o_dedo(self):
+        self.pg.click("#abrir-menu")
+        self.pg.wait_for_timeout(320)
+        pequenos = self.pg.eval_on_selector_all(
+            ".lateral .itens a, .lateral summary, #abrir-menu",
+            "e => e.filter(x => x.getBoundingClientRect().height < 44).length")
+        self.assertEqual(pequenos, 0, "item de menu abaixo de 44 px")
+
+
 class TesteATravaDoDownload(NoNavegador):
     """Peca reprovada nao gera arquivo. Nunca.
 

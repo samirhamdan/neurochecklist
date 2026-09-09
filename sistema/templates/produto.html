@@ -3,7 +3,7 @@
 {% block corpo %}bancada{% endblock %}
 {% block conteudo %}
 {% include "_topo.html" %}
-<main class="pagina">
+<main id="conteudo" class="pagina">
   <h2 class="secao">{{ 'Editar produto' if atual and atual.id else 'Novo produto' }}</h2>
   {% if erro %}<div class="recado erro">{{ erro }}</div>{% endif %}
 

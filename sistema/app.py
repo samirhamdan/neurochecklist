@@ -42,6 +42,44 @@ def arquivo_da_marca(base: str) -> str:
     return ""
 
 
+# O menu, como DADO e num lugar so.
+#
+# Ate o U1 eram dez links escritos a mao numa barra horizontal que nao sabia
+# quebrar: em 420 px ela esticava o corpo da pagina para 920 px, e TODA tela
+# rolava de lado. Dez nao cabem, e nao iam caber em doze.
+#
+# Em grupo, e como dado, tres coisas ficam possiveis: a lateral se desenha
+# sozinha, o grupo certo abre no que voce esta usando, e ha um teste que abre
+# cada rota do menu -- item que aponta para lugar nenhum passaria despercebido
+# numa lista escrita a mao.
+MENU = (
+    ("Operação", "operacao", (
+        ("painel", "Painel", "painel"),
+        ("producao", "Produção", "producao"),
+        ("lista_pedidos", "Pedidos", "pedidos"),
+        ("lista_clientes", "Clientes", "clientes"),
+    )),
+    ("Cadastros", "cadastros", (
+        ("lista_produtos", "Produtos", "produtos"),
+        ("lista_compras", "Compras", "compras"),
+        ("lista_filamentos", "Filamentos", "filamentos"),
+        ("lista_insumos", "Insumos", "insumos"),
+    )),
+    ("Criação", "criacao", (
+        ("tela_criar", "Criar", "criar"),
+        ("lista_templates", "Templates", "templates"),
+    )),
+)
+
+
+def _grupo_de(endpoint: str | None) -> str:
+    """Qual grupo abre. Sem isto, quem chega em Filamentos ve tudo fechado."""
+    for _, chave, itens in MENU:
+        if any(e == endpoint for e, _, _ in itens):
+            return chave
+    return MENU[0][1]
+
+
 def _fontes_do_gerador() -> tuple[str, ...]:
     """Le os nomes direto de web/fontes/fontes.js.
 
@@ -81,6 +119,8 @@ def criar_app() -> Flask:
             "com_senha": bool(auth.SENHA),
             "usuario": session.get("usuario", ""),
             "marca_simbolo": arquivo_da_marca("marca-simbolo"),
+            "menu": MENU,
+            "grupo_aberto": _grupo_de(request.endpoint),
         }
 
     # ---------------------------------------------------------------- telas
