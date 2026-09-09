@@ -42,6 +42,24 @@ def arquivo_da_marca(base: str) -> str:
     return ""
 
 
+def _fontes_do_gerador() -> tuple[str, ...]:
+    """Le os nomes direto de web/fontes/fontes.js.
+
+    Escrever a lista aqui a mao seria a terceira copia dela -- e a que
+    ninguem lembraria de atualizar no dia de trocar uma fonte.
+    """
+    caminho = os.path.join(RAIZ, "web", "fontes", "fontes.js")
+    try:
+        with open(caminho, encoding="utf-8") as f:
+            for linha in f:
+                if "const b64 = {" in linha:
+                    dentro = linha.split("{", 1)[1].split("}", 1)[0]
+                    return tuple(n.strip() for n in dentro.split(",") if n.strip())
+    except OSError:
+        pass
+    return ("luckiest",)
+
+
 def criar_app() -> Flask:
     auth.verificar_configuracao()
 
@@ -426,6 +444,11 @@ def criar_app() -> Flask:
         dados.apagar_compra(id_)
         return redirect(url_for("lista_compras"))
 
+    # As cinco que o gerador carrega. Vem do modulo de fontes, e nao de uma
+    # lista escrita a mao: fonte que a tela oferece e o gerador nao tem produz
+    # um template que nunca desenha.
+    FONTES_DO_GERADOR = _fontes_do_gerador()
+
     # ------------------------------------------------------------------ criar
     @app.route("/criar")
     @auth.exige_login
@@ -461,6 +484,83 @@ def criar_app() -> Flask:
     @auth.exige_login
     def partilhado(pasta, arquivo):
         return send_from_directory(os.path.join(RAIZ, "web", pasta), arquivo)
+
+    # ------------------------------------------------------------- templates
+    @app.route("/templates")
+    @auth.exige_login
+    def lista_templates():
+        return render_template("templates.html", aba="templates",
+                               templates=dados.templates(so_ativos=False),
+                               geracoes=dados.geracoes(limite=15))
+
+    @app.route("/templates/novo", methods=["GET", "POST"])
+    @app.route("/templates/<sku>", methods=["GET", "POST"])
+    @auth.exige_login
+    def editar_template(sku=None):
+        atual = dados.template(sku) if sku else None
+        if sku and not atual:
+            abort(404)
+        contexto = dict(aba="templates", formas=dados.FORMAS, fontes=FONTES_DO_GERADOR,
+                        campos=dados.CAMPOS_TEMPLATE)
+        if request.method == "POST":
+            try:
+                novo = dados.salvar_template(request.form, session.get("usuario", ""), sku)
+            except ValueError as erro:
+                # Tipado, e nao o request.form cru: no formulario cru tudo e
+                # texto e campo nao preenchido nem existe, entao o template
+                # pedia `round()` de coisa nenhuma e a tela de ERRO quebrava.
+                # Mesma razao do campos_filamento, e mesmo remedio.
+                campos = dados.campos_template(request.form)
+                campos["campos"] = [c for c in campos["campos"].split(",") if c]
+                return render_template("template.html", erro=str(erro),
+                                       atual=campos, geracoes=[], **contexto), 400
+            return redirect(url_for("editar_template", sku=novo))
+        return render_template("template.html", atual=atual,
+                               geracoes=dados.geracoes(limite=20, sku=sku) if sku else [],
+                               **contexto)
+
+    @app.route("/templates/<sku>/publicar", methods=["POST"])
+    @auth.exige_login
+    def publicar_template_rota(sku):
+        if not dados.template(sku):
+            abort(404)
+        try:
+            dados.publicar_template(sku, request.form.get("publicar") == "1",
+                                    session.get("usuario", ""))
+        except ValueError as erro:
+            return render_template("template.html", erro=str(erro), aba="templates",
+                                   atual=dados.template(sku), formas=dados.FORMAS,
+                                   fontes=FONTES_DO_GERADOR, campos=dados.CAMPOS_TEMPLATE,
+                                   geracoes=dados.geracoes(limite=20, sku=sku)), 400
+        return redirect(url_for("editar_template", sku=sku))
+
+    @app.route("/templates/<sku>/apagar", methods=["POST"])
+    @auth.exige_login
+    def apagar_template_rota(sku):
+        if not dados.template(sku):
+            abort(404)
+        dados.apagar_template(sku)
+        return redirect(url_for("lista_templates"))
+
+    # Esta rota NAO exige login, e e de proposito: e a porta que a vitrine da
+    # sprint 8 vai usar. Sem sessao ela entrega so o que esta PUBLICADO --
+    # §10, "separar templates em teste dos publicados". Quem decide e a rota,
+    # e nao a tela que chama.
+    @app.route("/topo/templates")
+    def templates_do_topo():
+        de_dentro = auth.autenticado()
+        lista = dados.templates(so_publicados=not de_dentro)
+        return {"templates": lista, "painel": de_dentro}
+
+    @app.route("/topo/geracao", methods=["POST"])
+    @auth.exige_login
+    def registrar_geracao_rota():
+        try:
+            id_ = dados.registrar_geracao(request.get_json(silent=True) or request.form,
+                                          session.get("usuario", ""))
+        except ValueError as erro:
+            return {"erro": str(erro)}, 400
+        return {"id": id_}, 201
 
     @app.route("/topo/marca")
     @auth.exige_login

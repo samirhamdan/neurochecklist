@@ -396,6 +396,69 @@ class TesteImpressaoDigital(unittest.TestCase):
                          "a geometria mudou:\n" + (r.stderr or r.stdout)[:4000])
 
 
+class TesteTemplatesNoGerador(NoNavegador):
+    """O percurso do C3: o que esta no banco e o que a tela do topo oferece.
+
+    Ate o C2 os modelos eram uma constante no JavaScript. Agora a pagina busca
+    em /topo/templates, e e so no navegador que da para ver se ela realmente
+    busca -- um teste de rota veria a API responder e nao veria a tela usar.
+    """
+
+    def abrir_topo(self, busca=""):
+        self.abrir(f"/topo/{busca}")
+        self.pg.wait_for_selector("#modelos", state="attached")
+        self.pg.wait_for_timeout(600)
+
+    def modelos(self):
+        return self.pg.eval_on_selector_all(
+            "#modelos .modelo", "e => e.map(x => x.dataset.sku)")
+
+    def test_a_tela_mostra_os_modelos_do_banco(self):
+        from sistema import dados
+        self.abrir_topo()
+        self.assertEqual(sorted(self.modelos()),
+                         sorted(t["sku"] for t in dados.templates()))
+
+    def test_o_selo_de_em_teste_aparece_no_painel(self):
+        """Voce precisa VER quais ainda nao foram impressos, gerando por eles."""
+        self.abrir_topo()
+        selos = self.pg.eval_on_selector_all(".modelo .teste", "e => e.length")
+        self.assertEqual(selos, len(self.modelos()),
+                         "os modelos em teste nao estao marcados")
+
+    def test_cadastrar_um_template_o_faz_aparecer_no_gerador(self):
+        """A promessa inteira do sprint, de ponta a ponta e sem tocar em codigo."""
+        self.abrir("/templates/novo")
+        self.pg.fill("[name=sku]", "M3D-TB-500")
+        self.pg.fill("[name=modelo]", "Nome com estrela nova")
+        self.pg.fill("[name=licenca]", "própria")
+        self.pg.select_option("[name=forma]", "estrela")
+        # `button[type=submit]` sozinho pega o "Sair" do menu, que tambem e um
+        # submit -- e o teste ia parar na tela de login achando que o cadastro
+        # falhou. O botao e o do formulario.
+        self.pg.click("form.formulario button[type=submit]")
+        self.pg.wait_for_url("**/templates/M3D-TB-500")
+
+        self.abrir_topo()
+        self.assertIn("M3D-TB-500", self.modelos())
+
+    def test_a_geracao_vai_para_o_painel(self):
+        from sistema import dados
+        self.abrir_topo("?modelo=M3D-TB-002")
+        self.pg.wait_for_selector("#modelos .modelo")
+        self.pg.fill("#nome", "CLARA")
+        self.pg.wait_for_function(
+            "() => document.querySelector('#medidas').children.length > 0", timeout=40000)
+        self.pg.wait_for_timeout(500)
+        self.pg.click("#gerar")
+        self.pg.wait_for_timeout(1200)
+        g = dados.geracoes(sku="M3D-TB-002")
+        self.assertTrue(g, "a geracao nao chegou ao painel")
+        self.assertEqual(g[0]["nome"], "CLARA")
+        self.assertGreater(g[0]["gramas"], 0, "o peso nao foi registrado")
+        self.assertGreater(g[0]["preco"], 0, "o preco nao foi registrado")
+
+
 class TesteMalhaDoTopoDeBolo(unittest.TestCase):
     """§16 do documento: "o modelo fatia sem erros".
 

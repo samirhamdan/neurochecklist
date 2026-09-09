@@ -41,50 +41,50 @@ def js(codigo: str):
     return json.loads(saida.stdout)
 
 
-@unittest.skipUnless(TEM_NODE, SEM_NODE)
-class TesteTemplates(unittest.TestCase):
-    """O §7: cada template e uma linha de dados, com os campos que ele pede."""
+class TesteASemente(unittest.TestCase):
+    """A lista dos seis, que agora e SEMENTE do banco e nao mais codigo.
+
+    No C3 os templates sairam de dentro de topo.js e viraram linhas de banco,
+    editadas pela tela. O que sobrou aqui e o arquivo com que o banco NASCE --
+    e a ferramenta conferir_topos.js, que roda fora do servidor, le o mesmo.
+
+    As regras de cadastro (SKU valido, licenca para publicar, limite de nome
+    maior que zero) sao cobradas onde passaram a morar: tests/test_templates.py,
+    contra o banco, onde sao IMPEDIDAS e nao apenas observadas.
+    """
 
     def setUp(self):
-        self.t = js("console.log(JSON.stringify(require('./topo.js').TEMPLATES))")
+        with open(os.path.join(RAIZ, "web", "nucleo", "templates-iniciais.json"),
+                  encoding="utf-8") as f:
+            self.t = json.load(f)
 
-    def test_todo_template_tem_o_que_o_documento_exige(self):
-        # §7, coluna "Obrigatório": SKU, modelo, categoria, campos, licenca.
+    def test_a_semente_tem_os_seis_do_c2(self):
+        self.assertEqual(len(self.t), 6)
+
+    def test_todo_template_da_semente_tem_o_que_o_banco_exige(self):
         for t in self.t:
             with self.subTest(sku=t.get("sku")):
-                for campo in ("sku", "modelo", "categoria", "campos", "licenca", "fonte"):
+                for campo in ("sku", "modelo", "categoria", "campos", "licenca",
+                              "fonte", "limite_nome"):
                     self.assertTrue(t.get(campo), f"{t.get('sku')} sem {campo}")
 
     def test_o_sku_segue_o_padrao_do_documento(self):
+        """§7: M3D-TB-001."""
         for t in self.t:
             with self.subTest(sku=t["sku"]):
                 self.assertRegex(t["sku"], r"^M3D-TB-\d{3}$")
 
-    def test_nao_ha_sku_repetido(self):
-        skus = [t["sku"] for t in self.t]
-        self.assertEqual(len(skus), len(set(skus)))
-
-    def test_todo_template_nasce_em_teste(self):
-        """§6 e §10: nenhum vai para venda antes de sair da impressora.
-
-        Quem tira desta lista e a mesa, nao o programador. Se algum dia um
-        template nascer publicado por descuido, este teste avisa.
-        """
+    def test_todos_nascem_em_teste(self):
+        """§6: nenhum vai para venda antes de sair da impressora."""
         for t in self.t:
             with self.subTest(sku=t["sku"]):
-                self.assertTrue(t.get("emTeste"), f"{t['sku']} nasceu publicado")
-
-    def test_todo_template_declara_limite_de_nome(self):
-        """§10: "alertar nomes longos" so existe se houver um limite escrito."""
-        for t in self.t:
-            with self.subTest(sku=t["sku"]):
-                self.assertGreater((t.get("limites") or {}).get("nome", 0), 0)
+                self.assertEqual(t["publicado"], 0, f"{t['sku']} nasceu publicado")
 
     def test_template_que_pede_numero_limita_o_numero(self):
         for t in self.t:
             if "numero" in t["campos"]:
                 with self.subTest(sku=t["sku"]):
-                    self.assertGreater((t.get("limites") or {}).get("numero", 0), 0)
+                    self.assertGreater(t["limite_numero"], 0)
 
     def test_a_licenca_e_propria_em_todos(self):
         """§18: prioriza modelo criado pela Morumbi 3D. Nenhum destes tem
@@ -92,6 +92,12 @@ class TesteTemplates(unittest.TestCase):
         for t in self.t:
             with self.subTest(sku=t["sku"]):
                 self.assertEqual(t["licenca"], "própria")
+
+    def test_toda_forma_da_semente_existe_no_gerador(self):
+        """Forma inventada na semente vira template que abre e ignora a escolha."""
+        for t in self.t:
+            with self.subTest(sku=t["sku"]):
+                self.assertIn(t["forma"], ("", "coracao", "estrela"))
 
 
 @unittest.skipUnless(TEM_NODE, SEM_NODE)

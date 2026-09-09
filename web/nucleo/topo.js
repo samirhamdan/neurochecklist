@@ -53,44 +53,15 @@
   // Presets do §4. Largura total da peca, em mm.
   const TAMANHOS = [120, 150, 180, 200];
 
-  // Os templates do §7. Cada um e uma LINHA aqui -- e a mesma decisao da tela
-  // Criar: acrescentar um modelo nao pode exigir mexer em tela.
+  // Os templates NAO moram mais aqui.
   //
-  // `emTeste` sai do §10 ("separar templates em teste dos publicados") e do
-  // §6 ("todo template deve ser testado fisicamente antes de venda"). Todos
-  // nascem em teste. Quem tira dessa lista e a impressora, nao o programador:
-  // o C3 traz a tela onde o Samir publica o que ja imprimiu.
+  // Ate o C2 eram uma constante neste arquivo, e acrescentar um pedia eu
+  // mexer no codigo -- que e exatamente o que o §12 do documento veio
+  // resolver. Desde o C3 eles sao linhas no banco, editadas pela tela
+  // /templates, e a pagina os busca em /topo/templates.
   //
-  // `licenca` sai do §18. Desenho parametrico feito aqui e "propria" -- nao ha
-  // arquivo de terceiro em nenhum destes.
-  const TEMPLATES = [
-    { sku: 'M3D-TB-001', modelo: 'Nome + idade', categoria: 'Aniversário infantil',
-      campos: ['nome', 'numero'], fonte: 'luckiest', base: true, licenca: 'própria',
-      emTeste: true, limites: { nome: 12, numero: 2 },
-      resumo: 'O nome com a idade grande embaixo. O mais pedido de todos.' },
-    { sku: 'M3D-TB-002', modelo: 'Só o nome', categoria: 'Aniversário adulto',
-      campos: ['nome'], fonte: 'luckiest', base: true, licenca: 'própria',
-      emTeste: true, limites: { nome: 14 },
-      resumo: 'Letras cheias ligadas por uma base. Serve para qualquer ocasião.' },
-    { sku: 'M3D-TB-003', modelo: 'Parabéns + nome', categoria: 'Aniversário infantil',
-      campos: ['nome'], frase: 'PARABÉNS', fonte: 'luckiest', base: true,
-      licenca: 'própria', emTeste: true, limites: { nome: 12 },
-      resumo: 'PARABÉNS por cima, o nome embaixo, em duas alturas.' },
-    { sku: 'M3D-TB-004', modelo: 'Nome + coração', categoria: 'Casamento',
-      campos: ['nome'], forma: 'coracao', fonte: 'cinema', base: true,
-      licenca: 'própria', emTeste: true, limites: { nome: 12 },
-      resumo: 'O nome com um coração ao lado, como quem escreve LARA♥.' },
-    { sku: 'M3D-TB-005', modelo: 'Nome + estrela', categoria: 'Aniversário infantil',
-      campos: ['nome', 'numero'], forma: 'estrela', fonte: 'futuro', base: true,
-      licenca: 'própria', emTeste: true, limites: { nome: 10, numero: 2 },
-      resumo: 'Nome, idade e uma estrela. Combina com tema de espaço.' },
-    { sku: 'M3D-TB-006', modelo: 'Nome em arco', categoria: 'Casamento',
-      campos: ['nome'], arco: 34, fonte: 'cinema', base: true, licenca: 'própria',
-      emTeste: true, limites: { nome: 14 },
-      resumo: 'O nome curvado em arco, como um letreiro de entrada.' },
-  ];
-
-  function template(sku) { return TEMPLATES.find(t => t.sku === sku) || null; }
+  // web/nucleo/templates-iniciais.json guarda os seis primeiros, e serve
+  // apenas de SEMENTE para o banco -- nao e lido em tempo de execucao.
 
   /** §11: M3D-TB-001_MARIA_5_18CM.3mf
    *
@@ -421,6 +392,6 @@
     return { gerar, lugarDaHaste };
   }
 
-  return { Gerador, MEDIDAS, TAMANHOS, TEMPLATES, template, nomeDeArquivo,
+  return { Gerador, MEDIDAS, TAMANHOS, nomeDeArquivo,
            coracao, estrela, arquear, barra, SIZE };
 });

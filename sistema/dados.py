@@ -11,7 +11,9 @@ cadastro de pedido.
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import sqlite3
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -175,6 +177,49 @@ CREATE TABLE IF NOT EXISTS canais (
     nome     TEXT PRIMARY KEY,
     comissao REAL NOT NULL DEFAULT 0,
     ativo    INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS templates (
+    id INTEGER PRIMARY KEY,
+    sku TEXT NOT NULL UNIQUE,
+    modelo TEXT NOT NULL,
+    categoria TEXT NOT NULL DEFAULT '',
+    resumo TEXT NOT NULL DEFAULT '',
+    campos TEXT NOT NULL DEFAULT 'nome',       -- separados por virgula
+    frase TEXT NOT NULL DEFAULT '',
+    fonte TEXT NOT NULL DEFAULT 'luckiest',
+    forma TEXT NOT NULL DEFAULT '',
+    arco REAL NOT NULL DEFAULT 0,
+    base INTEGER NOT NULL DEFAULT 1,
+    limite_nome INTEGER NOT NULL DEFAULT 12,
+    limite_numero INTEGER NOT NULL DEFAULT 2,
+    licenca TEXT NOT NULL DEFAULT '',
+    preco REAL NOT NULL DEFAULT 0,             -- 0 = calculado pelo peso
+    publicado INTEGER NOT NULL DEFAULT 0,      -- §10: em teste ate ser impresso
+    ativo INTEGER NOT NULL DEFAULT 1,
+    criado_em TEXT NOT NULL,
+    criado_por TEXT NOT NULL DEFAULT ''
+);
+
+-- §12: "acompanhar geracoes". Guarda a CONFIGURACAO, e nao o arquivo: o
+-- gerador refaz o STL igual a partir dela, e um STL de 3 MB por geracao
+-- encheria o disco da VPS em um mes de festa.
+--
+-- O sku fica como TEXTO, sem chave estrangeira. E de proposito: apagar ou
+-- desativar um template nao pode apagar o registro de um pedido antigo que
+-- usou ele.
+CREATE TABLE IF NOT EXISTS geracoes (
+    id INTEGER PRIMARY KEY,
+    sku TEXT NOT NULL,
+    modelo TEXT NOT NULL DEFAULT '',
+    nome TEXT NOT NULL,
+    numero TEXT NOT NULL DEFAULT '',
+    tamanho INTEGER NOT NULL,
+    arquivo TEXT NOT NULL DEFAULT '',
+    gramas REAL NOT NULL DEFAULT 0,
+    preco REAL NOT NULL DEFAULT 0,
+    criado_em TEXT NOT NULL,
+    criado_por TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS parametros (
@@ -368,7 +413,49 @@ def _migrar(conn: sqlite3.Connection) -> None:
         "SELECT 1 FROM parametros WHERE chave = ?", (c,)).fetchone()]
     if faltando:
         conn.executemany("INSERT INTO parametros (chave, valor) VALUES (?, ?)", faltando)
+
+    _semear_templates(conn)
     conn.commit()
+
+
+CHAVE_SEMENTE = "semente_templates"
+TEMPLATES_INICIAIS = Path(__file__).resolve().parent.parent / "web" / "nucleo" / "templates-iniciais.json"
+
+
+def _semear_templates(conn: sqlite3.Connection) -> None:
+    """Os seis templates que nasceram no C2, agora como DADO.
+
+    Ate o C3 eles moravam dentro de topo.js: acrescentar um template pedia eu
+    mexer no codigo, que e exatamente o que o §12 do documento veio resolver.
+
+    A semente entra UMA VEZ NA VIDA DO BANCO, e nao uma vez por SKU. A
+    diferenca importa: por SKU, apagar um template pela tela o trazia de volta
+    na proxima conexao -- o Samir apagava, ele voltava, e nao havia nada na
+    tela explicando. Foi um teste que achou isso, nao o uso.
+
+    Template novo depois do C3 se cadastra pela tela. E o ponto do sprint.
+    """
+    if not TEMPLATES_INICIAIS.exists():
+        return
+    if conn.execute("SELECT 1 FROM parametros WHERE chave = ?",
+                    (CHAVE_SEMENTE,)).fetchone():
+        return
+    try:
+        iniciais = json.loads(TEMPLATES_INICIAIS.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return
+    conn.execute("INSERT INTO parametros (chave, valor) VALUES (?, 1)", (CHAVE_SEMENTE,))
+    tem = {r["sku"] for r in conn.execute("SELECT sku FROM templates")}
+    novos = [t for t in iniciais if t.get("sku") and t["sku"] not in tem]
+    for t in novos:
+        conn.execute(
+            "INSERT INTO templates (sku, modelo, categoria, resumo, campos, frase, fonte,"
+            " forma, arco, base, limite_nome, limite_numero, licenca, preco, publicado,"
+            " ativo, criado_em, criado_por) VALUES (:sku, :modelo, :categoria, :resumo,"
+            " :campos, :frase, :fonte, :forma, :arco, :base, :limite_nome, :limite_numero,"
+            " :licenca, :preco, :publicado, :ativo, :criado_em, 'semente')",
+            {**t, "campos": ",".join(t.get("campos") or ["nome"]),
+             "criado_em": agora()})
 
 
 def parametros() -> dict[str, float]:
@@ -446,6 +533,9 @@ def resumo() -> dict:
         "vazio": not pedidos and not fila and not filamento,
         "cores": CORES,
     }
+
+
+RE_SKU = re.compile(r"^M3D-[A-Z]{2}-\d{3}$")
 
 
 def agora() -> str:
@@ -1074,6 +1164,171 @@ def _atualizar_preco(conn, tipo: str, alvo_id: int) -> None:
         conn.execute(
             "UPDATE insumos SET valor_unit = COALESCE(?, valor_manual, 0) WHERE id = ?",
             (preco, alvo_id))
+
+
+# ------------------------------------------------------------------ templates
+FORMAS = ("", "coracao", "estrela")
+CAMPOS_TEMPLATE = ("nome", "numero")
+
+
+def templates(so_publicados: bool = False, so_ativos: bool = True) -> list[dict]:
+    """§10: "separar templates em teste dos publicados".
+
+    `so_publicados` e a linha entre o painel e a loja. No painel voce ve tudo,
+    com o selo de em-teste; na vitrine so entra o que ja saiu da impressora e
+    voce publicou. Quem decide qual dos dois e a ROTA, e nao a tela.
+    """
+    onde = []
+    if so_publicados:
+        onde.append("publicado = 1")
+    if so_ativos:
+        onde.append("ativo = 1")
+    filtro = ("WHERE " + " AND ".join(onde)) if onde else ""
+    with conectar() as conn:
+        linhas = conn.execute(
+            f"SELECT t.*, (SELECT COUNT(*) FROM geracoes g WHERE g.sku = t.sku) AS geracoes"
+            f" FROM templates t {filtro} ORDER BY t.sku").fetchall()
+    return [_template_dict(l) for l in linhas]
+
+
+def template(sku: str) -> dict | None:
+    with conectar() as conn:
+        linha = conn.execute(
+            "SELECT t.*, (SELECT COUNT(*) FROM geracoes g WHERE g.sku = t.sku) AS geracoes"
+            " FROM templates t WHERE t.sku = ?", (sku,)).fetchone()
+    return _template_dict(linha) if linha else None
+
+
+def _template_dict(linha) -> dict:
+    d = dict(linha)
+    d["campos"] = [c for c in (d.get("campos") or "").split(",") if c]
+    d["limites"] = {"nome": d["limite_nome"], "numero": d["limite_numero"]}
+    d["emTeste"] = not d["publicado"]
+    return d
+
+
+def campos_template(dados: dict) -> dict:
+    campos = [c for c in CAMPOS_TEMPLATE
+              if dados.get(f"campo_{c}") in (1, "1", True, "on") or c == "nome"]
+    return dict(
+        sku=_limpo(dados.get("sku")).upper(),
+        modelo=_limpo(dados.get("modelo")),
+        categoria=_limpo(dados.get("categoria")),
+        resumo=_limpo(dados.get("resumo")),
+        campos=",".join(campos),
+        frase=_limpo(dados.get("frase")).upper(),
+        fonte=_limpo(dados.get("fonte"), "luckiest"),
+        forma=_limpo(dados.get("forma")),
+        arco=max(_numero(dados.get("arco")), 0.0),
+        base=1 if dados.get("base", "1") in (1, "1", True, "on") else 0,
+        limite_nome=int(_numero(dados.get("limite_nome"), 12)),
+        limite_numero=int(_numero(dados.get("limite_numero"), 2)),
+        licenca=_limpo(dados.get("licenca")),
+        preco=max(_numero(dados.get("preco")), 0.0),
+        publicado=1 if dados.get("publicado") in (1, "1", True, "on") else 0,
+        ativo=1 if dados.get("ativo", "1") in (1, "1", True, "on") else 0,
+    )
+
+
+def salvar_template(dados: dict, autor: str, sku_antigo: str | None = None) -> str:
+    campos = campos_template(dados)
+    if not RE_SKU.match(campos["sku"]):
+        raise ValueError("o SKU tem que seguir o padrao M3D-TB-000")
+    if not campos["modelo"]:
+        raise ValueError("o template precisa de um nome de modelo")
+    if campos["forma"] not in FORMAS:
+        raise ValueError("essa forma nao existe no gerador")
+    if campos["limite_nome"] < 1:
+        raise ValueError("o limite de letras do nome tem que ser maior que zero")
+    # §18 e §7: licenca e campo obrigatorio, e publicar sem ela e o erro caro.
+    # Em teste, sem licenca, tudo bem -- e um rascunho seu.
+    if campos["publicado"] and not campos["licenca"]:
+        raise ValueError("nao da para publicar sem dizer a licenca do template")
+
+    with conectar() as conn:
+        existe = conn.execute("SELECT sku FROM templates WHERE sku = ?",
+                              (campos["sku"],)).fetchone()
+        if sku_antigo:
+            if not conn.execute("SELECT 1 FROM templates WHERE sku = ?",
+                                (sku_antigo,)).fetchone():
+                raise ValueError("template nao encontrado")
+            if existe and campos["sku"] != sku_antigo:
+                raise ValueError("ja existe um template com esse SKU")
+            conn.execute(
+                "UPDATE templates SET sku=:sku, modelo=:modelo, categoria=:categoria,"
+                " resumo=:resumo, campos=:campos, frase=:frase, fonte=:fonte, forma=:forma,"
+                " arco=:arco, base=:base, limite_nome=:limite_nome,"
+                " limite_numero=:limite_numero, licenca=:licenca, preco=:preco,"
+                " publicado=:publicado, ativo=:ativo WHERE sku=:antigo",
+                {**campos, "antigo": sku_antigo})
+            # O historico de geracoes acompanha o SKU novo: renomear um
+            # template nao pode desligar as geracoes que vieram dele.
+            if campos["sku"] != sku_antigo:
+                conn.execute("UPDATE geracoes SET sku = ? WHERE sku = ?",
+                             (campos["sku"], sku_antigo))
+        else:
+            if existe:
+                raise ValueError("ja existe um template com esse SKU")
+            conn.execute(
+                "INSERT INTO templates (sku, modelo, categoria, resumo, campos, frase,"
+                " fonte, forma, arco, base, limite_nome, limite_numero, licenca, preco,"
+                " publicado, ativo, criado_em, criado_por) VALUES (:sku, :modelo,"
+                " :categoria, :resumo, :campos, :frase, :fonte, :forma, :arco, :base,"
+                " :limite_nome, :limite_numero, :licenca, :preco, :publicado, :ativo,"
+                " :criado_em, :criado_por)",
+                {**campos, "criado_em": agora(), "criado_por": autor})
+        conn.commit()
+    return campos["sku"]
+
+
+def publicar_template(sku: str, publicado: bool, autor: str) -> None:
+    """§10 e §6: publicar e dizer "ja imprimi este e ele passou"."""
+    atual = template(sku)
+    if not atual:
+        raise ValueError("template nao encontrado")
+    if publicado and not atual["licenca"]:
+        raise ValueError("nao da para publicar sem dizer a licenca do template")
+    with conectar() as conn:
+        conn.execute("UPDATE templates SET publicado = ? WHERE sku = ?",
+                     (1 if publicado else 0, sku))
+        conn.commit()
+
+
+def apagar_template(sku: str) -> None:
+    """Apaga o template. As geracoes dele FICAM.
+
+    Um template apagado nao pode levar junto o registro de uma peca que ja foi
+    entregue a um cliente -- o que aconteceu, aconteceu.
+    """
+    with conectar() as conn:
+        conn.execute("DELETE FROM templates WHERE sku = ?", (sku,))
+        conn.commit()
+
+
+def registrar_geracao(dados: dict, autor: str) -> int:
+    """§12: "acompanhar geracoes". Guarda a configuracao, nao o arquivo."""
+    sku = _limpo(dados.get("sku"))
+    nome = _limpo(dados.get("nome"))
+    if not sku or not nome:
+        raise ValueError("geracao precisa de template e nome")
+    t = template(sku)
+    with conectar() as conn:
+        cur = conn.execute(
+            "INSERT INTO geracoes (sku, modelo, nome, numero, tamanho, arquivo, gramas,"
+            " preco, criado_em, criado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (sku, (t or {}).get("modelo", ""), nome, _limpo(dados.get("numero")),
+             int(_numero(dados.get("tamanho"))), _limpo(dados.get("arquivo")),
+             _numero(dados.get("gramas")), _numero(dados.get("preco")), agora(), autor))
+        conn.commit()
+        return int(cur.lastrowid)
+
+
+def geracoes(limite: int = 200, sku: str = "") -> list[dict]:
+    onde = "WHERE sku = ?" if sku else ""
+    args = ((sku, limite) if sku else (limite,))
+    with conectar() as conn:
+        return [dict(l) for l in conn.execute(
+            f"SELECT * FROM geracoes {onde} ORDER BY id DESC LIMIT ?", args)]
 
 
 def compras(limite: int = 100) -> list[dict]:

@@ -482,19 +482,45 @@ que sempre aparecem depois da primeira impressão, são semanas de mesa
 ocupada. O código vai ficar pronto antes dos templates — e é o seu §6 que
 manda: *todo template deve ser testado fisicamente antes de venda*.
 
-## Sprint C3 — Catálogo de templates no painel
+## Sprint C3 — Catálogo de templates no painel ✅ FEITO
 **Tamanho M · depende do C2**
 
 Seu §12. Sem esta tela, cada template novo depende de mim mexer no código.
 
-**Entra:** cadastrar e editar template (SKU, modelo, categoria, campos,
-tamanhos, fontes, cores, licença) · ativar e desativar · **separar em teste
-dos publicados**, como pede seu §10 · preço por template · acompanhar
-gerações e baixar os arquivos.
+**A mudança de fundo:** os seis templates saíram de dentro de `topo.js` e
+viraram **linhas de banco**, editadas pela tela `/templates`. O gerador não
+carrega mais uma lista escrita em código — ele pergunta ao servidor. Há teste
+que reprova se um SKU voltar a aparecer dentro do JavaScript.
 
-**Eu testo:** template em teste não aparece na loja, em nenhuma rota ·
-desativar template não quebra pedido antigo que o usou · licença em branco
-impede publicar.
+**A linha entre painel e vitrine é a ROTA, não a tela.** `/topo/templates` sem
+sessão entrega só o publicado; com sessão, entrega tudo, marcado *em teste* —
+porque para publicar é preciso imprimir, e para imprimir é preciso gerar. A
+vitrine da sprint 8 já nasce obedecendo essa porta.
+
+**Entra:** cadastrar e editar template (SKU, modelo, categoria, campos, fonte,
+decoração, arco, limites, licença) · ativar e desativar · **separar em teste
+dos publicados**, como pede seu §10 · preço por template · registro de cada
+geração.
+
+**O que eu testei:** template em teste não aparece na loja, em nenhuma rota ·
+desativar não quebra registro antigo · apagar o template **não apaga as
+gerações** dele · renomear o SKU leva as gerações junto · licença em branco
+impede publicar, no cadastro e no botão · SKU fora do padrão, repetido, ou com
+forma que o gerador não conhece são recusados.
+
+**Dois bugs que os testes acharam antes do uso:**
+
+1. **Apagar um template semeado o trazia de volta.** A semente se reaplicava
+   por SKU a cada conexão do banco: você apagava, ele voltava, e não havia
+   nada na tela explicando. Agora a semente entra **uma vez na vida do banco**
+   — template novo depois do C3 se cadastra pela tela, que é o ponto do sprint.
+2. **A tela de erro do formulário quebrava** ao redesenhar com os dados crus
+   do POST — mesmo defeito do sprint 1, e mesmo remédio: redesenhar com os
+   campos já tipados.
+
+**Sobre "baixar os arquivos" do seu §12:** guardo a **configuração** de cada
+geração, e não o STL. O gerador refaz o arquivo idêntico a partir dela, e um
+STL por geração encheria o disco da VPS em um mês de festa.
 
 **Você confere:** cadastre um template do zero, deixe em teste, confirme que
 ele não aparece na vitrine, publique e confirme que aparece.

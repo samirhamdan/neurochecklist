@@ -19,6 +19,7 @@
       <a href="{{ url_for('lista_filamentos') }}" {{ 'class=aqui' if aba == 'filamentos' }}>Filamentos</a>
       <a href="{{ url_for('lista_insumos') }}" {{ 'class=aqui' if aba == 'insumos' }}>Insumos</a>
       <a href="{{ url_for('tela_criar') }}" {{ 'class=aqui' if aba == 'criar' }}>Criar</a>
+      <a href="{{ url_for('lista_templates') }}" {{ 'class=aqui' if aba == 'templates' }}>Templates</a>
       {% if com_senha %}
         <span class="quem">{{ usuario }}</span>
         <form method="post" action="{{ url_for('sair') }}">

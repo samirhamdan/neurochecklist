@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block titulo %}{{ (atual and atual.sku) or 'Novo template' }} — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina estreita">
+  <h2 class="secao">{{ (atual and atual.modelo) or 'Novo template' }}</h2>
+  {% if erro %}<div class="recado erro">{{ erro }}</div>{% endif %}
+
+  <form class="cartao formulario" method="post">
+    <div class="linha">
+      <label class="campo"><span>SKU</span>
+        <input name="sku" required maxlength="14" placeholder="M3D-TB-007"
+               value="{{ (atual and atual.sku) or '' }}">
+      </label>
+      <label class="campo cresce"><span>Modelo</span>
+        <input name="modelo" required maxlength="60" placeholder="Nome + idade"
+               value="{{ (atual and atual.modelo) or '' }}">
+      </label>
+    </div>
+    <div class="linha">
+      <label class="campo cresce"><span>Categoria</span>
+        <input name="categoria" maxlength="40" placeholder="Aniversário infantil"
+               value="{{ (atual and atual.categoria) or '' }}">
+      </label>
+      <label class="campo cresce"><span>Licença</span>
+        <input name="licenca" maxlength="40" placeholder="própria"
+               value="{{ (atual and atual.licenca) or '' }}">
+      </label>
+    </div>
+    <label class="campo"><span>Resumo — é o que o cliente lê no cartão</span>
+      <input name="resumo" maxlength="120" placeholder="O nome com a idade grande embaixo."
+             value="{{ (atual and atual.resumo) or '' }}">
+    </label>
+
+    <h3 class="titulo-cartao">O que o cliente preenche</h3>
+    <label class="marca-caixa">
+      <input type="checkbox" checked disabled> Nome <span class="fraco">(sempre)</span>
+    </label>
+    <label class="marca-caixa">
+      <input type="checkbox" name="campo_numero" value="1"
+             {{ 'checked' if atual and 'numero' in atual.campos }}>
+      Idade ou número
+    </label>
+    <div class="linha">
+      <label class="campo"><span>Limite do nome</span>
+        <input name="limite_nome" type="number" min="1" max="30"
+               value="{{ (atual and atual.limite_nome) or 12 }}">
+      </label>
+      <label class="campo"><span>Limite do número</span>
+        <input name="limite_numero" type="number" min="0" max="6"
+               value="{{ (atual and atual.limite_numero) or 2 }}">
+      </label>
+      <label class="campo cresce"><span>Frase fixa</span>
+        <input name="frase" maxlength="20" placeholder="PARABÉNS"
+               value="{{ (atual and atual.frase) or '' }}">
+      </label>
+    </div>
+    <p class="nota" style="margin-top:0">O limite do nome não é enfeite: passando dele a
+    letra sai fina demais e quebra. O gerador barra <b>antes</b> de desenhar.</p>
+
+    <h3 class="titulo-cartao">O desenho</h3>
+    <div class="linha">
+      <label class="campo"><span>Fonte</span>
+        <select name="fonte">
+          {% for f in fontes %}
+          <option value="{{ f }}" {{ 'selected' if atual and atual.fonte == f }}>{{ f }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="campo"><span>Decoração</span>
+        <select name="forma">
+          {% for f in formas %}
+          <option value="{{ f }}" {{ 'selected' if atual and atual.forma == f }}>
+            {{ {'': 'nenhuma', 'coracao': 'coração', 'estrela': 'estrela'}[f] }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="campo"><span>Arco (graus)</span>
+        <input name="arco" type="number" min="0" max="90" step="1"
+               value="{{ ((atual.arco or 0)|round|int) if atual else 0 }}">
+      </label>
+    </div>
+    <label class="marca-caixa">
+      <input type="checkbox" name="base" value="1" {{ 'checked' if not atual or atual.base }}>
+      Barra na base — é ela que liga as letras e segura as hastes
+    </label>
+
+    <h3 class="titulo-cartao">Preço e situação</h3>
+    <div class="linha">
+      <label class="campo"><span>Preço fixo (R$)</span>
+        <input name="preco" type="number" step="0.01" min="0" placeholder="0"
+               value="{{ '%.2f'|format(atual.preco) if (atual and atual.preco) else '' }}">
+      </label>
+    </div>
+    <p class="nota" style="margin-top:0">Em branco ou zero, o preço sai pelo peso, como no
+    resto do sistema. Preencha só quando este modelo tiver preço de tabela.</p>
+    <label class="marca-caixa">
+      <input type="checkbox" name="ativo" value="1" {{ 'checked' if not atual or atual.ativo }}>
+      Ativo — aparece no gerador
+    </label>
+    <input type="hidden" name="publicado" value="{{ 1 if atual and atual.publicado else 0 }}">
+
+    <div class="acoes">
+      <button class="botao" type="submit">Salvar</button>
+      <a class="botao vazado" href="{{ url_for('lista_templates') }}">Voltar</a>
+    </div>
+  </form>
+
+  {% if atual and atual.sku %}
+  <form class="cartao" method="post" style="margin-top:16px"
+        action="{{ url_for('publicar_template_rota', sku=atual.sku) }}">
+    <h3 class="titulo-cartao">{{ 'Publicado' if atual.publicado else 'Em teste' }}</h3>
+    {% if atual.publicado %}
+    <p class="nota" style="margin-top:0">Este template está na vitrine. Tirando de lá ele
+    volta a ser visível só aqui dentro — as gerações que já aconteceram continuam
+    registradas.</p>
+    <input type="hidden" name="publicar" value="0">
+    <div class="acoes"><button class="botao vazado" type="submit">Voltar para teste</button></div>
+    {% else %}
+    <p class="nota" style="margin-top:0">Publicar é dizer <b>“já imprimi este e ele
+    passou”</b>. É o §6 do seu documento, e é a única parte deste sprint que o código não
+    pode fazer por você. Sem licença preenchida, o sistema não deixa publicar.</p>
+    <input type="hidden" name="publicar" value="1">
+    <div class="acoes">
+      <button class="botao" type="submit">Já imprimi — publicar</button>
+      <a class="botao vazado" href="/topo/?modelo={{ atual.sku }}">Abrir no gerador</a>
+    </div>
+    {% endif %}
+  </form>
+
+  {% if geracoes %}
+  <div class="cartao" style="margin-top:16px">
+    <h3 class="titulo-cartao">Gerações deste template</h3>
+    <div class="rolagem"><table class="tabela">
+      <thead><tr><th>Quando</th><th>Nome</th><th class="num">Tamanho</th>
+        <th class="num">Preço</th></tr></thead>
+      <tbody>
+        {% for g in geracoes %}
+        <tr>
+          <td class="mono fraco" style="margin:0">{{ g.criado_em[:16].replace('T', ' ') }}</td>
+          <td>{{ g.nome }}{% if g.numero %} · {{ g.numero }}{% endif %}</td>
+          <td class="num mono">{{ (g.tamanho / 10)|round|int }} cm</td>
+          <td class="num mono">R$ {{ '%.2f'|format(g.preco) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+  {% endif %}
+
+  <form class="cartao" method="post" style="margin-top:16px"
+        action="{{ url_for('apagar_template_rota', sku=atual.sku) }}">
+    <h3 class="titulo-cartao">Apagar</h3>
+    <p class="nota" style="margin-top:0">O template sai; as <b>{{ atual.geracoes }}</b>
+    gerações dele ficam. O que foi entregue a um cliente não pode sumir do registro porque
+    o modelo saiu de linha.</p>
+    <div class="acoes"><button class="botao vazado" type="submit">Apagar template</button></div>
+  </form>
+  {% endif %}
+</main>
+{% endblock %}

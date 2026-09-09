@@ -162,6 +162,23 @@ peça já separada; para isso é `corpos`, e os dois são cobrados.
 O `empilhar` do `texto.js` aceita um parâmetro `sobrepor` justamente por isso:
 sem ele converge no ponto do toque, que é a ligação mais fraca possível.
 
+### Templates de topo de bolo moram no BANCO, não no código
+
+Desde o C3 são linhas da tabela `templates`, editadas em `/templates`.
+`web/nucleo/templates-iniciais.json` é só a **semente**, e ela entra **uma vez
+na vida do banco** (marcada em `parametros.semente_templates`) — por SKU,
+apagar um template o trazia de volta na conexão seguinte.
+
+`/topo/templates` é a porta: **sem sessão entrega só o publicado**. É a regra
+do §10 do documento, e é onde a vitrine da sprint 8 vai se plugar.
+
+### Formulário que volta com erro precisa dos campos TIPADOS
+
+`render_template(..., atual=request.form)` quebra: no form cru tudo é texto e
+campo não preenchido nem existe, então `|round` cai em Undefined. Use
+`campos_<coisa>(request.form)`, que é para isso que essas funções existem.
+Aconteceu no filamento (sprint 1) e de novo no template (C3).
+
 ### Geradores: as três pastas partilhadas
 
 `web/libs/` (opentype, ClipperLib, earcut), `web/fontes/` (as cinco em base64)

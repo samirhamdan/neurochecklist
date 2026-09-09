@@ -14,6 +14,11 @@ const fs = require("fs");
 const path = require("path");
 const { rodar, PRELUDIO, WEB } = require("./pagina_temporaria.js");
 
+// Os templates moram no banco desde o C3. Esta ferramenta roda fora do
+// servidor, entao le a SEMENTE -- que e a mesma lista com que o banco nasce.
+const TEMPLATES = JSON.parse(
+  fs.readFileSync(path.join(WEB, "nucleo", "templates-iniciais.json"), "utf8"));
+
 const SAIDA = process.argv[2] || "/tmp/topos";
 // Filtro opcional por SKU, para iterar num template so sem esperar a matriz
 // inteira: node ferramentas/conferir_topos.js /tmp/topos M3D-TB-004
@@ -37,19 +42,18 @@ ${PRELUDIO}
     const TP = MorumbiTopo, O = MorumbiOficina;
     const G = TP.Gerador(MorumbiFontes.carregar(opentype));
     const so = ${JSON.stringify(SO)};
-    for (const t of TP.TEMPLATES) {
+    for (const t of ${JSON.stringify(TEMPLATES)}) {
       if (so && t.sku !== so) continue;
       for (const nome of ${JSON.stringify(RAPIDO ? ["MM", "GUILHERME"] : NOMES)}) {
         const tamanhos = ${RAPIDO} ? [TP.TAMANHOS[0], TP.TAMANHOS[TP.TAMANHOS.length-1]]
                                    : TP.TAMANHOS;
         for (const tamanho of tamanhos) {
-          const lim = t.limites || {};
-          if (lim.nome && nome.trim().length > lim.nome) continue;   // barrado antes, §10
+          if (t.limite_nome && nome.trim().length > t.limite_nome) continue;  // §10
           const numero = t.campos.includes("numero") ? "5" : "";
           let R;
           try {
             R = G.gerar({ nome, numero, frase: t.frase, tamanho, fonte: t.fonte,
-                          base: t.base, forma: t.forma, arco: t.arco });
+                          base: !!t.base, forma: t.forma, arco: t.arco });
           } catch (e) {
             saida.pecas.push({ sku: t.sku, nome, tamanho, erro: String(e && e.message || e) });
             continue;

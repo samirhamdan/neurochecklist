@@ -1,0 +1,124 @@
+[
+  {
+    "sku": "M3D-TB-001",
+    "modelo": "Nome + idade",
+    "categoria": "Aniversário infantil",
+    "resumo": "O nome com a idade grande embaixo. O mais pedido de todos.",
+    "campos": [
+      "nome",
+      "numero"
+    ],
+    "frase": "",
+    "fonte": "luckiest",
+    "forma": "",
+    "arco": 0,
+    "base": 1,
+    "limite_nome": 12,
+    "limite_numero": 2,
+    "licenca": "própria",
+    "preco": 0,
+    "publicado": 0,
+    "ativo": 1
+  },
+  {
+    "sku": "M3D-TB-002",
+    "modelo": "Só o nome",
+    "categoria": "Aniversário adulto",
+    "resumo": "Letras cheias ligadas por uma base. Serve para qualquer ocasião.",
+    "campos": [
+      "nome"
+    ],
+    "frase": "",
+    "fonte": "luckiest",
+    "forma": "",
+    "arco": 0,
+    "base": 1,
+    "limite_nome": 14,
+    "limite_numero": 0,
+    "licenca": "própria",
+    "preco": 0,
+    "publicado": 0,
+    "ativo": 1
+  },
+  {
+    "sku": "M3D-TB-003",
+    "modelo": "Parabéns + nome",
+    "categoria": "Aniversário infantil",
+    "resumo": "PARABÉNS por cima, o nome embaixo, em duas alturas.",
+    "campos": [
+      "nome"
+    ],
+    "frase": "PARABÉNS",
+    "fonte": "luckiest",
+    "forma": "",
+    "arco": 0,
+    "base": 1,
+    "limite_nome": 12,
+    "limite_numero": 0,
+    "licenca": "própria",
+    "preco": 0,
+    "publicado": 0,
+    "ativo": 1
+  },
+  {
+    "sku": "M3D-TB-004",
+    "modelo": "Nome + coração",
+    "categoria": "Casamento",
+    "resumo": "O nome com um coração ao lado, como quem escreve LARA♥.",
+    "campos": [
+      "nome"
+    ],
+    "frase": "",
+    "fonte": "cinema",
+    "forma": "coracao",
+    "arco": 0,
+    "base": 1,
+    "limite_nome": 12,
+    "limite_numero": 0,
+    "licenca": "própria",
+    "preco": 0,
+    "publicado": 0,
+    "ativo": 1
+  },
+  {
+    "sku": "M3D-TB-005",
+    "modelo": "Nome + estrela",
+    "categoria": "Aniversário infantil",
+    "resumo": "Nome, idade e uma estrela. Combina com tema de espaço.",
+    "campos": [
+      "nome",
+      "numero"
+    ],
+    "frase": "",
+    "fonte": "futuro",
+    "forma": "estrela",
+    "arco": 0,
+    "base": 1,
+    "limite_nome": 10,
+    "limite_numero": 2,
+    "licenca": "própria",
+    "preco": 0,
+    "publicado": 0,
+    "ativo": 1
+  },
+  {
+    "sku": "M3D-TB-006",
+    "modelo": "Nome em arco",
+    "categoria": "Casamento",
+    "resumo": "O nome curvado em arco, como um letreiro de entrada.",
+    "campos": [
+      "nome"
+    ],
+    "frase": "",
+    "fonte": "cinema",
+    "forma": "",
+    "arco": 34,
+    "base": 1,
+    "limite_nome": 14,
+    "limite_numero": 0,
+    "licenca": "própria",
+    "preco": 0,
+    "publicado": 0,
+    "ativo": 1
+  }
+]

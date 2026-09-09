@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block titulo %}Templates — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main class="pagina">
+  <div class="cabecalho-lista">
+    <h2 class="secao">Templates de topo de bolo</h2>
+    <a class="botao" href="{{ url_for('editar_template') }}">Novo template</a>
+  </div>
+
+  {% if templates %}
+  <div class="cartao"><div class="rolagem">
+    <table class="tabela">
+      {# Situacao vem antes de categoria e licenca de proposito: e a pergunta
+         que esta tela responde, e no celular as colunas do fim ficam fora da
+         vista. Rolar para descobrir se um template esta publicado e o mesmo
+         que nao mostrar. #}
+      <thead><tr>
+        <th>SKU</th><th>Modelo</th><th>Situação</th><th>Categoria</th><th>Licença</th>
+        <th class="num">Gerações</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for t in templates %}
+        <tr>
+          <td class="mono" style="white-space:nowrap">{{ t.sku }}</td>
+          <td><a href="{{ url_for('editar_template', sku=t.sku) }}">{{ t.modelo }}</a></td>
+          <td style="white-space:nowrap">
+            {% if not t.ativo %}
+              <span class="etiqueta cinza">desativado</span>
+            {% elif t.publicado %}
+              <span class="etiqueta verde">publicado</span>
+            {% else %}
+              <span class="etiqueta ambar">em teste</span>
+            {% endif %}
+          </td>
+          <td class="fraco" style="margin:0">{{ t.categoria or '—' }}</td>
+          <td class="fraco" style="margin:0">{{ t.licenca or '—' }}</td>
+          <td class="num mono">{{ t.geracoes }}</td>
+          <td class="num"><a href="{{ url_for('editar_template', sku=t.sku) }}">abrir</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  <p class="nota"><b>Em teste</b> significa que o desenho sai, mas a peça ainda não foi
+  impressa e aprovada. Template em teste não aparece na vitrine — só aqui dentro. Publicar
+  é dizer “já imprimi este e ele passou”, e é a regra do §6 do seu documento.</p>
+  {% else %}
+  <div class="cartao cartao-vazio">
+    <b>Nenhum template cadastrado.</b>
+    <span>Os seis que vieram com o gerador deviam estar aqui. Se a lista está vazia, o
+    banco não foi semeado — vale conferir o log da atualização.</span>
+  </div>
+  {% endif %}
+
+  {% if geracoes %}
+  <h3 class="titulo-cartao" style="margin-top:26px">Últimas gerações</h3>
+  <div class="cartao"><div class="rolagem">
+    <table class="tabela">
+      <thead><tr><th>Quando</th><th>Modelo</th><th>Nome</th>
+        <th class="num">Tamanho</th><th class="num">Peso</th><th class="num">Preço</th>
+        <th>Arquivo</th></tr></thead>
+      <tbody>
+        {% for g in geracoes %}
+        <tr>
+          <td class="mono fraco" style="margin:0">{{ g.criado_em[:16].replace('T', ' ') }}</td>
+          <td>{{ g.modelo or g.sku }}</td>
+          <td>{{ g.nome }}{% if g.numero %} · {{ g.numero }}{% endif %}</td>
+          <td class="num mono">{{ (g.tamanho / 10)|round|int }} cm</td>
+          <td class="num mono">{{ g.gramas|round|int }} g</td>
+          <td class="num mono forte">R$ {{ '%.2f'|format(g.preco) }}</td>
+          <td class="mono fraco" style="margin:0">{{ g.arquivo }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  <p class="nota">Guardo a <b>configuração</b>, e não o arquivo: o gerador refaz o STL
+  igual a partir dela. Um STL de cada geração encheria o disco da VPS em um mês de festa.</p>
+  {% endif %}
+</main>
+{% endblock %}
