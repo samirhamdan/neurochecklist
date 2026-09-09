@@ -10,7 +10,7 @@
   </div>
 
   {% if insumos %}
-  <div class="cartao"><div class="rolagem">
+  <div class="cartao cartao-tabela"><div class="rolagem">
     <table class="tabela">
       <thead><tr>
         <th>Insumo</th><th class="num">Estoque</th><th class="num">Mínimo</th>
@@ -19,18 +19,18 @@
       <tbody>
         {% for i in insumos %}
         <tr class="{{ 'inativo' if not i.ativo }}">
-          <td>
+          <td data-rotulo="Insumo" class="chave">
             <a href="{{ url_for('editar_insumo', id_=i.id) }}">{{ i.nome }}</a>
             {% if i.descricao %}<span class="fraco">{{ i.descricao }}</span>{% endif %}
             {% if not i.ativo %}<span class="etiqueta cinza">inativo</span>{% endif %}
           </td>
-          <td class="num mono {{ 'alerta' if i.minimo and i.quantidade <= i.minimo }}">
+          <td data-rotulo="Estoque" class="num mono decide {{ 'alerta' if i.minimo and i.quantidade <= i.minimo }}">
             {{ i.quantidade|round(2) }} {{ i.unidade }}</td>
-          <td class="num mono fraco">{{ i.minimo|round(2) }}</td>
-          <td class="num mono">{{ i.valor_unit|dinheiro }}
+          <td data-rotulo="Mínimo" class="num mono fraco">{{ i.minimo|round(2) }}</td>
+          <td data-rotulo="Valor" class="num mono">{{ i.valor_unit|dinheiro }}
             {% if i.veio_de_compra %}<span class="etiqueta" title="Preço da última compra lançada">nota</span>{% endif %}
           </td>
-          <td class="num"><a href="{{ url_for('editar_insumo', id_=i.id) }}">editar</a></td>
+          <td class="num acao"><a href="{{ url_for('editar_insumo', id_=i.id) }}">editar</a></td>
         </tr>
         {% endfor %}
       </tbody>

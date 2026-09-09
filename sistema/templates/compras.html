@@ -9,19 +9,19 @@
     <a class="botao" href="{{ url_for('editar_compra') }}">Nova compra</a>
   </div>
   {% if compras %}
-  <div class="cartao"><div class="rolagem">
+  <div class="cartao cartao-tabela"><div class="rolagem">
     <table class="tabela">
       <thead><tr><th>Data</th><th>Fornecedor</th><th>Nota</th>
         <th class="num">Itens</th><th class="num">Valor</th><th></th></tr></thead>
       <tbody>
         {% for c in compras %}
         <tr>
-          <td class="mono">{{ c.data|data }}</td>
-          <td><a href="{{ url_for('editar_compra', id_=c.id) }}">{{ c.fornecedor or 'sem fornecedor' }}</a></td>
-          <td class="mono fraco" style="margin:0">{{ c.nota or '—' }}</td>
-          <td class="num mono">{{ c.itens }}</td>
-          <td class="num mono forte">{{ c.valor|dinheiro }}</td>
-          <td class="num"><a href="{{ url_for('editar_compra', id_=c.id) }}">abrir</a></td>
+          <td data-rotulo="Data" class="mono">{{ c.data|data }}</td>
+          <td data-rotulo="Fornecedor" class="chave"><a href="{{ url_for('editar_compra', id_=c.id) }}">{{ c.fornecedor or 'sem fornecedor' }}</a></td>
+          <td data-rotulo="Nota" class="mono fraco" style="margin:0">{{ c.nota or '—' }}</td>
+          <td data-rotulo="Itens" class="num mono">{{ c.itens }}</td>
+          <td data-rotulo="Valor" class="num mono forte decide">{{ c.valor|dinheiro }}</td>
+          <td class="num acao"><a href="{{ url_for('editar_compra', id_=c.id) }}">abrir</a></td>
         </tr>
         {% endfor %}
       </tbody>

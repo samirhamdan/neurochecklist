@@ -255,6 +255,51 @@ marca, `display:none`. O foco simplesmente ficava fora da gaveta recém-aberta.
 Pior: o teste do Escape passava, porque "voltar o foco para o botão" era um
 no-op. Filtre por `getClientRects().length > 0`.
 
+### A linha e o cartão são o MESMO DOM
+
+Desde o U3, abaixo de 640 px cada `<tr>` vira um cartão por CSS. Não existe
+uma marcação para tela larga e outra para telefone — o que a linha mostra, o
+cartão mostra, e há teste de navegador que compara o `innerText` das linhas em
+1280 px e em 420 px. Esconder uma coluna no telefone com `display:none` é o
+atalho óbvio para "não cabe", e é o que esse teste reprova.
+
+Cada `<td>` carrega `data-rotulo` com o nome da sua coluna, e quatro classes
+dizem o papel: `.chave` (título), `.estado` (etiqueta), `.decide` (o número
+que decide), `.acao` (o botão no pé). O papel manda na ORDEM do cartão, e não
+a posição da coluna — em Templates o título é a segunda coluna.
+
+`tests/test_cartoes.py` compara `data-rotulo` com o `<th>` da mesma coluna em
+toda tabela de toda tela. Sem isso o rótulo vira a segunda cópia do cabeçalho
+e envelhece sozinho.
+
+### Ordenar e buscar: uma lista de ordens, duas interfaces
+
+`sistema/listas.py` tem `ORDENS_*` e `BUSCA_*` por tela. O cabeçalho clicável
+(tela larga) e a caixa de seleção (telefone, onde não há cabeçalho) saem das
+mesmas tuplas, e há teste que compara as duas.
+
+Ordena em **Python**, sobre a lista já lida — montar `ORDER BY` com texto da
+URL abre injeção. A lista de permitidos é a mesma proteção sem o risco. Cuidado
+com o teste fraco: chave *inventada* não ordena por acidente (é nula em toda
+linha). O que a lista protege é o campo que **existe** e não devia sair na URL.
+
+O vazio vai para o fim **nos dois sentidos**. "Sem prazo" não é o prazo mais
+urgente nem o menos: no meio da lista ele esconde os que têm.
+
+### Regra de CSS que perde por ordem de fonte
+
+O conserto do alvo de 44 px da barra de busca ficou **antes** do bloco
+`.peneira` no arquivo, com a mesma especificidade — e perdeu. Media query não
+soma especificidade. Quando duas regras empatam, quem vem depois ganha.
+
+### Alvo de toque: link em prosa não tem conserto
+
+44 px é o que um dedo acerta, e vale só no telefone — no computador o ponteiro
+é preciso e a densidade é vantagem. Mas um link no meio de uma frase tem a
+altura da linha, e esticá-lo destrói o parágrafo. A saída não é abrir exceção
+no teste: é **não pôr o controle dentro da frase**. Numa tela vazia, a ação
+vira botão; num aviso, o aviso inteiro vira o link.
+
 ### Um número que a tela também mostra sai da MESMA função
 
 Desde o U2, `dados.somar_valor`, `dados.horas_na_mesa`,

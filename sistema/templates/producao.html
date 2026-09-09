@@ -62,7 +62,7 @@
 
   <!-- ---------------------------------------------------- lista -->
   <form id="lista" method="post" action="{{ url_for('mover_pecas') }}" hidden>
-    <div class="cartao"><div class="rolagem">
+    <div class="cartao cartao-tabela"><div class="rolagem">
       <table class="tabela">
         <thead><tr>
           <th style="width:34px"><input type="checkbox" id="todas"></th>
@@ -72,15 +72,15 @@
         <tbody>
           {% for p in pecas %}
           <tr>
-            <td><input type="checkbox" name="peca" value="{{ p.id }}" class="sel"></td>
-            <td>{{ p.descricao }}{% if p.quantidade and p.quantidade > 1 %}
+            <td class="marca"><input type="checkbox" name="peca" value="{{ p.id }}" class="sel"></td>
+            <td data-rotulo="Peça" class="chave">{{ p.descricao }}{% if p.quantidade and p.quantidade > 1 %}
               <span class="fraco">×{{ p.quantidade|round|int }}</span>{% endif %}</td>
-            <td class="fraco" style="margin:0">{{ p.cliente or '—' }}</td>
-            <td><span class="bolinha" style="background:{{ cores.get(p.cor, '#B9BEC4') }}"></span>{{ p.cor or '—' }}</td>
-            <td><span class="etiqueta {{ 'azul' if p.status == 'imprimindo' else 'cinza' }}">{{ rotulos[p.status] }}</span></td>
-            <td class="num mono">{{ p.gramas_est|round|int if p.gramas_est else '—' }} g</td>
-            <td class="num mono">{{ p.horas_est|numero(1) if p.horas_est else '—' }} h</td>
-            <td>
+            <td data-rotulo="Cliente" class="fraco" style="margin:0">{{ p.cliente or '—' }}</td>
+            <td data-rotulo="Cor"><span class="bolinha" style="background:{{ cores.get(p.cor, '#B9BEC4') }}"></span>{{ p.cor or '—' }}</td>
+            <td data-rotulo="Etapa" class="estado"><span class="etiqueta {{ 'azul' if p.status == 'imprimindo' else 'cinza' }}">{{ rotulos[p.status] }}</span></td>
+            <td data-rotulo="Peso" class="num mono">{{ p.gramas_est|round|int if p.gramas_est else '—' }} g</td>
+            <td data-rotulo="Tempo" class="num mono">{{ p.horas_est|numero(1) if p.horas_est else '—' }} h</td>
+            <td data-rotulo="Prazo">
               {%- if p.dias is none %}<span class="fraco">—</span>
               {%- elif p.dias < 0 %}<span class="etiqueta vermelha">{{ -p.dias }} d</span>
               {%- elif p.dias == 0 %}<span class="etiqueta ambar">hoje</span>

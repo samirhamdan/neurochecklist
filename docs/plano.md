@@ -286,9 +286,15 @@ duas contas e me passar as credenciais.
 | --- | --- | --- |
 | U1 | A navegação cabe no telefone — lateral no computador, gaveta no celular | ✅ **FEITO** — de 500 px de sobra para 0 em 360, 420, 768 e 1280 |
 | U2 | O painel responde "como vai o negócio?" | ✅ **FEITO** — quatro números clicáveis, gráfico de retorno por hora, avisos por urgência, e dinheiro/data em português |
-| U3 | Tabela vira cartão no telefone; alvos de 44 px | a fazer |
+| U3 | Tabela vira cartão no telefone; alvos de 44 px; ordenar e buscar | ✅ **FEITO** — 75 alvos abaixo de 44 px viraram 0, e nenhuma tabela pede mais largura do que a caixa tem |
 | U4 | Formulário que perdoa | a fazer |
 | U5 | Tela vazia que ensina | a fazer |
+
+**O que o U3 estabeleceu:** a linha e o cartão são o **mesmo DOM**. Não há uma
+marcação para tela larga e outra para telefone — o que a linha mostra, o cartão
+mostra, e há teste de navegador que compara o texto lido nas duas larguras. E a
+lista de ordens de cada tela é dado (`sistema/listas.py`): o cabeçalho clicável
+e a caixa de seleção do telefone saem da mesma tupla.
 
 **O que o U2 estabeleceu, e vale para o resto:** cada número do painel sai da
 **mesma função** que a tela para onde ele aponta — `dados.somar_valor`,

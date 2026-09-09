@@ -138,10 +138,10 @@
       <tbody>
         {% for g in geracoes %}
         <tr>
-          <td class="mono fraco" style="margin:0">{{ g.criado_em|datahora }}</td>
-          <td>{{ g.nome }}{% if g.numero %} · {{ g.numero }}{% endif %}</td>
-          <td class="num mono">{{ (g.tamanho / 10)|round|int }} cm</td>
-          <td class="num mono">{{ g.preco|dinheiro }}</td>
+          <td data-rotulo="Quando" class="mono fraco" style="margin:0">{{ g.criado_em|datahora }}</td>
+          <td data-rotulo="Nome" class="chave">{{ g.nome }}{% if g.numero %} · {{ g.numero }}{% endif %}</td>
+          <td data-rotulo="Tamanho" class="num mono">{{ (g.tamanho / 10)|round|int }} cm</td>
+          <td data-rotulo="Preço" class="num mono decide">{{ g.preco|dinheiro }}</td>
         </tr>
         {% endfor %}
       </tbody>

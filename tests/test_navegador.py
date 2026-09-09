@@ -87,6 +87,13 @@ def setUpModule():
     dados.salvar_produto(
         {"nome": "Chaveiro", "gramas": 9, "horas": 0.4, "minutos": 5,
          "filamento_id": fil}, "samir")
+    # Insumo, compra e geracao para as telas de tabela nao chegarem vazias --
+    # tabela sem linha nao prova nada sobre cartao nem sobre largura.
+    ins = dados.salvar_insumo({"nome": "Ímã 8 mm", "quantidade": 140, "minimo": 50,
+                               "valor_unit": 0.35}, "samir")
+    dados.salvar_compra({"data": "2026-09-01", "fornecedor": "3D Fila MS", "nota": "NF 4471"},
+                        "samir", itens=[{"tipo": "insumo", "alvo_id": ins,
+                                         "quantidade": 100, "valor": 35}])
     cli = dados.salvar_cliente({"nome": "Ana", "canal": "Instagram"}, "samir")
     ped = dados.salvar_pedido({"cliente_id": cli}, "samir", itens=[{
         "produto_id": prod, "descricao": "Topo ANA", "cor": "Rosa", "quantidade": 1,
@@ -272,6 +279,133 @@ class TesteNadaSaiDaTela(NoNavegador):
         for largura in (768, 1280):
             with self.subTest(largura=largura):
                 self.assertEqual(self.larguras(largura), [])
+
+
+class TesteACoisaCabeNaMao(NoNavegador):
+    """A promessa do U3, medida onde ela vale: num navegador de 420 px.
+
+    Antes deste sprint eram 75 alvos de toque abaixo de 44 px e oito das nove
+    telas com tabela pedindo mais largura do que a caixa tinha. As duas coisas
+    so aparecem em tela estreita, e nenhuma se mede lendo HTML.
+    """
+
+    TELAS = ("/", "/producao", "/pedidos", "/clientes", "/produtos", "/compras",
+             "/filamentos", "/insumos", "/templates")
+
+    def no_telefone(self):
+        self.pg.set_viewport_size({"width": 420, "height": 900})
+
+    def test_nenhum_alvo_de_toque_abaixo_de_44_px(self):
+        """44 px e o que um dedo acerta. Medido, e nao no olho."""
+        self.no_telefone()
+        for rota in self.TELAS:
+            self.abrir(rota)
+            self.pg.wait_for_timeout(120)
+            pequenos = self.pg.evaluate("""() => [...document.querySelectorAll(
+                  'a,button,input,select,summary,[role=button]')]
+                .filter(e => e.getClientRects().length > 0)
+                .filter(e => e.getBoundingClientRect().height < 44)
+                .map(e => (e.tagName + '.' + e.className).slice(0, 40)
+                          + ' "' + (e.textContent || '').trim().slice(0, 20) + '"')""")
+            self.assertEqual(pequenos, [], f"{rota}: alvo pequeno demais")
+
+    def test_nenhuma_tabela_precisa_rolar_de_lado(self):
+        """A coluna que importa era sempre a que ficava de fora."""
+        self.no_telefone()
+        for rota in self.TELAS:
+            self.abrir(rota)
+            self.pg.wait_for_timeout(120)
+            sobra = self.pg.evaluate("""() => {
+                let pior = 0;
+                document.querySelectorAll('table.tabela, table.lista').forEach(t => {
+                  const caixa = t.closest('.rolagem') || t.parentElement;
+                  pior = Math.max(pior, Math.round(caixa.scrollWidth - caixa.clientWidth));
+                });
+                return pior;
+            }""")
+            self.assertEqual(sobra, 0, f"{rota}: tabela pedindo {sobra}px a mais")
+
+    def textos_das_linhas(self):
+        """O que a pessoa LE em cada linha -- innerText respeita display:none."""
+        return self.pg.eval_on_selector_all(
+            "table.tabela tbody tr",
+            "e => e.map(l => l.innerText.replace(/\s+/g, ' ').trim())")
+
+    def test_o_cartao_mostra_o_MESMO_que_a_linha(self):
+        """A promessa que o DOM unico existe para poder cumprir.
+
+        Se alguem esconder uma coluna no telefone com `display:none` -- que e
+        o atalho obvio para "nao cabe" -- o texto dos dois some de um lado so,
+        e este teste fica vermelho. E o unico jeito de provar que nada some.
+        """
+        for rota in ("/pedidos", "/produtos", "/filamentos", "/clientes", "/compras"):
+            self.pg.set_viewport_size({"width": 1280, "height": 1000})
+            self.abrir(rota)
+            self.pg.wait_for_timeout(150)
+            largo = self.textos_das_linhas()
+            self.pg.set_viewport_size({"width": 420, "height": 900})
+            self.pg.wait_for_timeout(150)
+            estreito = self.textos_das_linhas()
+            self.assertTrue(largo, f"{rota} sem linhas: o teste perdeu o sentido")
+            self.assertEqual(largo, estreito, f"{rota}: o cartão e a linha divergem")
+
+    def test_no_computador_continua_sendo_tabela(self):
+        """O cartao e para o telefone. Em 1280 px a tabela e melhor: sete
+        colunas lado a lado se comparam com o olho, e o cartao nao."""
+        self.pg.set_viewport_size({"width": 1280, "height": 1000})
+        self.abrir("/pedidos")
+        self.pg.wait_for_timeout(150)
+        self.assertTrue(self.visivel("table.tabela thead"), "o cabeçalho sumiu no computador")
+        estilo = self.pg.eval_on_selector("table.tabela tbody tr",
+                                          "e => getComputedStyle(e).display")
+        self.assertEqual(estilo, "table-row")
+
+    def test_no_telefone_a_linha_vira_cartao(self):
+        self.no_telefone()
+        self.abrir("/pedidos")
+        self.pg.wait_for_timeout(150)
+        self.assertFalse(self.visivel("table.tabela thead"), "cabeçalho de tabela num cartão")
+        estilo = self.pg.eval_on_selector("table.tabela tbody tr",
+                                          "e => getComputedStyle(e).display")
+        self.assertEqual(estilo, "flex")
+
+    def test_o_rotulo_da_coluna_aparece_no_cartao(self):
+        """Sem o rotulo o cartao vira uma pilha de numeros sem nome."""
+        self.no_telefone()
+        self.abrir("/pedidos")
+        self.pg.wait_for_timeout(150)
+        rotulo = self.pg.eval_on_selector(
+            'td[data-rotulo="Canal"]',
+            "e => getComputedStyle(e, '::before').content")
+        self.assertIn("Canal", rotulo)
+
+    def test_o_titulo_do_cartao_NAO_ganha_rotulo(self):
+        """"Cliente" escrito em cima do nome do cliente e ruido."""
+        self.no_telefone()
+        self.abrir("/pedidos")
+        self.pg.wait_for_timeout(150)
+        for seletor in ("td.chave", "td.estado", "td.acao"):
+            conteudo = self.pg.eval_on_selector(
+                seletor, "e => getComputedStyle(e, '::before').content")
+            self.assertIn(conteudo, ("none", "normal", '""'), f"{seletor} com rótulo")
+
+    def test_ordenar_pelo_telefone_existe_e_funciona(self):
+        """No telefone nao ha cabecalho para clicar: a ordem sai da caixa."""
+        self.no_telefone()
+        self.abrir("/produtos")
+        self.pg.wait_for_selector(".peneira select")
+        self.assertTrue(self.visivel(".peneira select"), "a caixa de ordem não aparece")
+        self.pg.select_option(".peneira select", "hora")
+        self.pg.wait_for_timeout(250)
+        self.assertIn("ordem=hora", self.pg.url)
+
+    def test_no_computador_a_caixa_de_ordem_sai_da_frente(self):
+        """La o cabecalho clicavel faz o mesmo, e melhor."""
+        self.pg.set_viewport_size({"width": 1280, "height": 1000})
+        self.abrir("/produtos")
+        self.pg.wait_for_timeout(150)
+        self.assertFalse(self.visivel(".peneira select"))
+        self.assertTrue(self.visivel("th a.ordenar"))
 
 
 class TesteOPlacarEOGrafico(NoNavegador):

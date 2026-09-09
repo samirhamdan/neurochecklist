@@ -267,6 +267,11 @@ h2.secao:first-child{margin-top:0}
   padding:11px 15px;border-radius:5px;font-size:15px;
   border-left:3px solid transparent;
 }
+/* Desde o U3 o aviso E o link, entao ele nao pode herdar o sublinhado nem o
+   azul de <a>: a cor dele diz a gravidade. */
+a.aviso{display:block;text-decoration:none;color:inherit}
+a.aviso:hover{filter:brightness(.97);text-decoration:underline}
+a.aviso:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
 .aviso.mal{background:var(--vermelho-fundo);color:var(--vermelho);border-left-color:var(--vermelho)}
 .aviso.atencao{background:var(--ambar-fundo);color:var(--ambar);border-left-color:var(--ambar)}
 .aviso.bem{background:var(--verde-fundo);color:var(--verde);border-left-color:var(--verde)}
@@ -411,6 +416,9 @@ a.atalho span{font-size:14px;color:var(--suave);line-height:1.4}
 .cartao-vazio{display:flex;flex-direction:column;gap:5px}
 .cartao-vazio b{font-size:17px}
 .cartao-vazio span{color:var(--suave);max-width:60ch}
+/* A saida de uma tela vazia e um botao, e nao uma palavra sublinhada no meio
+   da frase: link em prosa tem a altura da linha -- 17 px medidos. */
+.cartao-vazio .botao{align-self:flex-start;margin-top:6px}
 .nota{font-size:13.5px;color:var(--suave);margin:10px 0 0;max-width:64ch;line-height:1.45}
 
 .rolagem{overflow-x:auto;margin:-4px -4px}
@@ -711,4 +719,171 @@ dialog::backdrop{background:rgba(21,25,29,.45)}
 .atalho .tipo-peca{
   font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--suave);
   margin-top:auto;padding-top:4px;
+}
+
+/* ================================================== U3: a linha vira cartao
+   Seis telas sao tabelas de cinco a sete colunas. No computador funcionam; no
+   telefone a coluna que importa e sempre a que fica de fora -- foram 34
+   colunas medidas fora da caixa visivel, a 420 px.
+
+   O cartao usa o MESMO DOM da tabela. Nao ha uma marcacao para tela larga e
+   outra para telefone: o que a linha mostra, o cartao mostra, e nada pode
+   sumir num dos dois sem sumir no outro. Cada celula carrega o rotulo da sua
+   coluna em `data-rotulo`, tirado do proprio <th> -- e ha teste que compara
+   os dois em toda tabela renderizada, senao o rotulo vira a segunda copia do
+   cabecalho e envelhece sozinho.
+
+   O papel de cada celula vem de quatro classes, e nao da posicao:
+     .chave    o que identifica a linha -- vira titulo, sem rotulo
+     .estado   a etiqueta de situacao   -- logo abaixo do titulo
+     .decide   o numero que decide      -- maior que os outros
+     .acao     abrir/editar             -- botao de 44 px no pe do cartao
+
+   Trocar `display` apaga o papel de tabela para o leitor de tela; o rotulo
+   em `::before` e o que devolve o sentido de cada celula. E o custo conhecido
+   deste padrao, e a alternativa -- duas marcacoes -- custa mais caro. */
+@media (max-width:640px){
+  .cartao-tabela{background:none;border:none;padding:0;box-shadow:none}
+  .cartao-tabela .rolagem, .bloco .rolagem{overflow-x:visible;margin:0}
+
+  table.tabela, table.lista{min-width:0;display:block;font-size:15px}
+  table.tabela thead, table.lista thead{display:none}
+  table.tabela tbody, table.lista tbody{display:flex;flex-direction:column;gap:10px}
+  table.tabela tr, table.lista tr{
+    display:flex;flex-direction:column;
+    background:var(--mesa);border:1px solid var(--linha);border-radius:6px;
+    padding:12px 14px 13px;box-shadow:var(--sombra);
+  }
+  table.tabela td, table.lista td{
+    display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+    padding:6px 0;border-bottom:1px solid var(--linha);text-align:left;
+    white-space:normal;
+  }
+  table.tabela tr td:last-child, table.lista tr td:last-child{border-bottom:none}
+  td[data-rotulo]::before{
+    content:attr(data-rotulo);color:var(--suave);font-size:12.5px;
+    letter-spacing:.02em;flex:0 0 auto;
+  }
+  /* Celula sem dado nenhum -- o vao do colspan no rodape -- nao vira linha. */
+  table.tabela td:empty, table.lista td:empty{display:none}
+
+  /* Titulo, etiqueta, botao e caixa de selecao dispensam rotulo: eles dizem
+     o que sao. Rotular "Cliente" em cima do nome do cliente e ruido. */
+  td.chave::before, td.estado::before, td.acao::before, td.marca::before{content:none}
+  /* O papel manda na ordem do cartao, e nao a posicao da coluna: em Templates
+     o titulo e a SEGUNDA coluna (a primeira e o SKU) e mesmo assim abre o
+     cartao. Numa tabela a ordem das colunas e uma escolha de leitura da
+     esquerda para a direita; num cartao, de cima para baixo -- nao sao a
+     mesma escolha. */
+  table.tabela td.marca{order:-3}
+  table.tabela td.chave, table.lista td.chave{order:-2}
+  table.tabela td.estado, table.lista td.estado{order:-1}
+  table.tabela td.acao{order:1}
+  table.tabela td.chave, table.lista td.chave{
+    display:block;padding:0;border-bottom:none;font-size:17px;font-weight:600;
+  }
+  table.tabela td.chave a, table.lista td.chave a{
+    display:flex;align-items:center;flex-wrap:wrap;gap:0 8px;
+    min-height:44px;color:var(--tinta);
+  }
+  table.tabela td.estado, table.lista td.estado{
+    display:block;padding:2px 0 8px;border-bottom:none;
+  }
+  table.tabela td.decide, table.lista td.decide{font-size:17px;font-weight:600}
+  table.tabela td.marca{
+    display:block;padding:0 0 6px;border-bottom:none;
+  }
+  table.tabela td.marca input{width:24px;height:24px;margin:10px 10px 10px 0}
+  table.tabela td.quebra{word-break:break-all;font-size:12.5px}
+  /* A bolinha da cor e o texto dela sao dois itens do flex: sem isto o
+     `space-between` joga a bolinha para o meio da linha, longe do nome. */
+  table.tabela td .bolinha, table.lista td .bolinha{margin-left:auto}
+
+  table.tabela td.acao{
+    display:block;padding:12px 0 0;border-bottom:none;margin-top:2px;
+  }
+  table.tabela td.acao a{
+    display:flex;align-items:center;justify-content:center;min-height:44px;
+    border:1px solid var(--linha-forte);border-radius:5px;
+    color:var(--azul);font-weight:600;text-decoration:none;
+  }
+
+  table.tabela tfoot{display:block;margin-top:10px}
+  table.tabela tfoot tr{
+    background:var(--bancada);border-style:dashed;flex-direction:row;
+    justify-content:space-between;align-items:baseline;padding:11px 14px;
+  }
+  table.tabela tfoot td{border-bottom:none;padding:0}
+}
+
+/* Alvo de toque: 44 px e o que um dedo acerta. Vale so no telefone -- no
+   computador o ponteiro e preciso e a densidade da tela e uma vantagem.
+   Medi 75 alvos abaixo disso antes deste bloco. */
+@media (max-width:900px){
+  /* `.botao` inteiro, e nao so o do cabecalho: qualquer botao de qualquer
+     tela e um alvo de dedo aqui. */
+  .botao, .cabecalho-lista a, .abas a, .barra-topo .logo,
+  a.aviso, .atalho, .placar a{
+    min-height:44px;display:flex;align-items:center;
+  }
+  .botao, .abas a{justify-content:center;padding:0 16px}
+  a.aviso{padding:13px 15px;line-height:1.5}
+  /* Link dentro de frase nao tem como ter 44 px sem destruir a frase. O
+     alcance vem da area em volta: 6 px acima e abaixo dao 29 px de alvo, e a
+     frase continua uma frase. */
+  .grafico .nota a{display:inline-block;padding:6px 0}
+  button.refugar{min-height:44px;min-width:44px}
+  .cabecalho-lista{gap:10px 12px}
+}
+
+/* ------------------------------------------- U3: ordenar e buscar
+   Duas interfaces para a mesma lista de ordens: cabecalho clicavel na tela
+   larga, caixa de selecao no telefone (onde nao ha cabecalho -- a linha virou
+   cartao). As duas se desenham a partir de sistema/listas.py. */
+.peneira{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px;
+}
+.peneira .busca{flex:0 1 340px;margin:0;min-width:0}
+.peneira input[type=search]{
+  width:100%;padding:9px 12px;font:inherit;font-size:15px;
+  border:1px solid var(--linha-forte);border-radius:5px;background:var(--mesa);
+  color:var(--tinta);min-height:40px;
+}
+.peneira input[type=search]:focus-visible{outline:2px solid var(--azul);outline-offset:1px}
+.peneira select{
+  padding:9px 10px;font:inherit;font-size:14.5px;min-height:40px;
+  border:1px solid var(--linha-forte);border-radius:5px;background:var(--mesa);
+  color:var(--tinta);
+}
+.peneira label{margin:0}
+.so-telefone{display:none}
+
+th a.ordenar{
+  display:inline-flex;align-items:center;gap:4px;color:inherit;text-decoration:none;
+  font:inherit;letter-spacing:inherit;text-transform:inherit;
+}
+th a.ordenar:hover{color:var(--azul)}
+th a.ordenar:focus-visible{outline:2px solid var(--azul);outline-offset:2px;border-radius:2px}
+/* A seta so aparece na coluna que esta ordenando -- uma seta em cada
+   cabecalho vira um campo de setas, e nenhuma delas diz nada. */
+th a.ordenar .seta{visibility:hidden;font-size:11px}
+th a.ordenar:hover .seta{visibility:visible;color:var(--linha-forte)}
+th a.ordenar.ativa{color:var(--azul)}
+th a.ordenar.ativa .seta{visibility:visible;color:var(--azul)}
+.tabela th[aria-sort]{border-bottom-color:var(--azul)}
+
+@media (max-width:640px){
+  /* A propria barra de busca nasceu com 40 px de altura. Quem achou foi o
+     teste de alvo de toque, na mesma rodada que a criou -- e a primeira
+     tentativa de conserto ficou ANTES deste bloco no arquivo, entao perdeu
+     para a regra de cima por ordem de fonte. */
+  .peneira input[type=search], .peneira select, .peneira .botao{min-height:44px}
+  .so-telefone{display:block}
+  .peneira{gap:8px 10px}
+  .peneira .busca{flex:1 1 100%}
+  .peneira select, .peneira .virar{flex:1 1 auto}
+  .peneira .virar{
+    display:flex;align-items:center;justify-content:center;
+    font-size:13.5px;white-space:nowrap;
+  }
 }

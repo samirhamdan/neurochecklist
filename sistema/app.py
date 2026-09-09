@@ -19,7 +19,7 @@ from flask import (
     Flask, redirect, render_template, request, send_from_directory, session, url_for,
 )
 
-from . import analise, auth, criar, custo, dados, formato
+from . import analise, auth, criar, custo, dados, formato, listas
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -118,9 +118,20 @@ def criar_app() -> Flask:
     # `R$ 1120.00` de novo.
     app.jinja_env.filters.update(formato.FILTROS)
 
+    def url_com(**mudancas):
+        """A URL desta tela com um parametro trocado, guardando os outros.
+
+        Ordenar sem perder a busca, e buscar sem perder a aba: sem isto cada
+        clique num cabecalho jogaria fora o filtro que a pessoa acabou de por.
+        """
+        args = {**request.args.to_dict(), **mudancas}
+        return url_for(request.endpoint,
+                       **{c: v for c, v in args.items() if v not in (None, "")})
+
     @app.context_processor
     def comuns():
         return {
+            "url_com": url_com,
             "com_senha": bool(auth.SENHA),
             "usuario": session.get("usuario", ""),
             "marca_simbolo": arquivo_da_marca("marca-simbolo"),
@@ -251,8 +262,13 @@ def criar_app() -> Flask:
             # margem e no retorno por hora. Sem isto a coluna Preco mostrava um
             # numero e a coluna Margem era calculada sobre outro.
             p["conta"] = custo.conta_de_produto(p, param).com_preco(p.get("preco"))
+        busca = request.args.get("q", "")
+        itens = listas.filtrar(itens, busca, listas.BUSCA_PRODUTOS)
+        ordem, invertido = listas.pedido_da_url(request.args, listas.ORDENS_PRODUTOS)
+        itens = listas.ordenar(itens, ordem, invertido, listas.ORDENS_PRODUTOS)
         return render_template("produtos.html", aba="produtos", produtos=itens,
-                               cores=dados.CORES)
+                               cores=dados.CORES, ordens=listas.ORDENS_PRODUTOS,
+                               ordem=ordem, invertido=invertido, busca=busca)
 
     @app.route("/produtos/novo", methods=["GET", "POST"])
     @app.route("/produtos/<int:id_>", methods=["GET", "POST"])
@@ -365,8 +381,14 @@ def criar_app() -> Flask:
             lista = dados.entregues_no_mes()
         else:
             lista = dados.pedidos(dados.SITUACOES if ver == "todos" else dados.ABERTOS)
+        busca = request.args.get("q", "")
+        lista = listas.filtrar(lista, busca, listas.BUSCA_PEDIDOS)
+        ordem, invertido = listas.pedido_da_url(request.args, listas.ORDENS_PEDIDOS)
+        lista = listas.ordenar(lista, ordem, invertido, listas.ORDENS_PEDIDOS)
         return render_template("pedidos.html", aba="pedidos", ver=ver, pedidos=lista,
-                               total=dados.somar_valor(lista), mes=formato.mes_por_extenso())
+                               total=dados.somar_valor(lista), mes=formato.mes_por_extenso(),
+                               ordens=listas.ORDENS_PEDIDOS, ordem=ordem,
+                               invertido=invertido, busca=busca)
 
     @app.route("/pedidos/novo", methods=["GET", "POST"])
     @app.route("/pedidos/<int:id_>", methods=["GET", "POST"])
@@ -561,9 +583,17 @@ def criar_app() -> Flask:
     @app.route("/templates")
     @auth.exige_login
     def lista_templates():
+        busca = request.args.get("q", "")
+        # 200 e nao 15: a busca so serve se ela alcancar o historico. O rodape
+        # da tabela diz quantas sobraram, para o numero na tela nunca ser um
+        # recorte silencioso.
+        registros = listas.filtrar(dados.geracoes(limite=200), busca, listas.BUSCA_GERACOES)
+        ordem, invertido = listas.pedido_da_url(request.args, listas.ORDENS_GERACOES)
+        registros = listas.ordenar(registros, ordem, invertido, listas.ORDENS_GERACOES)
         return render_template("templates.html", aba="templates",
                                templates=dados.templates(so_ativos=False),
-                               geracoes=dados.geracoes(limite=15))
+                               geracoes=registros, ordens=listas.ORDENS_GERACOES,
+                               ordem=ordem, invertido=invertido, busca=busca)
 
     @app.route("/templates/novo", methods=["GET", "POST"])
     @app.route("/templates/<sku>", methods=["GET", "POST"])

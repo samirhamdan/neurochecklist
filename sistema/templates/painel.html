@@ -19,20 +19,23 @@
     {# Ordenados por urgencia em dados.avisos() -- rolo zerado, atraso, rolo
        acabando. Antes eram tres blocos por TIPO, e uma cor em 0 g aparecia
        embaixo de um pedido que atrasou ontem. #}
+    {# O aviso INTEIRO e o link, e nao uma palavra dentro da frase. Um link no
+       meio de um texto tem a altura da linha -- 17 px medidos, contra os 44 px
+       que um dedo acerta. E aqui o aviso todo leva a um lugar so, entao nao ha
+       o que escolher dentro dele. #}
     {% for a in avisos %}
       {% if a.tipo == 'filamento_zero' %}
-        <div class="aviso mal"><a href="{{ url_for('lista_filamentos') }}">Filamento
-          <b>{{ a.item.nome }}</b> zerado</a> — a impressora para na próxima peça
-          dessa cor.</div>
+        <a class="aviso mal" href="{{ url_for('lista_filamentos') }}">Filamento
+          <b>{{ a.item.nome }}</b> zerado — a impressora para na próxima peça
+          dessa cor.</a>
       {% elif a.tipo == 'atraso' %}
-        <div class="aviso mal"><a href="{{ url_for('lista_pedidos') }}">Pedido de
-          <b>{{ a.item.cliente }}</b> passou do prazo</a> ({{ a.item.prazo|data }},
-          {{ -a.item.dias }} d).</div>
+        <a class="aviso mal" href="{{ url_for('lista_pedidos') }}">Pedido de
+          <b>{{ a.item.cliente }}</b> passou do prazo ({{ a.item.prazo|data }},
+          {{ -a.item.dias }} d).</a>
       {% else %}
-        <div class="aviso atencao">
-          <a href="{{ url_for('lista_filamentos') }}">Filamento <b>{{ a.item.nome }}</b>
-          em {{ a.item.gramas|numero(0) }} g</a>
-          — abaixo do mínimo de {{ a.item.minimo|numero(0) }} g.</div>
+        <a class="aviso atencao" href="{{ url_for('lista_filamentos') }}">Filamento
+          <b>{{ a.item.nome }}</b> em {{ a.item.gramas|numero(0) }} g
+          — abaixo do mínimo de {{ a.item.minimo|numero(0) }} g.</a>
       {% endif %}
     {% endfor %}
   </div>
@@ -118,9 +121,9 @@
       <thead><tr><th>Produto</th><th>Horas</th><th>Margem</th><th>Por hora</th></tr></thead>
       <tbody>
         {% for i in retorno.itens %}
-          <tr><td>{{ i.nome }}</td><td>{{ i.conta.horas|numero(1) }} h</td>
-            <td>{{ i.conta.margem|dinheiro }}</td>
-            <td>{{ i.conta.por_hora|dinheiro }}</td></tr>
+          <tr><td data-rotulo="Produto">{{ i.nome }}</td><td data-rotulo="Horas">{{ i.conta.horas|numero(1) }} h</td>
+            <td data-rotulo="Margem">{{ i.conta.margem|dinheiro }}</td>
+            <td data-rotulo="Por hora">{{ i.conta.por_hora|dinheiro }}</td></tr>
         {% endfor %}
       </tbody>
     </table></div>
@@ -208,16 +211,16 @@
         <tbody>
           {% for p in pedidos %}
             <tr>
-              <td>{{ p.cliente }}</td>
-              <td>{{ p.canal or '—' }}</td>
-              <td><span class="etiqueta">{{ p.status }}</span></td>
-              <td>
+              <td data-rotulo="Cliente" class="chave">{{ p.cliente }}</td>
+              <td data-rotulo="Canal">{{ p.canal or '—' }}</td>
+              <td data-rotulo="Situação" class="estado"><span class="etiqueta">{{ p.status }}</span></td>
+              <td data-rotulo="Prazo">
                 {% if p.dias is none %}—
                 {% elif p.dias < 0 %}<span class="etiqueta atrasado">{{ -p.dias }} d atrasado</span>
                 {% elif p.dias == 0 %}<span class="etiqueta hoje">hoje</span>
                 {% else %}em {{ p.dias }} d{% endif %}
               </td>
-              <td class="num">{% if p.valor %}{{ p.valor|dinheiro }}{% else %}—{% endif %}</td>
+              <td data-rotulo="Valor" class="num decide">{% if p.valor %}{{ p.valor|dinheiro }}{% else %}—{% endif %}</td>
             </tr>
           {% endfor %}
         </tbody>

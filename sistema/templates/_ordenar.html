@@ -1,0 +1,55 @@
+{# Ordenar e buscar: DUAS interfaces para a mesma lista de ordens.
+
+   Na tela larga, clicar no cabecalho da coluna. No telefone o cabecalho nao
+   existe -- a linha virou cartao no U3 -- entao a ordem sai de uma caixa de
+   selecao. As duas se desenham a partir de `ordens` (sistema/listas.py), e ha
+   teste que compara os rotulos das duas: escritas separadas, uma ficaria para
+   tras na primeira coluna nova. #}
+
+{% macro cabeca(chave, rotulo, num=false) %}
+  {%- set ativa = ordem == chave -%}
+  <th{% if num %} class="num"{% endif %}
+      {% if ativa %}aria-sort="{{ 'descending' if invertido else 'ascending' }}"{% endif %}>
+    <a class="ordenar{{ ' ativa' if ativa }}"
+       href="{{ url_com(ordem=chave, dir='asc' if ativa and invertido else 'desc') }}">
+      {{ rotulo }}<span class="seta" aria-hidden="true">{{ '↑' if ativa and not invertido else '↓' }}</span>
+    </a>
+  </th>
+{% endmacro %}
+
+{% macro controles(placeholder) %}
+  <form class="peneira" method="get">
+    {# A aba (abertos/entregues/todos) viaja junto: buscar nao pode trocar de
+       aba sem ninguem ter pedido. #}
+    {% if ver %}<input type="hidden" name="ver" value="{{ ver }}">{% endif %}
+    <label class="busca">
+      <span class="sr">Buscar</span>
+      <input type="search" name="q" value="{{ busca }}" placeholder="{{ placeholder }}"
+             autocomplete="off" enterkeyhint="search">
+    </label>
+    <label class="so-telefone">
+      <span class="sr">Ordenar por</span>
+      <select name="ordem" onchange="this.form.submit()">
+        <option value="">Ordem do sistema</option>
+        {% for chave, rotulo, _ in ordens %}
+          <option value="{{ chave }}" {{ 'selected' if ordem == chave }}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if ordem %}
+      <a class="botao vazado so-telefone virar"
+         href="{{ url_com(dir='asc' if invertido else 'desc') }}"
+         title="{{ 'Menor primeiro' if invertido else 'Maior primeiro' }}">
+        {{ '↓ maior primeiro' if invertido else '↑ menor primeiro' }}</a>
+    {% endif %}
+    <button class="botao vazado" type="submit">Buscar</button>
+  </form>
+{% endmacro %}
+
+{% macro nada_encontrado(busca, o_que) %}
+  <div class="cartao cartao-vazio">
+    <b>Nada com “{{ busca }}”.</b>
+    <span>A busca olha {{ o_que }}, sem diferenciar acento nem maiúscula.
+      <a href="{{ url_com(q='') }}">Limpar a busca</a> para ver tudo de novo.</span>
+  </div>
+{% endmacro %}

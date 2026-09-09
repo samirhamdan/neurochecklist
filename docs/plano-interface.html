@@ -295,7 +295,7 @@ cheia, a pergunta certa não é “quanto sobra”, é “quanto sobra por hora 
 
 <h2>Os sprints</h2>
 <p class="desce">Em ordem de dor. O primeiro consertou o que quebrava todas as telas; o
-segundo é o que você pediu. Os dois já estão no ar.</p>
+segundo é o que você pediu; o terceiro fez as tabelas caberem na mão. Os três estão no ar.</p>
 
 <div class="sprints">
 
@@ -418,16 +418,45 @@ segundo é o que você pediu. Os dois já estão no ar.</p>
     <div class="cab">
       <span class="num">U3</span>
       <h3>Tabelas que cabem na mão</h3>
-      <span class="custo">Tamanho M · depende do U1</span>
+      <span class="custo feito">✓ no ar</span>
     </div>
-    <p>Seis telas são tabelas de cinco a sete colunas. No computador funcionam; no telefone,
-    a coluna que importa é sempre a que fica de fora — foi o que aconteceu com “Situação”
-    na tela de templates, e eu só vi porque olhei a foto.</p>
+    <p>Seis telas eram tabelas de cinco a sete colunas. No computador funcionavam; no
+    telefone, a coluna que importa era sempre a que ficava de fora — foi o que aconteceu com
+    “Situação” na tela de templates, e eu só vi porque olhei a foto.</p>
+    <div class="depois-medido">
+      <b>Medido depois</b>
+      <span><i>alvos abaixo de 44 px</i> 75 → 0</span>
+      <span><i>tabela rolando de lado</i> 0 px em 9 telas</span>
+      <span><i>16/16</i> mutações mortas</span>
+    </div>
+    <p><b>A linha e o cartão são o mesmo HTML.</b> Não existe uma marcação para tela larga e
+    outra para telefone — abaixo de 640 px o CSS transforma cada linha em cartão. Isso não é
+    economia de trabalho: é o que torna a promessa <em>verificável</em>. Um teste abre cada
+    tela em 1280 px e em 420 px e compara o texto que aparece nas duas. Esconder uma coluna
+    no telefone com <code>display:none</code> é o atalho óbvio para “não cabe”, e é
+    exatamente o que esse teste reprova.</p>
+    <p>Cada célula carrega o nome da sua coluna, e quatro papéis dizem o resto: o
+    <b>título</b>, a <b>etiqueta de estado</b>, o <b>número que decide</b> e o <b>botão</b> no
+    pé do cartão. O papel manda na ordem — em Templates o título é a segunda coluna e mesmo
+    assim abre o cartão: numa tabela a ordem das colunas é uma leitura da esquerda para a
+    direita; num cartão, de cima para baixo. Não são a mesma escolha.</p>
+    <p><b>Ordenar e buscar existem nos dois lugares, de duas formas.</b> Na tela larga,
+    clicando no cabeçalho. No telefone não há cabeçalho — a linha virou cartão — então a
+    ordem sai de uma caixa de seleção. As duas se desenham a partir da mesma lista, e há
+    teste que compara: escritas separadas, uma ficaria para trás na primeira coluna nova. A
+    busca ignora acento, porque quem digita no telefone com uma mão não põe acento — e busca
+    que exige acento é busca que não encontra.</p>
+    <p><b>O teste de 44 px achou os alvos que eu mesmo tinha acabado de criar</b> — a caixa
+    de busca e a de ordem nasceram com 40 px, na mesma rodada. E achou uma coisa que não tem
+    conserto: um link no meio de uma frase tem a altura da linha, e esticá-lo destrói o
+    parágrafo. A saída não foi abrir exceção no teste, foi tirar o controle de dentro da
+    frase: numa tela vazia a ação virou botão, e no painel o aviso inteiro virou o link.</p>
     <span class="rotulo">Entra</span>
     <ul class="lista">
       <li>Abaixo de 640 px, cada linha vira um cartão: título, o número que decide, e o
           estado como etiqueta</li>
-      <li>Alvos de toque com 44 px, em todas as telas</li>
+      <li>Alvos de toque com 44 px, em todas as telas — no telefone. No computador o
+          ponteiro é preciso, e a densidade da tela é vantagem</li>
       <li><s>Datas em 08/09/2026 e dinheiro em R$ 1.120,00</s> — <b>saiu no U2</b>, junto
           com o painel: os dois filtros valem para toda tela do sistema</li>
       <li>Ordenar e filtrar onde a lista cresce: pedidos, produtos, gerações</li>
@@ -435,11 +464,13 @@ segundo é o que você pediu. Os dois já estão no ar.</p>
     <span class="rotulo">Eu testo</span>
     <ul class="lista">
       <li>Nenhum alvo de toque abaixo de 44 px, medido no navegador e não no olho</li>
-      <li>Cartão e linha mostram a mesma informação — nada some no telefone</li>
+      <li>Cartão e linha mostram a mesma informação — comparada palavra por palavra nas
+          duas larguras, no navegador</li>
       <li>Ordenar e filtrar devolve a mesma contagem que o rodapé da tabela mostra</li>
     </ul>
     <div class="confere"><b>Você confere</b>
-      Abra Pedidos no celular e ache o valor do pedido da Ana sem rolar para o lado.</div>
+      Abra Pedidos no celular e ache o valor do pedido da Ana sem rolar para o lado. Depois
+      procure um cliente pelo nome, sem acento.</div>
   </article>
 
   <article class="sprint">

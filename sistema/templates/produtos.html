@@ -3,51 +3,69 @@
 {% block corpo %}bancada{% endblock %}
 {% block conteudo %}
 {% include "_topo.html" %}
+{# `with context`: macro importada nasce sem o contexto da pagina, e sem
+   isto `url_com`, `ordem` e `busca` chegam indefinidos dentro dela. #}
+{% import "_ordenar.html" as ord with context %}
 <main id="conteudo" class="pagina">
   <div class="cabecalho-lista">
     <h2 class="secao">Produtos</h2>
     <a class="botao" href="{{ url_for('editar_produto') }}">Novo produto</a>
   </div>
 
+  {{ ord.controles('Produto, SKU ou filamento') }}
+
   {% if produtos %}
-  <div class="cartao"><div class="rolagem">
+  <div class="cartao cartao-tabela"><div class="rolagem">
     <table class="tabela">
       <thead><tr>
-        <th>Produto</th><th>Filamento</th><th class="num">Peso</th><th class="num">Tempo</th>
-        <th class="num">Custo</th><th class="num">Preço</th><th class="num">Margem</th>
-        <th class="num" title="Quanto sobra em cada hora de impressora">R$/h</th><th></th>
+        {{ ord.cabeca('nome', 'Produto') }}
+        {{ ord.cabeca('filamento', 'Filamento') }}
+        {{ ord.cabeca('gramas', 'Peso', num=true) }}
+        {{ ord.cabeca('horas', 'Tempo', num=true) }}
+        {{ ord.cabeca('custo', 'Custo', num=true) }}
+        {{ ord.cabeca('preco', 'Preço', num=true) }}
+        {{ ord.cabeca('margem', 'Margem', num=true) }}
+        {{ ord.cabeca('hora', 'R$/h', num=true) }}
+        <th></th>
       </tr></thead>
       <tbody>
         {% for p in produtos %}
         <tr class="{{ 'inativo' if not p.ativo }}">
-          <td>
+          <td data-rotulo="Produto" class="chave">
             <a href="{{ url_for('editar_produto', id_=p.id) }}">{{ p.nome }}</a>
             {% if p.sku %}<span class="fraco mono">{{ p.sku }}</span>{% endif %}
             {% if p.malha_ok == 0 %}<span class="etiqueta vermelha">malha aberta</span>{% endif %}
           </td>
-          <td>
+          <td data-rotulo="Filamento">
             {% if p.filamento_nome %}
               <span class="bolinha" style="background:{{ cores.get(p.filamento_cor, '#B9BEC4') }}"></span>{{ p.filamento_nome }}
             {% else %}<span class="fraco">sem filamento</span>{% endif %}
           </td>
-          <td class="num mono">{{ p.gramas|numero(1) if p.gramas else '—' }} g</td>
-          <td class="num mono">{{ p.horas|numero(1) if p.horas else '—' }} h</td>
-          <td class="num mono">
+          <td data-rotulo="Peso" class="num mono">{{ p.gramas|numero(1) if p.gramas else '—' }} g</td>
+          <td data-rotulo="Tempo" class="num mono">{{ p.horas|numero(1) if p.horas else '—' }} h</td>
+          <td data-rotulo="Custo" class="num mono">
             {%- if p.conta.completo %}{{ p.conta.custo|dinheiro }}
             {%- else %}<span class="fraco" title="Falta o preço por kg do filamento">—</span>{% endif -%}
           </td>
-          <td class="num mono forte">{{ p.conta.preco|dinheiro }}</td>
-          <td class="num mono {{ 'alerta' if p.conta.completo and p.conta.margem_pct < 40 }}">
+          <td data-rotulo="Preço" class="num mono forte">{{ p.conta.preco|dinheiro }}</td>
+          <td data-rotulo="Margem" class="num mono {{ 'alerta' if p.conta.completo and p.conta.margem_pct < 40 }}">
             {%- if p.conta.completo %}{{ p.conta.margem_pct|numero(1) }}%{% else %}<span class="fraco">—</span>{% endif -%}
           </td>
-          <td class="num mono por-hora">
+          <td data-rotulo="R$/h" class="num mono por-hora decide">
             {%- if p.conta.completo and p.conta.horas %}{{ p.conta.por_hora|dinheiro }}
             {%- else %}<span class="fraco">—</span>{% endif -%}
           </td>
-          <td class="num"><a href="{{ url_for('editar_produto', id_=p.id) }}">editar</a></td>
+          <td class="num acao"><a href="{{ url_for('editar_produto', id_=p.id) }}">editar</a></td>
         </tr>
         {% endfor %}
       </tbody>
+      {# A contagem existe para a busca nao poder esconder linha sem dizer. #}
+      <tfoot>
+        <tr>
+          <td colspan="8" class="num">{{ produtos|length }} produto(s)</td>
+          <td></td>
+        </tr>
+      </tfoot>
     </table>
   </div></div>
   <p class="nota"><b>R$/h</b> é quanto sobra em cada hora de impressora — a comparação que
@@ -56,6 +74,8 @@
   <p class="nota">Custo em traço é custo que eu não sei calcular: falta o preço por kg do
   filamento. Mostrar o número sem o material faria uma peça pequena parecer ter 90% de
   margem — e é assim que se baixa o preço de um produto que dá prejuízo.</p>
+  {% elif busca %}
+  {{ ord.nada_encontrado(busca, 'produto, SKU, filamento e categoria') }}
   {% else %}
   <div class="cartao cartao-vazio">
     <b>Nenhum produto cadastrado.</b>

@@ -3,6 +3,9 @@
 {% block corpo %}bancada{% endblock %}
 {% block conteudo %}
 {% include "_topo.html" %}
+{# `with context`: macro importada nasce sem o contexto da pagina, e sem
+   isto `url_com`, `ordem` e `busca` chegam indefinidos dentro dela. #}
+{% import "_ordenar.html" as ord with context %}
 <main id="conteudo" class="pagina">
   <div class="cabecalho-lista">
     <h2 class="secao">Pedidos</h2>
@@ -16,36 +19,43 @@
     <a class="botao" href="{{ url_for('editar_pedido') }}">Novo pedido</a>
   </div>
 
+  {{ ord.controles('Cliente, canal ou número do marketplace') }}
+
   {% if pedidos %}
-  <div class="cartao"><div class="rolagem">
+  <div class="cartao cartao-tabela"><div class="rolagem">
     <table class="tabela">
       <thead><tr>
-        <th>Cliente</th><th>Canal</th><th>Situação</th>
-        <th>{{ 'Entregue em' if ver == 'entregues' else 'Prazo' }}</th>
-        <th class="num">Itens</th><th class="num">Valor</th><th class="num">Líquido</th><th></th>
+        {{ ord.cabeca('cliente', 'Cliente') }}
+        {{ ord.cabeca('canal', 'Canal') }}
+        {{ ord.cabeca('situacao', 'Situação') }}
+        {{ ord.cabeca('prazo', 'Entregue em' if ver == 'entregues' else 'Prazo') }}
+        {{ ord.cabeca('itens', 'Itens', num=true) }}
+        {{ ord.cabeca('valor', 'Valor', num=true) }}
+        {{ ord.cabeca('liquido', 'Líquido', num=true) }}
+        <th></th>
       </tr></thead>
       <tbody>
         {% for p in pedidos %}
         <tr>
-          <td>
+          <td data-rotulo="Cliente" class="chave">
             <a href="{{ url_for('editar_pedido', id_=p.id) }}">{{ p.cliente }}</a>
             {% if p.id_no_canal %}<span class="fraco mono">#{{ p.id_no_canal }}</span>{% endif %}
           </td>
-          <td>{{ p.canal or '—' }}{% if p.comissao %}<span class="fraco">{{ p.comissao|numero(1) }}%</span>{% endif %}</td>
-          <td><span class="etiqueta {{ 'azul' if p.status == 'aprovado' else 'cinza' }}">{{ p.status }}</span></td>
+          <td data-rotulo="Canal">{{ p.canal or '—' }}{% if p.comissao %}<span class="fraco">{{ p.comissao|numero(1) }}%</span>{% endif %}</td>
+          <td data-rotulo="Situação" class="estado"><span class="etiqueta {{ 'azul' if p.status == 'aprovado' else 'cinza' }}">{{ p.status }}</span></td>
           {# Pedido entregue nao esta mais atrasado: acabou. Marcar de vermelho
              o prazo de quem ja recebeu a peca e susto sem motivo. #}
-          <td>
+          <td data-rotulo="{{ 'Entregue em' if ver == 'entregues' else 'Prazo' }}">
             {%- if p.entregue_em %}<span class="mono">{{ p.entregue_em|data }}</span>
             {%- elif p.dias is none %}<span class="fraco">sem prazo</span>
             {%- elif p.dias < 0 %}<span class="etiqueta vermelha">{{ -p.dias }} d atrasado</span>
             {%- elif p.dias == 0 %}<span class="etiqueta ambar">hoje</span>
             {%- else %}em {{ p.dias }} d{% endif -%}
           </td>
-          <td class="num mono">{{ p.itens }}</td>
-          <td class="num mono">{{ (p.valor or 0)|dinheiro }}</td>
-          <td class="num mono {{ 'forte' if p.comissao }}">{{ (p.valor_liquido if p.valor_liquido is not none else (p.valor or 0))|dinheiro }}</td>
-          <td class="num"><a href="{{ url_for('editar_pedido', id_=p.id) }}">abrir</a></td>
+          <td data-rotulo="Itens" class="num mono">{{ p.itens }}</td>
+          <td data-rotulo="Valor" class="num mono decide">{{ (p.valor or 0)|dinheiro }}</td>
+          <td data-rotulo="Líquido" class="num mono {{ 'forte' if p.comissao }}">{{ (p.valor_liquido if p.valor_liquido is not none else (p.valor or 0))|dinheiro }}</td>
+          <td class="num acao"><a href="{{ url_for('editar_pedido', id_=p.id) }}">abrir</a></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -61,6 +71,8 @@
       </tfoot>
     </table>
   </div></div>
+  {% elif busca %}
+  {{ ord.nada_encontrado(busca, 'cliente, canal e número do marketplace') }}
   {% else %}
   <div class="cartao cartao-vazio">
     {% if ver == 'entregues' %}

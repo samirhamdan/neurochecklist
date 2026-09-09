@@ -9,18 +9,18 @@
     <a class="botao" href="{{ url_for('editar_cliente') }}">Novo cliente</a>
   </div>
   {% if clientes %}
-  <div class="cartao"><div class="rolagem">
+  <div class="cartao cartao-tabela"><div class="rolagem">
     <table class="tabela">
       <thead><tr><th>Nome</th><th>WhatsApp</th><th>Canal</th><th>Observação</th><th></th></tr></thead>
       <tbody>
         {% for c in clientes %}
         <tr class="{{ 'inativo' if not c.ativo }}">
-          <td><a href="{{ url_for('editar_cliente', id_=c.id) }}">{{ c.nome }}</a>
+          <td data-rotulo="Nome" class="chave"><a href="{{ url_for('editar_cliente', id_=c.id) }}">{{ c.nome }}</a>
             {% if not c.ativo %}<span class="etiqueta cinza">inativo</span>{% endif %}</td>
-          <td class="mono">{{ c.whatsapp or '—' }}</td>
-          <td>{{ c.canal or '—' }}</td>
-          <td class="fraco" style="margin:0">{{ c.observacao|truncate(60) }}</td>
-          <td class="num"><a href="{{ url_for('editar_cliente', id_=c.id) }}">editar</a></td>
+          <td data-rotulo="WhatsApp" class="mono">{{ c.whatsapp or '—' }}</td>
+          <td data-rotulo="Canal">{{ c.canal or '—' }}</td>
+          <td data-rotulo="Observação" class="fraco" style="margin:0">{{ c.observacao|truncate(60) }}</td>
+          <td class="num acao"><a href="{{ url_for('editar_cliente', id_=c.id) }}">editar</a></td>
         </tr>
         {% endfor %}
       </tbody>
