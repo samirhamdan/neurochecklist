@@ -1,0 +1,14 @@
+{# O aviso do topo. Quando o erro sabe de qual campo é, ele NÃO repete a
+   mensagem: a mensagem já está no campo, embaixo do que precisa mudar. Aqui
+   fica só o atalho até lá — num cadastro de dezessete campos, o que falta
+   pode estar fora da parte visível da tela. #}
+{% macro aviso() %}
+  {% if erro and campo_erro %}
+    <div class="recado erro">
+      <b>Não salvei.</b> Um campo precisa de atenção.
+      <a href="#campo-{{ campo_erro }}">Ir para o campo</a>
+    </div>
+  {% elif erro %}
+    <div class="recado erro">{{ erro }}</div>
+  {% endif %}
+{% endmacro %}

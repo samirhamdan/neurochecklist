@@ -287,8 +287,13 @@ duas contas e me passar as credenciais.
 | U1 | A navegação cabe no telefone — lateral no computador, gaveta no celular | ✅ **FEITO** — de 500 px de sobra para 0 em 360, 420, 768 e 1280 |
 | U2 | O painel responde "como vai o negócio?" | ✅ **FEITO** — quatro números clicáveis, gráfico de retorno por hora, avisos por urgência, e dinheiro/data em português |
 | U3 | Tabela vira cartão no telefone; alvos de 44 px; ordenar e buscar | ✅ **FEITO** — 75 alvos abaixo de 44 px viraram 0, e nenhuma tabela pede mais largura do que a caixa tem |
-| U4 | Formulário que perdoa | a fazer |
+| U4 | Formulário que perdoa | ✅ **FEITO** — Salvar sempre na tela (era 1.665 px de rolagem), aviso antes de perder o que foi digitado, e o erro apontando o campo |
 | U5 | Tela vazia que ensina | a fazer |
+
+**O que o U4 estabeleceu:** o erro sabe de qual campo ele é
+(`dados.ErroDeCampo`), e há teste que cobra que todo campo acusado pelo banco
+exista na tela. A proteção de formulário — aviso ao sair, rodinha do mouse —
+mora na casca, e não em cada tela.
 
 **O que o U3 estabeleceu:** a linha e o cartão são o **mesmo DOM**. Não há uma
 marcação para tela larga e outra para telefone — o que a linha mostra, o cartão

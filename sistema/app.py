@@ -118,6 +118,14 @@ def criar_app() -> Flask:
     # `R$ 1120.00` de novo.
     app.jinja_env.filters.update(formato.FILTROS)
 
+    def _erro(excecao) -> dict:
+        """O que a tela precisa para APONTAR o campo, e nao so avisar.
+
+        `ErroDeCampo` sabe de qual campo ele e; um ValueError comum nao sabe,
+        e a tela cai no aviso de sempre no topo.
+        """
+        return {"erro": str(excecao), "campo_erro": getattr(excecao, "campo", "")}
+
     def url_com(**mudancas):
         """A URL desta tela com um parametro trocado, guardando os outros.
 
@@ -132,6 +140,9 @@ def criar_app() -> Flask:
     def comuns():
         return {
             "url_com": url_com,
+            # Sempre definido: campo com erro so existe depois de um POST que
+            # falhou, e comparar com Undefined em vinte lugares e pedir susto.
+            "campo_erro": "",
             "com_senha": bool(auth.SENHA),
             "usuario": session.get("usuario", ""),
             "marca_simbolo": arquivo_da_marca("marca-simbolo"),
@@ -224,7 +235,7 @@ def criar_app() -> Flask:
                 dados.salvar_filamento(request.form, session.get("usuario", ""), id_)
             except ValueError as erro:
                 return render_template(
-                    "filamento.html", aba="filamentos", cores=dados.CORES, erro=str(erro),
+                    "filamento.html", aba="filamentos", cores=dados.CORES, **_erro(erro),
                     atual=dados.campos_filamento(request.form)), 400
             return redirect(url_for("lista_filamentos"))
         return render_template("filamento.html", aba="filamentos", atual=atual,
@@ -247,7 +258,7 @@ def criar_app() -> Flask:
                 dados.salvar_insumo(request.form, session.get("usuario", ""), id_)
             except ValueError as erro:
                 return render_template(
-                    "insumo.html", aba="insumos", erro=str(erro),
+                    "insumo.html", aba="insumos", **_erro(erro),
                     atual=dados.campos_insumo(request.form)), 400
             return redirect(url_for("lista_insumos"))
         return render_template("insumo.html", aba="insumos", atual=atual)
@@ -286,7 +297,7 @@ def criar_app() -> Flask:
                                                id_, vinculos)
             except ValueError as erro:
                 return render_template(
-                    "produto.html", aba="produtos", erro=str(erro), param=param,
+                    "produto.html", aba="produtos", **_erro(erro), param=param,
                     atual=dados.campos_produto(request.form),
                     filamentos=dados.filamentos(), insumos=dados.insumos()), 400
             return redirect(url_for("editar_produto", id_=novo_id))
@@ -339,7 +350,7 @@ def criar_app() -> Flask:
             try:
                 dados.salvar_cliente(request.form, session.get("usuario", ""), id_)
             except ValueError as erro:
-                return render_template("cliente.html", aba="clientes", erro=str(erro),
+                return render_template("cliente.html", aba="clientes", **_erro(erro),
                                        atual=dados.campos_cliente(request.form),
                                        canais=dados.CANAIS), 400
             return redirect(url_for("lista_clientes"))
@@ -405,7 +416,7 @@ def criar_app() -> Flask:
                 novo_id = dados.salvar_pedido(request.form, session.get("usuario", ""),
                                               id_, itens)
             except ValueError as erro:
-                return render_template("pedido.html", erro=str(erro),
+                return render_template("pedido.html", **_erro(erro),
                                        atual=dict(request.form, itens=itens, id=id_),
                                        **contexto), 400
             return redirect(url_for("editar_pedido", id_=novo_id))
@@ -512,7 +523,7 @@ def criar_app() -> Flask:
                 novo_id = dados.salvar_compra(request.form, session.get("usuario", ""),
                                               id_, itens)
             except ValueError as erro:
-                return render_template("compra.html", erro=str(erro),
+                return render_template("compra.html", **_erro(erro),
                                        atual=dict(request.form, itens=itens, id=id_),
                                        **contexto), 400
             return redirect(url_for("editar_compra", id_=novo_id))
@@ -614,7 +625,7 @@ def criar_app() -> Flask:
                 # Mesma razao do campos_filamento, e mesmo remedio.
                 campos = dados.campos_template(request.form)
                 campos["campos"] = [c for c in campos["campos"].split(",") if c]
-                return render_template("template.html", erro=str(erro),
+                return render_template("template.html", **_erro(erro),
                                        atual=campos, geracoes=[], **contexto), 400
             return redirect(url_for("editar_template", sku=novo))
         return render_template("template.html", atual=atual,
@@ -630,7 +641,7 @@ def criar_app() -> Flask:
             dados.publicar_template(sku, request.form.get("publicar") == "1",
                                     session.get("usuario", ""))
         except ValueError as erro:
-            return render_template("template.html", erro=str(erro), aba="templates",
+            return render_template("template.html", **_erro(erro), aba="templates",
                                    atual=dados.template(sku), formas=dados.FORMAS,
                                    fontes=FONTES_DO_GERADOR, campos=dados.CAMPOS_TEMPLATE,
                                    geracoes=dados.geracoes(limite=20, sku=sku)), 400

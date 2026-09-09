@@ -887,3 +887,66 @@ th a.ordenar.ativa .seta{visibility:visible;color:var(--azul)}
     font-size:13.5px;white-space:nowrap;
   }
 }
+
+/* ================================ U4: a barra de salvar alcança o polegar
+   Medido a 420 px, antes: para chegar em Salvar era preciso rolar 1.665 px no
+   cadastro de produto, 765 no de template e 370 no de pedido. Um formulário
+   que exige rolar dezessete campos para achar o botão é um formulário que se
+   abandona no meio.
+
+   `position:sticky` faz exatamente a coisa condicional, sem uma linha de
+   JavaScript: num cadastro curto a barra fica em fluxo, no fim, sem custar
+   nada; num comprido ela gruda no pé da tela enquanto se rola. Barra FIXA
+   custaria 60 px de tela em toda tela, inclusive nas cinco onde o botão já
+   estava visível.
+
+   Ela só gruda dentro do PRÓPRIO pai -- por isso em produto e pedido a barra
+   saiu do cartão da lateral e virou filha do <form>. */
+.acoes.principal{
+  position:sticky;bottom:0;z-index:5;
+  background:var(--mesa);margin-top:14px;padding:12px 0 2px;
+  /* A sombra para cima diz que ha conteudo por baixo. Sem ela a barra parece
+     um corte na pagina, e o campo que ela cobre parece ter acabado ali. */
+  box-shadow:0 -8px 12px -8px rgba(21,25,29,.16);
+}
+/* Filha de um grid de duas colunas: a barra atravessa as duas. */
+.duas-colunas > .acoes.principal{grid-column:1 / -1}
+
+@media (max-width:900px){
+  /* Sangra até a borda do cartão, para a linha de cima separar de verdade em
+     vez de flutuar com um vão dos lados. */
+  .formulario > .acoes.principal, .cartao > .acoes.principal{
+    margin:14px -20px -18px;padding:12px 20px;
+    border-top:1px solid var(--linha);
+  }
+  .duas-colunas > .acoes.principal{
+    margin:0 -20px -4px;padding:12px 20px;
+    border-top:1px solid var(--linha);
+    background:var(--mesa);border-radius:0;
+  }
+  .acoes.principal .botao{flex:1 1 auto}
+}
+
+/* ------------------------------------------- U4: o erro aponta o campo
+   Antes, um formulário que não salvava dizia o motivo numa faixa no topo e
+   nada mais. Num cadastro de dezessete campos isso é caça ao tesouro — e o
+   campo que falta pode estar fora da parte visível da tela.
+
+   Agora o erro sabe de qual campo é (`ErroDeCampo`, em dados.py), o topo vira
+   um atalho e a mensagem mora embaixo do que precisa mudar. */
+.campo.com-erro > span{color:var(--vermelho)}
+.campo.com-erro input, .campo.com-erro select, .campo.com-erro textarea{
+  border-color:var(--vermelho);
+  box-shadow:0 0 0 3px var(--vermelho-fundo);
+}
+.recado-campo{
+  display:block;margin-top:6px;font-size:13.5px;font-weight:500;
+  color:var(--vermelho);line-height:1.4;
+}
+/* O link do topo leva até aqui. Sem a folga, o campo encosta no cabeçalho da
+   página e o rótulo dele fica escondido atrás da barra do celular. */
+.campo[id]{scroll-margin-top:76px}
+.recado.erro a{color:var(--vermelho);font-weight:600}
+/* Nem todo erro e de um campo: o de compra sem item e da tabela. */
+.titulo-cartao.com-erro{color:var(--vermelho)}
+[id^=campo-]{scroll-margin-top:76px}

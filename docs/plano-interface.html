@@ -295,7 +295,8 @@ cheia, a pergunta certa não é “quanto sobra”, é “quanto sobra por hora 
 
 <h2>Os sprints</h2>
 <p class="desce">Em ordem de dor. O primeiro consertou o que quebrava todas as telas; o
-segundo é o que você pediu; o terceiro fez as tabelas caberem na mão. Os três estão no ar.</p>
+segundo é o que você pediu; o terceiro fez as tabelas caberem na mão; o quarto fez os
+formulários pararem de perder trabalho. Os quatro estão no ar.</p>
 
 <div class="sprints">
 
@@ -477,20 +478,67 @@ segundo é o que você pediu; o terceiro fez as tabelas caberem na mão. Os trê
     <div class="cab">
       <span class="num">U4</span>
       <h3>Formulários que perdoam</h3>
-      <span class="custo">Tamanho P</span>
+      <span class="custo feito">✓ no ar</span>
     </div>
-    <p>A ficha de pedido tem 32 alvos pequenos e nenhuma proteção contra fechar a aba no
-    meio. As telas de cadastro já avisam bem <em>depois</em> do erro; falta avisarem
-    <em>antes</em>.</p>
+    <p>As telas de cadastro avisavam bem <em>depois</em> do erro; faltava avisarem
+    <em>antes</em>. E faltava o mais simples de todos: chegar ao botão.</p>
+    <div class="depois-medido">
+      <b>Medido depois</b>
+      <span><i>rolagem até Salvar</i> 1.665 px → 0</span>
+      <span><i>formulários que avisam</i> 0 → 8</span>
+      <span><i>15/15</i> mutações mortas</span>
+    </div>
+    <p><b>O número que este sprint existia para mudar</b> não estava no plano. Para chegar
+    no botão Salvar era preciso rolar <b>1.665 px</b> no cadastro de produto, 765 no de
+    template e 370 no de pedido. Um formulário que exige rolar dezessete campos para achar
+    o botão é um formulário que se abandona no meio.</p>
+    <p>A barra de Salvar agora <b>gruda no pé da tela</b> — e gruda de um jeito que não
+    custa nada nos cadastros curtos: num formulário que cabe na tela ela fica onde sempre
+    esteve, no fim; num comprido ela acompanha. Barra fixa custaria 60 px de tela em toda
+    tela, inclusive nas cinco onde o botão já estava visível. E no fim do formulário ela
+    solta o último campo, em vez de tapá-lo para sempre.</p>
+    <p><b>O erro agora sabe de qual campo ele é.</b> O topo diz que não salvou e vira um
+    atalho; a mensagem mora embaixo do campo que precisa mudar, e o campo se marca. Num
+    cadastro de dezessete campos, um aviso no alto da tela é caça ao tesouro — e o campo
+    que falta pode estar fora da parte visível.</p>
+    <p>Há um teste que varre o código do banco atrás de todo erro que nomeia um campo e
+    cobra que esse campo <em>exista</em> em alguma tela. Renomear de um lado só deixaria o
+    atalho do topo levando a lugar nenhum, em silêncio.</p>
+    <p><b>E um item do plano não se confirmou na medida.</b> Eu tinha escrito que os campos
+    de número abriam o teclado alfabético no celular. Fui medir os 63 campos dos sete
+    formulários: <code>type="number"</code> já abre teclado numérico, e o campo que abria o
+    de letras era <b>um só</b> — o WhatsApp do cliente, que por acaso é o mais digitado no
+    telefone. Ele virou campo de discagem, com preenchimento automático. O
+    <code>inputmode</code> entrou em todos assim mesmo, porque o iPhone entrega
+    <code>type=number</code> sem a vírgula em várias versões. Medir antes de consertar vale
+    para plano meu também.</p>
+    <p>Junto veio uma coisa que ninguém tinha pedido: a <b>rodinha do mouse</b> em campo de
+    número troca o valor, em silêncio. É comportamento padrão do navegador — com o campo
+    focado, rolar a página troca 83,7 g por 82,7 g e ninguém vê. O peso e o tempo saem do
+    arquivo 3D justamente para não serem chute, e um chute entrava assim, sem toque em
+    tecla nenhuma.</p>
     <span class="rotulo">Entra</span>
     <ul class="lista">
-      <li>Teclado numérico nos campos de número no celular — hoje abre o alfabético</li>
-      <li>Aviso ao sair com alteração não salva</li>
+      <li><s>Teclado numérico nos campos de número — hoje abre o alfabético</s> — a medida
+          desmentiu: <code>type=number</code> já abre. Era um campo só, o WhatsApp</li>
+      <li>Aviso ao sair com alteração não salva — nos oito formulários, por um script só
+          na casca. Salvar e Cancelar não perguntam: um é a gravação, o outro é a
+          desistência</li>
       <li>Erro apontando o campo, e não só no topo da página</li>
       <li>O botão principal de cada tela sempre alcançável com o polegar</li>
+      <li>Rodinha do mouse não mexe mais no peso nem no tempo</li>
+    </ul>
+    <span class="rotulo">Eu testo</span>
+    <ul class="lista">
+      <li>Salvar está na tela sem rolar nada, nos sete formulários, a 420 px</li>
+      <li>Escrever e sair pergunta; apagar o que escreveu desarma; Salvar e Cancelar não
+          perguntam</li>
+      <li>Todo campo que o banco acusa existe na tela — senão o atalho do topo leva a lugar
+          nenhum</li>
+      <li>O formulário volta com erro <b>sem apagar</b> o que já tinha sido digitado</li>
     </ul>
     <div class="confere"><b>Você confere</b>
-      Comece um pedido no celular, escreva o nome do cliente e tente sair. Tem que perguntar.</div>
+      Comece um cliente no celular, escreva o nome e tente sair. Tem que perguntar.</div>
   </article>
 
   <article class="sprint depois">

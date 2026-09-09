@@ -281,6 +281,177 @@ class TesteNadaSaiDaTela(NoNavegador):
                 self.assertEqual(self.larguras(largura), [])
 
 
+class TesteFormularioQuePerdoa(NoNavegador):
+    """O U4 medido onde ele vale.
+
+    Antes: para chegar em Salvar era preciso rolar 1.665 px no cadastro de
+    produto. E nenhum dos oito formulários avisava antes de perder o que foi
+    digitado -- os dois só se medem num navegador.
+    """
+
+    FORMULARIOS = ("/clientes/novo", "/pedidos/novo", "/produtos/novo",
+                   "/filamentos/novo", "/insumos/novo", "/compras/nova",
+                   "/templates/novo")
+
+    def no_telefone(self):
+        self.pg.set_viewport_size({"width": 420, "height": 780})
+
+    def test_salvar_esta_na_tela_sem_rolar_nada(self):
+        """A barra gruda no pé enquanto o formulário é maior que a tela."""
+        self.no_telefone()
+        for rota in self.FORMULARIOS:
+            self.abrir(rota)
+            self.pg.wait_for_timeout(150)
+            visivel = self.pg.evaluate("""() => {
+                const b = document.querySelector('main form button[type=submit]');
+                if (!b) return 'sem botão';
+                const r = b.getBoundingClientRect();
+                return (r.bottom <= window.innerHeight + 1 && r.top >= 0) ? '' :
+                       Math.round(r.top) + 'px de rolagem';
+            }""")
+            self.assertEqual(visivel, "", f"{rota}: Salvar fora da tela")
+
+    def test_num_formulario_curto_a_barra_fica_no_fim_dele(self):
+        """`sticky` e `fixed` são iguais num formulário comprido -- as duas põem
+        a barra no pé da tela. A diferença aparece no CURTO: `sticky` deixa a
+        barra em fluxo, no fim do formulário, e `fixed` a descola dali e a
+        pendura no pé da tela, sobre o fundo da página.
+
+        Este teste é o que separa as duas. A primeira versão dele media
+        sobreposição num formulário comprido e passava com as duas.
+        """
+        self.no_telefone()
+        self.abrir("/clientes/novo")
+        self.pg.wait_for_selector(".acoes.principal")
+        fora = self.pg.evaluate("""() => {
+            const b = document.querySelector('.acoes.principal').getBoundingClientRect();
+            const f = document.querySelector('main form').getBoundingClientRect();
+            return Math.round(b.bottom - f.bottom);
+        }""")
+        self.assertLessEqual(fora, 2, "a barra descolou do fim do formulário")
+
+    def test_no_fim_do_formulario_ela_solta_o_ultimo_campo(self):
+        self.no_telefone()
+        self.abrir("/produtos/novo")
+        self.pg.evaluate("() => window.scrollTo(0, document.body.scrollHeight)")
+        self.pg.wait_for_timeout(200)
+        tapado = self.pg.evaluate("""() => {
+            const barra = document.querySelector('.acoes.principal').getBoundingClientRect();
+            return [...document.querySelectorAll('main form .campo input')]
+              .filter(e => e.getClientRects().length > 0)
+              .some(e => { const r = e.getBoundingClientRect();
+                           return r.bottom > barra.top && r.top < barra.bottom; });
+        }""")
+        self.assertFalse(tapado, "a barra tapou um campo no fim do formulário")
+
+    def avisaria(self):
+        """Dispara um beforeunload de mentira e vê se alguém o impediu.
+
+        Melhor do que esperar a caixa do navegador: a caixa depende de
+        interação prévia com a página (regra do navegador contra armadilha de
+        saída), e o que interessa é se o nosso código pediu para segurar.
+        """
+        return self.pg.evaluate("""() => {
+            const ev = new Event('beforeunload', {cancelable: true});
+            window.dispatchEvent(ev);
+            return ev.defaultPrevented;
+        }""")
+
+    def test_sem_mexer_em_nada_nao_pergunta(self):
+        """Abrir e fechar não é perder trabalho."""
+        self.abrir("/clientes/novo")
+        self.pg.wait_for_selector("form[data-avisar]")
+        self.assertFalse(self.avisaria())
+
+    def test_escrever_e_sair_pergunta(self):
+        """A promessa: escreva o nome do cliente e tente sair."""
+        self.abrir("/clientes/novo")
+        self.pg.wait_for_selector("form[data-avisar]")
+        self.pg.fill("[name=nome]", "Ana Paula Ribeiro")
+        self.assertTrue(self.avisaria(), "o trabalho ia embora em silêncio")
+
+    def test_voltar_ao_valor_de_antes_desarma_o_aviso(self):
+        """Digitar e apagar não é alteração -- perguntar ali só irrita."""
+        self.abrir("/clientes/novo")
+        self.pg.wait_for_selector("form[data-avisar]")
+        self.pg.fill("[name=nome]", "Ana")
+        self.pg.fill("[name=nome]", "")
+        self.assertFalse(self.avisaria())
+
+    def test_cancelar_nao_pergunta(self):
+        """Quem clica em Cancelar já disse que desiste.
+
+        Sem isto o aviso aparecia justamente no botão de desistir, que é onde
+        ele mais irrita.
+        """
+        self.abrir("/clientes/novo")
+        self.pg.wait_for_selector("form[data-avisar]")
+        self.pg.fill("[name=nome]", "Ana Paula Ribeiro")
+        self.pg.eval_on_selector("form[data-avisar] a.botao",
+                                 "e => e.dispatchEvent(new Event('click', {bubbles: true}))")
+        self.assertFalse(self.avisaria(), "Cancelar não pode perguntar")
+
+    def test_salvar_nao_pergunta(self):
+        self.abrir("/clientes/novo")
+        self.pg.wait_for_selector("form[data-avisar]")
+        self.pg.fill("[name=nome]", "Ana Paula Ribeiro")
+        self.pg.eval_on_selector("form[data-avisar]",
+                                 "e => e.dispatchEvent(new Event('submit', {bubbles: true,"
+                                 " cancelable: true}))")
+        self.assertFalse(self.avisaria(), "salvar É a saída")
+
+    def test_a_rodinha_do_mouse_nao_muda_o_peso(self):
+        """Com o campo focado, rolar a página trocava 83,7 g por 82,7 g.
+
+        É comportamento padrão do navegador em `<input type=number>`. O peso
+        vem do arquivo 3D justamente para não ser chute -- e um chute entrava
+        assim, sem toque em tecla nenhuma.
+        """
+        self.abrir("/filamentos/novo")
+        self.pg.wait_for_selector("[name=gramas]")
+        self.pg.fill("[name=gramas]", "837")
+        # A roda precisa passar EM CIMA do campo: o navegador só mexe no valor
+        # quando o ponteiro está sobre o campo focado. A primeira versão deste
+        # teste rolava a 200,300 -- longe do campo -- e passava sem a guarda.
+        caixa = self.pg.eval_on_selector("[name=gramas]",
+                                         "e => e.getBoundingClientRect().toJSON()")
+        self.pg.focus("[name=gramas]")
+        self.pg.mouse.move(caixa["x"] + caixa["width"] / 2,
+                           caixa["y"] + caixa["height"] / 2)
+        self.pg.mouse.wheel(0, 120)
+        self.pg.wait_for_timeout(150)
+        self.assertEqual(self.pg.input_value("[name=gramas]"), "837")
+        # O que prova a guarda: ela tira o foco do campo antes de o navegador
+        # ter para quem mandar a rolagem.
+        self.assertIsNone(
+            self.pg.evaluate("() => document.activeElement.name || null"),
+            "o campo continuou focado: a rodinha ainda pode mexer nele")
+
+    def test_o_erro_leva_ate_o_campo(self):
+        """O atalho do topo é um link para o campo -- e ele tem que chegar lá."""
+        self.no_telefone()
+        self.abrir("/produtos/novo")
+        self.pg.wait_for_selector("main form button[type=submit]")
+        # Espaco em branco passa pelo `required` do navegador e e recusado pelo
+        # servidor -- e e o caminho do servidor que este teste quer exercitar.
+        # Com o campo vazio, quem barra e a bolha do proprio navegador, que ja
+        # e a primeira linha de defesa e nao chega a fazer a viagem.
+        self.pg.fill("[name=nome]", "   ")
+        self.pg.click("main form button[type=submit]")
+        self.pg.wait_for_selector(".recado.erro")
+        self.pg.click('.recado.erro a')
+        self.pg.wait_for_timeout(300)
+        # O endereço, e não só o resultado: o campo com erro deste formulário
+        # fica no alto, então "ficou na tela" passaria até com href="#".
+        self.assertEqual(self.pg.evaluate("() => location.hash"), "#campo-nome")
+        dentro = self.pg.evaluate("""() => {
+            const c = document.querySelector('.campo.com-erro');
+            const r = c.getBoundingClientRect();
+            return r.top >= 0 && r.bottom <= window.innerHeight;
+        }""")
+        self.assertTrue(dentro, "o atalho não trouxe o campo para a tela")
+
+
 class TesteACoisaCabeNaMao(NoNavegador):
     """A promessa do U3, medida onde ela vale: num navegador de 420 px.
 

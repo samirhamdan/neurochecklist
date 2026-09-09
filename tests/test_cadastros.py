@@ -281,7 +281,10 @@ class TesteTelas(unittest.TestCase):
         r = self.cliente.post("/filamentos/novo",
                               data={"nome": "PLA X", "cor": "Bordô"})
         self.assertEqual(r.status_code, 400)
-        self.assertIn("cores do catalogo", r.get_data(as_text=True))
+        corpo = r.get_data(as_text=True)
+        self.assertTrue("cores do catálogo" in corpo, "a tela precisa dizer o motivo")
+        # Desde o U4 o erro sabe de qual campo ele e, e a tela marca o campo.
+        self.assertTrue('id="campo-cor"' in corpo, "o erro precisa apontar o campo")
 
     def test_lista_de_produto_mostra_custo_e_margem(self):
         fil = self.dados.salvar_filamento(

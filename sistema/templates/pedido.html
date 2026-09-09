@@ -3,6 +3,8 @@
 {% block corpo %}bancada{% endblock %}
 {% block conteudo %}
 {% include "_topo.html" %}
+{# `with context`: sem isto `erro` e `campo_erro` chegam indefinidos dentro da macro. #}
+{% import "_erro.html" as av with context %}
 <main id="conteudo" class="pagina">
   <div class="cabecalho-lista">
     <h2 class="secao">{{ 'Pedido nº %s'|format(atual.id) if atual and atual.id else 'Novo pedido' }}</h2>
@@ -10,13 +12,13 @@
       <span class="etiqueta {{ 'azul' if atual.status == 'aprovado' else 'cinza' }}">{{ atual.status }}</span>
     {% endif %}
   </div>
-  {% if erro %}<div class="recado erro">{{ erro }}</div>{% endif %}
+  {{ av.aviso() }}
 
-  <form class="duas-colunas" method="post">
+  <form class="duas-colunas" method="post" data-avisar>
     <div class="cartao formulario">
       <h3 class="titulo-cartao">Quem e quando</h3>
       <div class="linha">
-        <label class="campo cresce"><span>Cliente</span>
+        <label class="campo cresce{{ ' com-erro' if campo_erro == 'cliente_id' }}" id="campo-cliente_id"><span>Cliente</span>
           <select name="cliente_id" id="cliente" required>
             <option value="">Selecione</option>
             {% for c in clientes %}
@@ -24,16 +26,18 @@
                     {{ 'selected' if atual and atual.cliente_id|int == c.id }}>{{ c.nome }}</option>
             {% endfor %}
           </select>
-        </label>
-        <label class="campo"><span>Prazo</span>
+        {% if campo_erro == 'cliente_id' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+        <label class="campo{{ ' com-erro' if campo_erro == 'prazo' }}" id="campo-prazo"><span>Prazo</span>
           <input name="prazo" type="date" value="{{ (atual and atual.prazo) or '' }}">
-        </label>
+        {% if campo_erro == 'prazo' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
       </div>
       <p class="nota" style="margin-top:0">Cliente novo?
         <a href="{{ url_for('editar_cliente') }}">Cadastre aqui</a> e volte.</p>
 
       <div class="linha">
-        <label class="campo cresce"><span>Canal deste pedido</span>
+        <label class="campo cresce{{ ' com-erro' if campo_erro == 'canal' }}" id="campo-canal"><span>Canal deste pedido</span>
           <select name="canal" id="canal">
             <option value="">Herdar do cliente</option>
             {% for c in canais %}
@@ -41,20 +45,24 @@
                     {{ 'selected' if atual and atual.canal == c.nome }}>{{ c.nome }}{% if c.comissao %} — {{ c.comissao|numero(1) }}%{% endif %}</option>
             {% endfor %}
           </select>
-        </label>
-        <label class="campo"><span>Nº no canal</span>
+        {% if campo_erro == 'canal' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+        <label class="campo{{ ' com-erro' if campo_erro == 'id_no_canal' }}" id="campo-id_no_canal"><span>Nº no canal</span>
           <input name="id_no_canal" maxlength="40" placeholder="pedido da Shopee"
                  value="{{ (atual and atual.id_no_canal) or '' }}">
-        </label>
-        <label class="campo"><span>Comissão %</span>
+        {% if campo_erro == 'id_no_canal' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+        <label class="campo{{ ' com-erro' if campo_erro == 'comissao' }}" id="campo-comissao"><span>Comissão %</span>
           <input name="comissao" type="number" step="0.1" min="0" max="100"
                  placeholder="do canal"
-                 value="{{ '%.1f'|format(atual.comissao) if atual and atual.comissao else '' }}">
-        </label>
+                 value="{{ '%.1f'|format(atual.comissao) if atual and atual.comissao else '' }}" inputmode="decimal">
+        {% if campo_erro == 'comissao' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
       </div>
-      <label class="campo"><span>Observação</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'observacao' }}" id="campo-observacao"><span>Observação</span>
         <input name="observacao" maxlength="200" placeholder="Combinado com o cliente, entrega, detalhe da arte"
                value="{{ (atual and atual.observacao) or '' }}">
+        {% if campo_erro == 'observacao' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
 
       <h3 class="titulo-cartao">Itens</h3>
@@ -82,8 +90,8 @@
               <option value="{{ cor }}" {{ 'selected' if i.cor == cor }}>{{ cor }}</option>
               {% endfor %}
             </select></td>
-            <td><input name="item_qtd" type="number" step="1" min="1" class="num" value="{{ i.quantidade|round|int }}"></td>
-            <td><input name="item_valor" type="number" step="0.01" min="0" class="num" value="{{ '%.2f'|format(i.valor_unit or 0) }}"></td>
+            <td><input name="item_qtd" type="number" step="1" min="1" class="num" value="{{ i.quantidade|round|int }}" inputmode="numeric"></td>
+            <td><input name="item_valor" type="number" step="0.01" min="0" class="num" value="{{ '%.2f'|format(i.valor_unit or 0) }}" inputmode="decimal"></td>
             <td><button type="button" class="tirar" title="Remover">×</button></td>
           </tr>
         {% endfor %}
@@ -110,11 +118,14 @@
           de salvar, dá para aprovar.</p>
         {% endif %}
         <input type="hidden" name="status" value="{{ (atual and atual.status) or 'orcamento' }}">
-        <div class="acoes">
-          <button class="botao" type="submit">Salvar</button>
-          <a class="botao vazado" href="{{ url_for('lista_pedidos') }}">Voltar</a>
-        </div>
       </div>
+    </div>
+
+    {# Ver o comentario em produto.html: a barra e do formulario, e sticky so
+       gruda dentro do proprio pai. #}
+    <div class="acoes principal">
+      <button class="botao" type="submit">Salvar</button>
+      <a class="botao vazado" href="{{ url_for('lista_pedidos') }}">Voltar</a>
     </div>
   </form>
 
@@ -206,8 +217,8 @@
       <option value="">—</option>
       {% for cor in cores %}<option value="{{ cor }}">{{ cor }}</option>{% endfor %}
     </select></td>
-    <td><input name="item_qtd" type="number" step="1" min="1" class="num" value="1"></td>
-    <td><input name="item_valor" type="number" step="0.01" min="0" class="num"></td>
+    <td><input name="item_qtd" type="number" step="1" min="1" class="num" value="1" inputmode="numeric"></td>
+    <td><input name="item_valor" type="number" step="0.01" min="0" class="num" inputmode="decimal"></td>
     <td><button type="button" class="tirar" title="Remover">×</button></td>
   </tr>
 </template>

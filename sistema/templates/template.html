@@ -3,35 +3,42 @@
 {% block corpo %}bancada{% endblock %}
 {% block conteudo %}
 {% include "_topo.html" %}
+{# `with context`: sem isto `erro` e `campo_erro` chegam indefinidos dentro da macro. #}
+{% import "_erro.html" as av with context %}
 <main id="conteudo" class="pagina estreita">
   <h2 class="secao">{{ (atual and atual.modelo) or 'Novo template' }}</h2>
-  {% if erro %}<div class="recado erro">{{ erro }}</div>{% endif %}
+  {{ av.aviso() }}
 
-  <form class="cartao formulario" method="post">
+  <form class="cartao formulario" method="post" data-avisar>
     <div class="linha">
-      <label class="campo"><span>SKU</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'sku' }}" id="campo-sku"><span>SKU</span>
         <input name="sku" required maxlength="14" placeholder="M3D-TB-007"
                value="{{ (atual and atual.sku) or '' }}">
+        {% if campo_erro == 'sku' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
-      <label class="campo cresce"><span>Modelo</span>
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'modelo' }}" id="campo-modelo"><span>Modelo</span>
         <input name="modelo" required maxlength="60" placeholder="Nome + idade"
                value="{{ (atual and atual.modelo) or '' }}">
+        {% if campo_erro == 'modelo' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
     </div>
     <div class="linha">
-      <label class="campo cresce"><span>Categoria</span>
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'categoria' }}" id="campo-categoria"><span>Categoria</span>
         <input name="categoria" maxlength="40" placeholder="Aniversário infantil"
                value="{{ (atual and atual.categoria) or '' }}">
+        {% if campo_erro == 'categoria' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
-      <label class="campo cresce"><span>Licença</span>
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'licenca' }}" id="campo-licenca"><span>Licença</span>
         <input name="licenca" maxlength="40" placeholder="própria"
                value="{{ (atual and atual.licenca) or '' }}">
+        {% if campo_erro == 'licenca' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
     </div>
-    <label class="campo"><span>Resumo — é o que o cliente lê no cartão</span>
+    <label class="campo{{ ' com-erro' if campo_erro == 'resumo' }}" id="campo-resumo"><span>Resumo — é o que o cliente lê no cartão</span>
       <input name="resumo" maxlength="120" placeholder="O nome com a idade grande embaixo."
              value="{{ (atual and atual.resumo) or '' }}">
-    </label>
+        {% if campo_erro == 'resumo' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
 
     <h3 class="titulo-cartao">O que o cliente preenche</h3>
     <label class="marca-caixa">
@@ -43,17 +50,20 @@
       Idade ou número
     </label>
     <div class="linha">
-      <label class="campo"><span>Limite do nome</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'limite_nome' }}" id="campo-limite_nome"><span>Limite do nome</span>
         <input name="limite_nome" type="number" min="1" max="30"
-               value="{{ (atual and atual.limite_nome) or 12 }}">
+               value="{{ (atual and atual.limite_nome) or 12 }}" inputmode="decimal">
+        {% if campo_erro == 'limite_nome' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
-      <label class="campo"><span>Limite do número</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'limite_numero' }}" id="campo-limite_numero"><span>Limite do número</span>
         <input name="limite_numero" type="number" min="0" max="6"
-               value="{{ (atual and atual.limite_numero) or 2 }}">
+               value="{{ (atual and atual.limite_numero) or 2 }}" inputmode="decimal">
+        {% if campo_erro == 'limite_numero' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
-      <label class="campo cresce"><span>Frase fixa</span>
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'frase' }}" id="campo-frase"><span>Frase fixa</span>
         <input name="frase" maxlength="20" placeholder="PARABÉNS"
                value="{{ (atual and atual.frase) or '' }}">
+        {% if campo_erro == 'frase' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
     </div>
     <p class="nota" style="margin-top:0">O limite do nome não é enfeite: passando dele a
@@ -61,24 +71,27 @@
 
     <h3 class="titulo-cartao">O desenho</h3>
     <div class="linha">
-      <label class="campo"><span>Fonte</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'fonte' }}" id="campo-fonte"><span>Fonte</span>
         <select name="fonte">
           {% for f in fontes %}
           <option value="{{ f }}" {{ 'selected' if atual and atual.fonte == f }}>{{ f }}</option>
           {% endfor %}
         </select>
+        {% if campo_erro == 'fonte' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
-      <label class="campo"><span>Decoração</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'forma' }}" id="campo-forma"><span>Decoração</span>
         <select name="forma">
           {% for f in formas %}
           <option value="{{ f }}" {{ 'selected' if atual and atual.forma == f }}>
             {{ {'': 'nenhuma', 'coracao': 'coração', 'estrela': 'estrela'}[f] }}</option>
           {% endfor %}
         </select>
+        {% if campo_erro == 'forma' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
-      <label class="campo"><span>Arco (graus)</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'arco' }}" id="campo-arco"><span>Arco (graus)</span>
         <input name="arco" type="number" min="0" max="90" step="1"
-               value="{{ ((atual.arco or 0)|round|int) if atual else 0 }}">
+               value="{{ ((atual.arco or 0)|round|int) if atual else 0 }}" inputmode="numeric">
+        {% if campo_erro == 'arco' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
     </div>
     <label class="marca-caixa">
@@ -88,9 +101,10 @@
 
     <h3 class="titulo-cartao">Preço e situação</h3>
     <div class="linha">
-      <label class="campo"><span>Preço fixo (R$)</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'preco' }}" id="campo-preco"><span>Preço fixo (R$)</span>
         <input name="preco" type="number" step="0.01" min="0" placeholder="0"
-               value="{{ '%.2f'|format(atual.preco) if (atual and atual.preco) else '' }}">
+               value="{{ '%.2f'|format(atual.preco) if (atual and atual.preco) else '' }}" inputmode="decimal">
+        {% if campo_erro == 'preco' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
     </div>
     <p class="nota" style="margin-top:0">Em branco ou zero, o preço sai pelo peso, como no
@@ -101,7 +115,7 @@
     </label>
     <input type="hidden" name="publicado" value="{{ 1 if atual and atual.publicado else 0 }}">
 
-    <div class="acoes">
+    <div class="acoes principal">
       <button class="botao" type="submit">Salvar</button>
       <a class="botao vazado" href="{{ url_for('lista_templates') }}">Voltar</a>
     </div>

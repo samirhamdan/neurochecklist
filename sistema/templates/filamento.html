@@ -3,46 +3,55 @@
 {% block corpo %}bancada{% endblock %}
 {% block conteudo %}
 {% include "_topo.html" %}
+{# `with context`: sem isto `erro` e `campo_erro` chegam indefinidos dentro da macro. #}
+{% import "_erro.html" as av with context %}
 <main id="conteudo" class="pagina estreita">
   <h2 class="secao">{{ 'Editar filamento' if atual and atual.id else 'Novo filamento' }}</h2>
-  {% if erro %}<div class="recado erro">{{ erro }}</div>{% endif %}
-  <form class="cartao formulario" method="post">
+  {{ av.aviso() }}
+  <form class="cartao formulario" method="post" data-avisar>
     <div class="linha">
-      <label class="campo cresce"><span>Nome</span>
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'nome' }}" id="campo-nome"><span>Nome</span>
         <input name="nome" required maxlength="80" placeholder="Ex: PLA Basic Preto"
                value="{{ (atual and atual.nome) or '' }}">
+        {% if campo_erro == 'nome' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
-      <label class="campo"><span>Marca</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'marca' }}" id="campo-marca"><span>Marca</span>
         <input name="marca" maxlength="40" placeholder="Bambu"
                value="{{ (atual and atual.marca) or '' }}">
+        {% if campo_erro == 'marca' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
     </div>
     <div class="linha">
-      <label class="campo"><span>Tipo</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'tipo' }}" id="campo-tipo"><span>Tipo</span>
         <input name="tipo" maxlength="20" placeholder="PLA"
                value="{{ (atual and atual.tipo) or 'PLA' }}">
+        {% if campo_erro == 'tipo' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
-      <label class="campo cresce"><span>Cor</span>
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'cor' }}" id="campo-cor"><span>Cor</span>
         <select name="cor" required>
           <option value="">Selecione</option>
           {% for nome, hex in cores.items() %}
           <option value="{{ nome }}" {{ 'selected' if atual and atual.cor == nome }}>{{ nome }}</option>
           {% endfor %}
         </select>
+        {% if campo_erro == 'cor' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
     </div>
     <div class="linha">
-      <label class="campo"><span>Estoque (g)</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'gramas' }}" id="campo-gramas"><span>Estoque (g)</span>
         <input name="gramas" type="number" step="1" min="0"
-               value="{{ atual.gramas|round|int if atual else 0 }}">
+               value="{{ atual.gramas|round|int if atual else 0 }}" inputmode="numeric">
+        {% if campo_erro == 'gramas' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
-      <label class="campo"><span>Mínimo (g)</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'minimo' }}" id="campo-minimo"><span>Mínimo (g)</span>
         <input name="minimo" type="number" step="1" min="0"
-               value="{{ atual.minimo|round|int if atual else 300 }}">
+               value="{{ atual.minimo|round|int if atual else 300 }}" inputmode="numeric">
+        {% if campo_erro == 'minimo' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
-      <label class="campo"><span>Preço por kg</span>
+      <label class="campo{{ ' com-erro' if campo_erro == 'preco_kg' }}" id="campo-preco_kg"><span>Preço por kg</span>
         <input name="preco_kg" type="number" step="0.01" min="0" placeholder="120,00"
-               value="{{ '%.2f'|format(atual.preco_manual) if atual and atual.preco_manual else '' }}">
+               value="{{ '%.2f'|format(atual.preco_manual) if atual and atual.preco_manual else '' }}" inputmode="decimal">
+        {% if campo_erro == 'preco_kg' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
     </div>
     {% if atual and atual.veio_de_compra %}
@@ -54,7 +63,7 @@
       <input type="checkbox" name="ativo" value="1" {{ 'checked' if not atual or atual.ativo }}>
       Ativo — aparece para escolher no produto
     </label>
-    <div class="acoes">
+    <div class="acoes principal">
       <button class="botao" type="submit">Salvar</button>
       <a class="botao vazado" href="{{ url_for('lista_filamentos') }}">Cancelar</a>
     </div>

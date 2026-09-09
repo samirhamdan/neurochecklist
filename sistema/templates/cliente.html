@@ -3,38 +3,50 @@
 {% block corpo %}bancada{% endblock %}
 {% block conteudo %}
 {% include "_topo.html" %}
+{# `with context`: sem isto `erro` e `campo_erro` chegam indefinidos dentro da macro. #}
+{% import "_erro.html" as av with context %}
 <main id="conteudo" class="pagina estreita">
   <h2 class="secao">{{ 'Editar cliente' if atual and atual.id else 'Novo cliente' }}</h2>
-  {% if erro %}<div class="recado erro">{{ erro }}</div>{% endif %}
-  <form class="cartao formulario" method="post">
+  {{ av.aviso() }}
+  <form class="cartao formulario" method="post" data-avisar>
     <div class="linha">
-      <label class="campo cresce"><span>Nome</span>
-        <input name="nome" required maxlength="90" placeholder="Ex: Ana Paula Ribeiro"
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'nome' }}" id="campo-nome"><span>Nome</span>
+        <input name="nome" required maxlength="90" autocomplete="name"
+               placeholder="Ex: Ana Paula Ribeiro"
                value="{{ (atual and atual.nome) or '' }}">
+        {% if campo_erro == 'nome' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
-      <label class="campo"><span>WhatsApp</span>
-        <input name="whatsapp" maxlength="24" placeholder="(67) 99999-0000"
+      <label class="campo{{ ' com-erro' if campo_erro == 'whatsapp' }}" id="campo-whatsapp"><span>WhatsApp</span>
+        {# O unico campo da casa que abria o teclado de LETRAS -- e o mais
+           digitado no telefone. `tel` traz o teclado de discagem, com os
+           parenteses e o traco. `autocomplete` deixa o proprio aparelho
+           preencher. #}
+        <input name="whatsapp" type="tel" inputmode="tel" autocomplete="tel"
+               maxlength="24" placeholder="(67) 99999-0000"
                value="{{ (atual and atual.whatsapp) or '' }}">
+        {% if campo_erro == 'whatsapp' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
     </div>
-    <label class="campo"><span>Canal de origem</span>
+    <label class="campo{{ ' com-erro' if campo_erro == 'canal' }}" id="campo-canal"><span>Canal de origem</span>
       <select name="canal">
         <option value="">Não informado</option>
         {% for c in canais %}
         <option value="{{ c }}" {{ 'selected' if atual and atual.canal == c }}>{{ c }}</option>
         {% endfor %}
       </select>
-    </label>
-    <label class="campo"><span>Observação</span>
+        {% if campo_erro == 'canal' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+    <label class="campo{{ ' com-erro' if campo_erro == 'observacao' }}" id="campo-observacao"><span>Observação</span>
       <input name="observacao" maxlength="200"
              placeholder="Preferências, endereço, o que lembrar na próxima"
              value="{{ (atual and atual.observacao) or '' }}">
-    </label>
+        {% if campo_erro == 'observacao' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
     <label class="marca-caixa">
       <input type="checkbox" name="ativo" value="1" {{ 'checked' if not atual or atual.ativo }}>
       Ativo
     </label>
-    <div class="acoes">
+    <div class="acoes principal">
       <button class="botao" type="submit">Salvar</button>
       <a class="botao vazado" href="{{ url_for('lista_clientes') }}">Cancelar</a>
     </div>

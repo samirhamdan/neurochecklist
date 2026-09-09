@@ -298,6 +298,23 @@ CORES = {
 }
 
 
+class ErroDeCampo(ValueError):
+    """Um erro que sabe DE QUAL campo ele e.
+
+    O topo da pagina diz que algo deu errado; so o campo diz o que. Num
+    cadastro de dezessete campos, "produto precisa de nome" la em cima e uma
+    caca ao tesouro -- e o campo que falta pode estar fora da parte visivel
+    da tela.
+
+    Herda de ValueError de proposito: quem ja tratava ValueError continua
+    tratando, e quem quiser o campo pergunta por `.campo`.
+    """
+
+    def __init__(self, campo: str, mensagem: str):
+        super().__init__(mensagem)
+        self.campo = campo
+
+
 def caminho_banco() -> Path:
     return PASTA / "sistema.sqlite3"
 
@@ -759,8 +776,12 @@ def campos_filamento(dados: dict) -> dict:
 
 def salvar_filamento(dados: dict, autor: str, id_: int | None = None) -> int:
     campos = campos_filamento(dados)
-    if not campos["nome"] or campos["cor"] not in CORES:
-        raise ValueError("filamento precisa de nome e de uma das cores do catalogo")
+    if not campos["nome"]:
+        raise ErroDeCampo("nome", "Dê um nome ao filamento — é ele que aparece "
+                                  "na hora de escolher no produto.")
+    if campos["cor"] not in CORES:
+        raise ErroDeCampo("cor", "Escolha uma das cores do catálogo. São as mesmas "
+                                 "11 do gerador de letreiros, de propósito.")
     with conectar() as conn:
         if id_:
             # Mexer no estoque pela tela e um evento como qualquer outro. Sem
@@ -824,7 +845,7 @@ def campos_insumo(dados: dict) -> dict:
 def salvar_insumo(dados: dict, autor: str, id_: int | None = None) -> int:
     campos = campos_insumo(dados)
     if not campos["nome"]:
-        raise ValueError("insumo precisa de nome")
+        raise ErroDeCampo("nome", "Dê um nome ao insumo.")
     with conectar() as conn:
         if id_:
             antes = conn.execute("SELECT quantidade FROM insumos WHERE id = ?",
@@ -906,7 +927,7 @@ def salvar_produto(dados: dict, autor: str, id_: int | None = None,
                    vinculos: list[tuple[int, float]] | None = None) -> int:
     campos = campos_produto(dados)
     if not campos["nome"]:
-        raise ValueError("produto precisa de nome")
+        raise ErroDeCampo("nome", "Dê um nome ao produto.")
     colunas = ", ".join(f"{c}=:{c}" for c in campos)
     with conectar() as conn:
         if id_:
@@ -955,7 +976,7 @@ def campos_cliente(dados: dict) -> dict:
 def salvar_cliente(dados: dict, autor: str, id_: int | None = None) -> int:
     campos = campos_cliente(dados)
     if not campos["nome"]:
-        raise ValueError("cliente precisa de nome")
+        raise ErroDeCampo("nome", "Dê um nome ao cliente.")
     with conectar() as conn:
         if id_:
             conn.execute(
@@ -1047,7 +1068,9 @@ def salvar_pedido(dados: dict, autor: str, id_: int | None = None,
                 nome = linha["nome"]
                 canal = canal or (linha["canal"] or "")
         if not nome:
-            raise ValueError("pedido precisa de cliente")
+            raise ErroDeCampo("cliente_id",
+                              "Escolha o cliente do pedido — é dele que vem o canal, "
+                              "e é o canal que responde de onde vêm seus pedidos.")
 
         situacao = _limpo(dados.get("status"), "orcamento")
         if situacao not in SITUACOES:
@@ -1072,8 +1095,11 @@ def salvar_pedido(dados: dict, autor: str, id_: int | None = None,
                 "SELECT id FROM pedidos WHERE canal = ? AND id_no_canal = ? AND id <> ?",
                 (canal, campos["id_no_canal"], id_ or -1)).fetchone()
             if ja:
-                raise ValueError(
-                    f"o pedido {campos['id_no_canal']} de {canal} ja entrou (nº {ja['id']})")
+                raise ErroDeCampo(
+                    "id_no_canal",
+                    f"O pedido {campos['id_no_canal']} de {canal} já entrou "
+                    f"(nº {ja['id']}). O mesmo aviso chegando duas vezes não pode "
+                    f"virar dois pedidos.")
 
         if id_:
             colunas = ", ".join(f"{c}=:{c}" for c in campos)
@@ -1431,22 +1457,26 @@ def salvar_template(dados: dict, autor: str, sku_antigo: str | None = None) -> s
     if campos["tipo"] not in prefixos:
         raise ValueError(f"nao existe gerador para a peca '{campos['tipo']}'")
     if not RE_SKU.match(campos["sku"]):
-        raise ValueError("o SKU tem que seguir o padrao M3D-XX-000")
+        raise ErroDeCampo("sku", "O SKU tem que seguir o padrão M3D-XX-000.")
     esperado = prefixos[campos["tipo"]]
     if campos["sku"].split("-")[1] != esperado:
         # SKU de topo num template de chaveiro nao quebra nada hoje, e por isso
         # mesmo passaria: seis meses depois ninguem sabe o que M3D-TB-042 e.
-        raise ValueError(f"template de {campos['tipo']} usa SKU M3D-{esperado}-000")
+        raise ErroDeCampo("sku", f"Template de {campos['tipo']} usa SKU "
+                                 f"M3D-{esperado}-000.")
     if not campos["modelo"]:
-        raise ValueError("o template precisa de um nome de modelo")
+        raise ErroDeCampo("modelo", "Dê um nome ao modelo — é ele que aparece "
+                                    "no gerador.")
     if campos["forma"] not in FORMAS:
-        raise ValueError("essa forma nao existe no gerador")
+        raise ErroDeCampo("forma", "Essa forma não existe no gerador.")
     if campos["limite_nome"] < 1:
-        raise ValueError("o limite de letras do nome tem que ser maior que zero")
+        raise ErroDeCampo("limite_nome",
+                          "O limite de letras do nome tem que ser maior que zero.")
     # §18 e §7: licenca e campo obrigatorio, e publicar sem ela e o erro caro.
     # Em teste, sem licenca, tudo bem -- e um rascunho seu.
     if campos["publicado"] and not campos["licenca"]:
-        raise ValueError("nao da para publicar sem dizer a licenca do template")
+        raise ErroDeCampo("licenca", "Não dá para publicar sem dizer a licença "
+                                     "do template — de onde veio o desenho.")
 
     with conectar() as conn:
         existe = conn.execute("SELECT sku FROM templates WHERE sku = ?",
@@ -1456,7 +1486,7 @@ def salvar_template(dados: dict, autor: str, sku_antigo: str | None = None) -> s
                                 (sku_antigo,)).fetchone():
                 raise ValueError("template nao encontrado")
             if existe and campos["sku"] != sku_antigo:
-                raise ValueError("ja existe um template com esse SKU")
+                raise ErroDeCampo("sku", "Já existe um template com esse SKU.")
             conn.execute(
                 "UPDATE templates SET sku=:sku, tipo=:tipo, modelo=:modelo, categoria=:categoria,"
                 " resumo=:resumo, campos=:campos, frase=:frase, fonte=:fonte, forma=:forma,"
@@ -1471,7 +1501,7 @@ def salvar_template(dados: dict, autor: str, sku_antigo: str | None = None) -> s
                              (campos["sku"], sku_antigo))
         else:
             if existe:
-                raise ValueError("ja existe um template com esse SKU")
+                raise ErroDeCampo("sku", "Já existe um template com esse SKU.")
             conn.execute(
                 "INSERT INTO templates (sku, tipo, modelo, categoria, resumo, campos,"
                 " frase, fonte, forma, arco, base, limite_nome, limite_numero, licenca,"
@@ -1490,7 +1520,8 @@ def publicar_template(sku: str, publicado: bool, autor: str) -> None:
     if not atual:
         raise ValueError("template nao encontrado")
     if publicado and not atual["licenca"]:
-        raise ValueError("nao da para publicar sem dizer a licenca do template")
+        raise ErroDeCampo("licenca", "Não dá para publicar sem dizer a licença "
+                                     "do template — de onde veio o desenho.")
     with conectar() as conn:
         conn.execute("UPDATE templates SET publicado = ? WHERE sku = ?",
                      (1 if publicado else 0, sku))
@@ -1576,7 +1607,9 @@ def salvar_compra(dados: dict, autor: str, id_: int | None = None,
                   itens: list[dict] | None = None) -> int:
     itens = [i for i in (itens or []) if i.get("alvo_id") and i.get("quantidade")]
     if not itens:
-        raise ValueError("a compra precisa de pelo menos um item")
+        raise ErroDeCampo("item_tipo", "A compra precisa de pelo menos um item com "
+                                       "quantidade — é o item que move o estoque e "
+                                       "corrige o preço.")
     campos = dict(
         data=_limpo(dados.get("data")) or agora()[:10],
         fornecedor=_limpo(dados.get("fornecedor")),

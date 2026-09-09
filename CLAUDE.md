@@ -255,6 +255,64 @@ marca, `display:none`. O foco simplesmente ficava fora da gaveta recém-aberta.
 Pior: o teste do Escape passava, porque "voltar o foco para o botão" era um
 no-op. Filtre por `getClientRects().length > 0`.
 
+### O erro sabe de qual campo ele é
+
+`dados.ErroDeCampo(campo, mensagem)` — herda de `ValueError`, então quem já
+tratava continua tratando. `app.py` traduz com `_erro(excecao)`, que devolve
+`{erro, campo_erro}`; o topo vira um atalho (`_erro.html`) e a mensagem mora
+embaixo do campo, em `<b class="recado-campo">`.
+
+Cada `<label class="campo">` tem `id="campo-<name>"`. Há teste que varre o
+`dados.py` atrás de todo `ErroDeCampo("X"` e cobra que exista um
+`id="campo-X"` em alguma tela — renomear de um lado só deixaria o atalho do
+topo levando a lugar nenhum, em silêncio.
+
+Nem todo erro é de um campo. Quando não é, o topo mostra a mensagem como
+antes; a compra sem item aponta o **título da tabela**, que é o que precisa
+ganhar linha.
+
+### `position:sticky` só gruda dentro do próprio pai
+
+A barra de Salvar em produto e pedido morava num cartão da coluna lateral:
+sticky ali não tem para onde grudar. Ela virou filha do `<form>` — e isso
+também é mais certo, porque Salvar é do formulário inteiro.
+
+Sticky faz a coisa **condicional** de graça: num cadastro curto a barra fica
+em fluxo no fim, sem custar nada; num comprido gruda no pé da tela. Barra
+`fixed` custaria 60 px de tela em toda tela, e taparia o último campo no fim
+do formulário — há teste para os dois lados.
+
+### Proteção de formulário mora na casca, não na tela
+
+`base.html` carrega um script que vale para todo `form[data-avisar]`: aviso
+antes de sair com alteração não salva, e `blur()` no campo numérico ao rolar
+a página. Escrito por formulário, o próximo cadastro nasceria sem nenhum dos
+dois — há teste que reprova uma segunda cópia de `beforeunload` nas telas.
+
+Salvar e Cancelar **não** perguntam: um é a gravação, o outro é a desistência.
+Sem essa parte, o aviso aparecia justamente no botão de desistir.
+
+Comparar o formulário inteiro (`new URLSearchParams(new FormData(form))`) e
+não uma lista de campos guardada no começo: as linhas de item que o
+JavaScript da tela cria depois não estariam na lista.
+
+### Rodinha do mouse em `<input type=number>` muda o valor
+
+Comportamento padrão do navegador: com o campo focado, rolar a página troca
+83,7 g por 82,7 g e ninguém vê. O peso e o tempo saem do arquivo 3D
+justamente para não serem chute — e um chute entrava assim, sem toque em
+tecla nenhuma.
+
+### `type="number"` já abre teclado numérico
+
+O plano de interface dizia que os campos de número abriam o alfabético. A
+medida desmentiu: dos 63 campos, **um** abria o teclado de letras — o
+WhatsApp do cliente, que é o mais digitado no telefone. O `inputmode` ainda
+vale (`numeric` para `step=1`, `decimal` para o resto), porque o iPhone entrega
+`type=number` sem a vírgula em várias versões.
+
+Medir antes de consertar vale para plano meu também.
+
 ### A linha e o cartão são o MESMO DOM
 
 Desde o U3, abaixo de 640 px cada `<tr>` vira um cartão por CSS. Não existe

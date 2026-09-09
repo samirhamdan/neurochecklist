@@ -14,5 +14,60 @@
 </head>
 <body class="{% block corpo %}{% endblock %}">
 {% block conteudo %}{% endblock %}
+
+<script>
+/* U4 -- duas proteções que todo formulário da casa ganha de graça.
+
+   Vive aqui, na casca, e não em cada tela: escrito por formulário, o próximo
+   cadastro nasceria sem nenhuma das duas. Ele não faz nada em página que não
+   tem formulário. */
+(function () {
+  "use strict";
+
+  /* 1. Rodinha do mouse em campo numérico MUDA o valor, em silêncio.
+     É comportamento padrão do navegador em <input type=number>: com o campo
+     focado, rolar a página troca 83,7 g por 82,7 g e ninguém vê. O peso e o
+     tempo saem do arquivo 3D justamente para não serem chute -- e um chute
+     entra assim, sem toque em tecla nenhuma. */
+  document.addEventListener("wheel", function (ev) {
+    const alvo = document.activeElement;
+    if (alvo && alvo.type === "number" && alvo === ev.target) alvo.blur();
+  }, {passive: true});
+
+  /* 2. Sair no meio sem salvar.
+     O navegador só deixa perguntar se houve interação com a página -- é uma
+     regra dele contra armadilha de saída, e não uma limitação nossa. */
+  const formularios = [...document.querySelectorAll("form[data-avisar]")];
+  if (!formularios.length) return;
+
+  function retrato(form) {
+    /* O que o formulário TEM agora, em texto. Comparar o retrato inteiro
+       acha qualquer campo -- inclusive as linhas de item que o JavaScript da
+       tela cria depois, que uma lista de campos guardada no começo perderia. */
+    return new URLSearchParams(new FormData(form)).toString();
+  }
+
+  const inicio = new Map(formularios.map(f => [f, retrato(f)]));
+  let saindo = false;
+
+  formularios.forEach(function (form) {
+    /* Salvar não pode perguntar: a saída é a gravação. */
+    form.addEventListener("submit", () => { saindo = true; });
+    /* Cancelar/Voltar também não: quem clica ali já disse que desiste.
+       Sem isto o aviso aparecia justamente no botão de desistir, que é onde
+       ele mais irrita. */
+    form.querySelectorAll("a.botao").forEach(a =>
+      a.addEventListener("click", () => { saindo = true; }));
+  });
+
+  window.addEventListener("beforeunload", function (ev) {
+    if (saindo) return;
+    const mudou = formularios.some(f => retrato(f) !== inicio.get(f));
+    if (!mudou) return;
+    ev.preventDefault();
+    ev.returnValue = "";     /* navegador antigo */
+  });
+})();
+</script>
 </body>
 </html>
