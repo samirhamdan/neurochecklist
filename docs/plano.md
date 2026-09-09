@@ -525,22 +525,52 @@ STL por geração encheria o disco da VPS em um mês de festa.
 **Você confere:** cadastre um template do zero, deixe em teste, confirme que
 ele não aparece na vitrine, publique e confirme que aparece.
 
-## Sprint C4 — Os geradores seguintes
+## Sprint C4 — Os geradores seguintes ✅ FEITO (o primeiro deles)
 **Tamanho variável · depende do C1**
 
-Chaveiro, placa, display, lembrancinha, caixa, organizador, vaso, cortador,
-lithophane, mapa. Cada um é **um módulo de geometria mais templates** — a
-plataforma não muda.
+**A escolha, primeiro.** Sua regra é *"não invente nada que não tenha demanda
+de clientes comprovada"*. Dos dez do plano original, o **chaveiro** é o único
+com demanda dentro do próprio sistema: está nos pedidos de exemplo
+("Chaveiro personalizado ×6"), é o exemplo de custo dos testes (9 g, 0,4 h),
+aparece na produção, e é o caso que o módulo de licenças já tratava
+("Chaveiro do Corinthians"). Os outros nove esperam cliente pedindo.
 
-A ordem não decido eu: sai pela demanda que você vê no balcão e pelo que a
-Morumbi Festas puxa junto. O seu §20 já aponta o caminho — a família coerente
-de produtos para a mesma ocasião.
+**O que ele prova.** No C1 eu declarei os parâmetros como dado e **não**
+escrevi o renderizador de formulário, dizendo: *"formulário genérico escrito
+contra UM formulário acerta por acaso; o C2 traz o segundo"*. Agora são dois,
+e com exigências que brigam entre si:
 
-**Regra que vale para todos:** nenhum gerador vai à loja sem passar pelo seu
-§6 e §16. Malha validada pela plataforma e template impresso e aprovado por
-você.
+| | tamanho | campos | onde quebra |
+| --- | --- | --- | --- |
+| Topo de bolo | 12–20 cm | nome + idade | na **conexão** das letras |
+| Chaveiro | 3–7 cm | só o nome | na **parede** do furo |
 
----
+Uma tela serve as duas. O que difere ficou em `pecas.js`; o resto — tela,
+rotas, catálogo, vistoria, estimativa, preço, registro de geração — é da
+plataforma. **Acrescentar a terceira peça é um módulo de geometria mais uma
+entrada no registro.**
+
+**A prova:** as duas peças passam pela mesma matriz de conferência, e todo STL
+gerado sai fechado, manifold e em uma peça só.
+
+**Um bug que eu mesmo criei no C3 e que o C4 expôs:** a semente entrava "uma
+vez na vida do banco". Isso consertava a ressurreição de template apagado —
+mas fechava a porta: os chaveiros nunca chegariam à sua VPS, que é um banco
+que já existe. Agora cada entrada diz **de qual sprint veio**, e só as
+anteriores são dadas por vistas. Template novo chega; o que você apagou fica
+apagado.
+
+**E a armadilha do `[hidden]` de novo:** o chaveiro pede só o nome, e a tela
+mostrava "Idade ou número" assim mesmo — `display` de classe ganha da regra do
+navegador. Terceira vez neste projeto; agora está no CLAUDE.md e tem teste.
+
+**Você confere:** abra **Criar → Chaveiro de nome**, escreva um nome curto em
+5 cm e gere. Depois tente "GUILHERME" em 3 cm: o sistema tem que recusar, e
+dizer que 9 letras em 35 mm é apertado — não uma desculpa genérica.
+
+**Os nove restantes:** placa, display, lembrancinha, caixa, organizador, vaso,
+cortador, lithophane, mapa. Cada um é hoje um módulo de geometria mais uma
+entrada no registro. Me diga qual cliente pediu, e ele entra.
 
 ## Quatro decisões já tomadas
 

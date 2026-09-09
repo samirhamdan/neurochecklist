@@ -182,6 +182,7 @@ CREATE TABLE IF NOT EXISTS canais (
 CREATE TABLE IF NOT EXISTS templates (
     id INTEGER PRIMARY KEY,
     sku TEXT NOT NULL UNIQUE,
+    tipo TEXT NOT NULL DEFAULT 'topo',         -- qual gerador desenha
     modelo TEXT NOT NULL,
     categoria TEXT NOT NULL DEFAULT '',
     resumo TEXT NOT NULL DEFAULT '',
@@ -220,6 +221,17 @@ CREATE TABLE IF NOT EXISTS geracoes (
     preco REAL NOT NULL DEFAULT 0,
     criado_em TEXT NOT NULL,
     criado_por TEXT NOT NULL DEFAULT ''
+);
+
+-- Quais SKUs a semente ja OFERECEU, uma vez cada.
+--
+-- Nao e "a semente ja rodou": com esse marcador, template novo que eu
+-- acrescentasse nunca chegaria a um banco que ja existe -- e a VPS do Samir
+-- e um banco que ja existe. Guardando o que ja foi oferecido, template novo
+-- chega, e template apagado por ele nao volta.
+CREATE TABLE IF NOT EXISTS semente_vista (
+    sku TEXT PRIMARY KEY,
+    visto_em TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS parametros (
@@ -414,6 +426,11 @@ def _migrar(conn: sqlite3.Connection) -> None:
     if faltando:
         conn.executemany("INSERT INTO parametros (chave, valor) VALUES (?, ?)", faltando)
 
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(templates)")}
+    if "tipo" not in colunas:
+        # Ate o C4 so havia topo de bolo, entao todo template existente e topo.
+        conn.execute("ALTER TABLE templates ADD COLUMN tipo TEXT NOT NULL DEFAULT 'topo'")
+
     _semear_templates(conn)
     conn.commit()
 
@@ -428,33 +445,55 @@ def _semear_templates(conn: sqlite3.Connection) -> None:
     Ate o C3 eles moravam dentro de topo.js: acrescentar um template pedia eu
     mexer no codigo, que e exatamente o que o §12 do documento veio resolver.
 
-    A semente entra UMA VEZ NA VIDA DO BANCO, e nao uma vez por SKU. A
-    diferenca importa: por SKU, apagar um template pela tela o trazia de volta
-    na proxima conexao -- o Samir apagava, ele voltava, e nao havia nada na
-    tela explicando. Foi um teste que achou isso, nao o uso.
+    Cada SKU e oferecido UMA VEZ, e a tabela `semente_vista` lembra quais ja
+    foram. Duas coisas dependem disso, e as duas ja quebraram:
 
-    Template novo depois do C3 se cadastra pela tela. E o ponto do sprint.
+      * por SKU presente na tabela de templates (C3), apagar um template pela
+        tela o trazia de volta na proxima conexao -- o Samir apagava, voltava,
+        e nada na tela explicava;
+      * "a semente ja rodou" (a primeira correcao) resolvia aquilo mas fechava
+        a porta: o chaveiro do C4 nunca chegaria a um banco que ja existe, e a
+        VPS do Samir e um banco que ja existe.
+
+    Template novo que ELE cria continua sendo pela tela. E o ponto do C3.
     """
     if not TEMPLATES_INICIAIS.exists():
-        return
-    if conn.execute("SELECT 1 FROM parametros WHERE chave = ?",
-                    (CHAVE_SEMENTE,)).fetchone():
         return
     try:
         iniciais = json.loads(TEMPLATES_INICIAIS.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return
-    conn.execute("INSERT INTO parametros (chave, valor) VALUES (?, 1)", (CHAVE_SEMENTE,))
+    # Cada entrada diz de qual sprint veio (`desde`). Num banco que ja existia
+    # antes desta tabela, marca como vistos so os que aquele banco JA TINHA
+    # recebido -- os do C2. Sem o `desde`, marcar "tudo que esta na semente"
+    # fecharia a porta para os do C4, e o chaveiro nunca chegaria na VPS.
+    antigo = conn.execute("SELECT 1 FROM parametros WHERE chave = ?",
+                          (CHAVE_SEMENTE,)).fetchone()
+    if antigo and not conn.execute("SELECT 1 FROM semente_vista").fetchone():
+        conn.executemany(
+            "INSERT OR IGNORE INTO semente_vista (sku, visto_em) VALUES (?, ?)",
+            [(t["sku"], agora()) for t in iniciais if t.get("desde", "C2") <= "C3"])
+    conn.execute("INSERT OR IGNORE INTO parametros (chave, valor) VALUES (?, 1)",
+                 (CHAVE_SEMENTE,))
+
+    vistos = {r["sku"] for r in conn.execute("SELECT sku FROM semente_vista")}
     tem = {r["sku"] for r in conn.execute("SELECT sku FROM templates")}
-    novos = [t for t in iniciais if t.get("sku") and t["sku"] not in tem]
+    novos = [t for t in iniciais
+             if t.get("sku") and t["sku"] not in tem and t["sku"] not in vistos]
+    if novos:
+        conn.executemany(
+            "INSERT OR IGNORE INTO semente_vista (sku, visto_em) VALUES (?, ?)",
+            [(t["sku"], agora()) for t in novos])
     for t in novos:
         conn.execute(
-            "INSERT INTO templates (sku, modelo, categoria, resumo, campos, frase, fonte,"
-            " forma, arco, base, limite_nome, limite_numero, licenca, preco, publicado,"
-            " ativo, criado_em, criado_por) VALUES (:sku, :modelo, :categoria, :resumo,"
-            " :campos, :frase, :fonte, :forma, :arco, :base, :limite_nome, :limite_numero,"
-            " :licenca, :preco, :publicado, :ativo, :criado_em, 'semente')",
-            {**t, "campos": ",".join(t.get("campos") or ["nome"]),
+            "INSERT INTO templates (sku, tipo, modelo, categoria, resumo, campos, frase,"
+            " fonte, forma, arco, base, limite_nome, limite_numero, licenca, preco,"
+            " publicado, ativo, criado_em, criado_por) VALUES (:sku, :tipo, :modelo,"
+            " :categoria, :resumo, :campos, :frase, :fonte, :forma, :arco, :base,"
+            " :limite_nome, :limite_numero, :licenca, :preco, :publicado, :ativo,"
+            " :criado_em, 'semente')",
+            {**t, "tipo": t.get("tipo", "topo"),
+             "campos": ",".join(t.get("campos") or ["nome"]),
              "criado_em": agora()})
 
 
@@ -1170,24 +1209,43 @@ def _atualizar_preco(conn, tipo: str, alvo_id: int) -> None:
 FORMAS = ("", "coracao", "estrela")
 CAMPOS_TEMPLATE = ("nome", "numero")
 
+# Lido de web/nucleo/pecas.js, que e onde o registro de pecas mora. Escrever a
+# lista aqui a mao seria a copia que ninguem lembra de atualizar no dia de
+# acrescentar a terceira peca.
+PECAS_JS = Path(__file__).resolve().parent.parent / "web" / "nucleo" / "pecas.js"
 
-def templates(so_publicados: bool = False, so_ativos: bool = True) -> list[dict]:
+
+def tipos_de_peca() -> dict[str, str]:
+    """{tipo: prefixo de SKU}, ex.: {"topo": "TB", "chaveiro": "CH"}."""
+    try:
+        texto = PECAS_JS.read_text(encoding="utf-8")
+    except OSError:
+        return {"topo": "TB"}
+    achados = re.findall(r"tipo:\s*'(\w+)',[\s\S]{0,400}?sku:\s*'([A-Z]{2})'", texto)
+    return dict(achados) or {"topo": "TB"}
+
+
+def templates(so_publicados: bool = False, so_ativos: bool = True,
+              tipo: str = "") -> list[dict]:
     """§10: "separar templates em teste dos publicados".
 
     `so_publicados` e a linha entre o painel e a loja. No painel voce ve tudo,
     com o selo de em-teste; na vitrine so entra o que ja saiu da impressora e
     voce publicou. Quem decide qual dos dois e a ROTA, e nao a tela.
     """
-    onde = []
+    onde, args = [], []
     if so_publicados:
         onde.append("publicado = 1")
     if so_ativos:
         onde.append("ativo = 1")
+    if tipo:
+        onde.append("tipo = ?")
+        args.append(tipo)
     filtro = ("WHERE " + " AND ".join(onde)) if onde else ""
     with conectar() as conn:
         linhas = conn.execute(
             f"SELECT t.*, (SELECT COUNT(*) FROM geracoes g WHERE g.sku = t.sku) AS geracoes"
-            f" FROM templates t {filtro} ORDER BY t.sku").fetchall()
+            f" FROM templates t {filtro} ORDER BY t.sku", args).fetchall()
     return [_template_dict(l) for l in linhas]
 
 
@@ -1212,6 +1270,7 @@ def campos_template(dados: dict) -> dict:
               if dados.get(f"campo_{c}") in (1, "1", True, "on") or c == "nome"]
     return dict(
         sku=_limpo(dados.get("sku")).upper(),
+        tipo=_limpo(dados.get("tipo"), "topo"),
         modelo=_limpo(dados.get("modelo")),
         categoria=_limpo(dados.get("categoria")),
         resumo=_limpo(dados.get("resumo")),
@@ -1232,8 +1291,16 @@ def campos_template(dados: dict) -> dict:
 
 def salvar_template(dados: dict, autor: str, sku_antigo: str | None = None) -> str:
     campos = campos_template(dados)
+    prefixos = tipos_de_peca()
+    if campos["tipo"] not in prefixos:
+        raise ValueError(f"nao existe gerador para a peca '{campos['tipo']}'")
     if not RE_SKU.match(campos["sku"]):
-        raise ValueError("o SKU tem que seguir o padrao M3D-TB-000")
+        raise ValueError("o SKU tem que seguir o padrao M3D-XX-000")
+    esperado = prefixos[campos["tipo"]]
+    if campos["sku"].split("-")[1] != esperado:
+        # SKU de topo num template de chaveiro nao quebra nada hoje, e por isso
+        # mesmo passaria: seis meses depois ninguem sabe o que M3D-TB-042 e.
+        raise ValueError(f"template de {campos['tipo']} usa SKU M3D-{esperado}-000")
     if not campos["modelo"]:
         raise ValueError("o template precisa de um nome de modelo")
     if campos["forma"] not in FORMAS:
@@ -1255,7 +1322,7 @@ def salvar_template(dados: dict, autor: str, sku_antigo: str | None = None) -> s
             if existe and campos["sku"] != sku_antigo:
                 raise ValueError("ja existe um template com esse SKU")
             conn.execute(
-                "UPDATE templates SET sku=:sku, modelo=:modelo, categoria=:categoria,"
+                "UPDATE templates SET sku=:sku, tipo=:tipo, modelo=:modelo, categoria=:categoria,"
                 " resumo=:resumo, campos=:campos, frase=:frase, fonte=:fonte, forma=:forma,"
                 " arco=:arco, base=:base, limite_nome=:limite_nome,"
                 " limite_numero=:limite_numero, licenca=:licenca, preco=:preco,"
@@ -1270,12 +1337,12 @@ def salvar_template(dados: dict, autor: str, sku_antigo: str | None = None) -> s
             if existe:
                 raise ValueError("ja existe um template com esse SKU")
             conn.execute(
-                "INSERT INTO templates (sku, modelo, categoria, resumo, campos, frase,"
-                " fonte, forma, arco, base, limite_nome, limite_numero, licenca, preco,"
-                " publicado, ativo, criado_em, criado_por) VALUES (:sku, :modelo,"
-                " :categoria, :resumo, :campos, :frase, :fonte, :forma, :arco, :base,"
-                " :limite_nome, :limite_numero, :licenca, :preco, :publicado, :ativo,"
-                " :criado_em, :criado_por)",
+                "INSERT INTO templates (sku, tipo, modelo, categoria, resumo, campos,"
+                " frase, fonte, forma, arco, base, limite_nome, limite_numero, licenca,"
+                " preco, publicado, ativo, criado_em, criado_por) VALUES (:sku, :tipo,"
+                " :modelo, :categoria, :resumo, :campos, :frase, :fonte, :forma, :arco,"
+                " :base, :limite_nome, :limite_numero, :licenca, :preco, :publicado,"
+                " :ativo, :criado_em, :criado_por)",
                 {**campos, "criado_em": agora(), "criado_por": autor})
         conn.commit()
     return campos["sku"]

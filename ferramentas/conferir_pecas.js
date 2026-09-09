@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 /**
- * Gera uma matriz de topos de bolo e grava os STL, para o analisador de malha
- * do pacote conferir cada um.
+ * Gera uma matriz de PECAS (topo de bolo, chaveiro) e grava os STL, para o
+ * analisador de malha do pacote conferir cada uma.
  *
  * E o §16 do documento de requisitos virado verificacao: "arquivo abre
  * corretamente no Bambu Studio, modelo fatia sem erros". O fatiador recusa
  * malha aberta, e malha aberta e invisivel na tela -- o desenho fica lindo e o
  * arquivo nao imprime.
  *
- *   node ferramentas/conferir_topos.js /tmp/topos
+ *   node ferramentas/conferir_pecas.js /tmp/pecas            # tudo
+ *   node ferramentas/conferir_pecas.js /tmp/pecas M3D-CH-001  # um template
+ *   node ferramentas/conferir_pecas.js /tmp/pecas --rapido    # os extremos
  */
 const fs = require("fs");
 const path = require("path");
@@ -39,14 +41,17 @@ const injecao = `
 ${PRELUDIO}
   const saida = { erro: null, pecas: [] };
   try {
-    const TP = MorumbiTopo, O = MorumbiOficina;
-    const G = TP.Gerador(MorumbiFontes.carregar(opentype));
+    const O = MorumbiOficina;
+    const tipo = "__TIPO__";
+    const PECA = MorumbiPecas.peca(tipo);
+    const G = PECA.geometria.Gerador(MorumbiFontes.carregar(opentype));
     const so = ${JSON.stringify(SO)};
     for (const t of ${JSON.stringify(TEMPLATES)}) {
+      if ((t.tipo || "topo") !== tipo) continue;
       if (so && t.sku !== so) continue;
       for (const nome of ${JSON.stringify(RAPIDO ? ["MM", "GUILHERME"] : NOMES)}) {
-        const tamanhos = ${RAPIDO} ? [TP.TAMANHOS[0], TP.TAMANHOS[TP.TAMANHOS.length-1]]
-                                   : TP.TAMANHOS;
+        const todos = PECA.tamanhos;
+        const tamanhos = ${RAPIDO} ? [todos[0], todos[todos.length-1]] : todos;
         for (const tamanho of tamanhos) {
           if (t.limite_nome && nome.trim().length > t.limite_nome) continue;  // §10
           const numero = t.campos.includes("numero") ? "5" : "";
@@ -55,21 +60,23 @@ ${PRELUDIO}
             R = G.gerar({ nome, numero, frase: t.frase, tamanho, fonte: t.fonte,
                           base: !!t.base, forma: t.forma, arco: t.arco });
           } catch (e) {
-            saida.pecas.push({ sku: t.sku, nome, tamanho, erro: String(e && e.message || e) });
+            saida.pecas.push({ sku: t.sku, tipo, nome, tamanho,
+                               erro: String(e && e.message || e) });
             continue;
           }
           if (!R.viavel) {
-            saida.pecas.push({ sku: t.sku, nome, tamanho, recusado: R.motivo });
+            saida.pecas.push({ sku: t.sku, tipo, nome, tamanho, recusado: R.motivo });
             continue;
           }
           const vist = O.vistoriar(R);
           const stl = MorumbiNucleo.stlBinario(R.camadas);
           saida.pecas.push({
-            sku: t.sku, nome, tamanho, corpos: R.corpos, hastes: R.hastes,
+            sku: t.sku, tipo, nome, tamanho, corpos: R.corpos,
+            hastes: R.hastes === undefined ? "-" : R.hastes,
             larg: Math.round(R.bb.w), alt: Math.round(R.bb.h),
             aprovada: vist.ok, motivos: vist.motivos,
             avisosMal: (R.avisos||[]).filter(a => a[0] === "mal").map(a => a[1]),
-            arquivo: TP.nomeDeArquivo(t.sku, R.nome, R.numero, tamanho, "stl"),
+            arquivo: MorumbiPecas.nomeDeArquivo(t.sku, R.nome, R.numero, tamanho, "stl"),
             stl: vist.ok ? b64(stl.buffer) : null,
           });
         }
@@ -80,13 +87,22 @@ ${PRELUDIO}
 })();
 </script>`;
 
-const r = rodar(injecao, { minutos: 8, pagina: "topo" });
+const TIPOS = [...new Set(TEMPLATES.map(t => t.tipo || "topo"))];
 fs.rmSync(SAIDA, { recursive: true, force: true });
 fs.mkdirSync(SAIDA, { recursive: true });
 
 let ok = 0, recusadas = 0, reprovadas = 0, erros = 0;
 const resumo = [];
-for (const p of r.pecas) {
+const pecas = [];
+// Uma abertura de navegador por PECA: cada uma tem a sua tela, e o Chromium
+// custa ~50 s para abrir. Duas aberturas ainda sao mais baratas que uma por
+// template.
+for (const tipo of TIPOS) {
+  const r = rodar(injecao.replace("__TIPO__", tipo),
+                  { minutos: 8, pagina: tipo, busca: "?peca=" + tipo });
+  pecas.push(...r.pecas);
+}
+for (const p of pecas) {
   const chave = `${p.sku} ${p.nome.padEnd(10)} ${String(p.tamanho).padStart(3)}mm`;
   if (p.erro) { erros++; resumo.push(`ERRO      ${chave}  ${p.erro}`); continue; }
   if (p.recusado) { recusadas++; resumo.push(`RECUSADA  ${chave}  ${p.recusado}`); continue; }

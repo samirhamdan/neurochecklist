@@ -405,7 +405,7 @@ class TesteTemplatesNoGerador(NoNavegador):
     """
 
     def abrir_topo(self, busca=""):
-        self.abrir(f"/topo/{busca}")
+        self.abrir(f"/criar/topo/{busca}")
         self.pg.wait_for_selector("#modelos", state="attached")
         self.pg.wait_for_timeout(600)
 
@@ -413,11 +413,16 @@ class TesteTemplatesNoGerador(NoNavegador):
         return self.pg.eval_on_selector_all(
             "#modelos .modelo", "e => e.map(x => x.dataset.sku)")
 
-    def test_a_tela_mostra_os_modelos_do_banco(self):
+    def test_a_tela_mostra_os_modelos_da_peca_dela(self):
+        """Nao TODOS os templates: os do topo. Desde o C4 ha chaveiro tambem,
+        e um gerador mostrando o template do outro seria uma tela mentindo."""
         from sistema import dados
         self.abrir_topo()
         self.assertEqual(sorted(self.modelos()),
-                         sorted(t["sku"] for t in dados.templates()))
+                         sorted(t["sku"] for t in dados.templates(tipo="topo")))
+        self.assertTrue(dados.templates(tipo="chaveiro"), "nao ha chaveiro para comparar")
+        for t in dados.templates(tipo="chaveiro"):
+            self.assertNotIn(t["sku"], self.modelos())
 
     def test_o_selo_de_em_teste_aparece_no_painel(self):
         """Voce precisa VER quais ainda nao foram impressos, gerando por eles."""
@@ -459,7 +464,7 @@ class TesteTemplatesNoGerador(NoNavegador):
         self.assertGreater(g[0]["preco"], 0, "o preco nao foi registrado")
 
 
-class TesteMalhaDoTopoDeBolo(unittest.TestCase):
+class TesteMalhaDasPecas(unittest.TestCase):
     """§16 do documento: "o modelo fatia sem erros".
 
     Gera os topos num navegador de verdade e passa cada STL pelo analisador de
@@ -471,12 +476,12 @@ class TesteMalhaDoTopoDeBolo(unittest.TestCase):
     o tratava como furo. Na tela o desenho parecia certo -- canvas nao liga
     para sentido de poligono.
 
-    Roda a matriz curta (~65 s): os nomes e tamanhos extremos, que e onde
-    quebra. A matriz inteira e `node ferramentas/conferir_topos.js`.
+    Roda a matriz curta: os nomes e tamanhos extremos das DUAS pecas, que e
+    onde quebra. A matriz inteira e `node ferramentas/conferir_pecas.js`.
     """
 
     @unittest.skipUnless(TEM_NAVEGADOR, SEM_NAVEGADOR)
-    def test_todo_topo_gerado_tem_malha_que_o_fatiador_aceita(self):
+    def test_toda_peca_gerada_tem_malha_que_o_fatiador_aceita(self):
         import subprocess
         import tempfile
         raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -485,7 +490,7 @@ class TesteMalhaDoTopoDeBolo(unittest.TestCase):
             self.skipTest("node nao instalado")
         pasta = tempfile.mkdtemp(prefix="topos-")
         r = subprocess.run(
-            [node, os.path.join(raiz, "ferramentas", "conferir_topos.js"), pasta, "--rapido"],
+            [node, os.path.join(raiz, "ferramentas", "conferir_pecas.js"), pasta, "--rapido"],
             capture_output=True, text=True, timeout=600, cwd=raiz,
             env={**os.environ, "CHROME_BIN": CHROMIUM})
         self.assertEqual(r.returncode, 0, (r.stderr or r.stdout)[:3000])

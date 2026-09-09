@@ -20,7 +20,9 @@ const CHROME =
 const WEB = path.join(__dirname, "..", "web");
 const PAGINAS = {
   letreiro: path.join(WEB, "gerador-letreiros.html"),
-  topo: path.join(WEB, "topo-de-bolo.html"),
+  // Uma pagina para todas as pecas desde o C4; a peca vai no ?peca=.
+  topo: path.join(WEB, "gerador.html"),
+  chaveiro: path.join(WEB, "gerador.html"),
 };
 const PAGINA = PAGINAS.letreiro;      // o padrao, para quem ja usava
 const MARCA = "RESULTADO_TESTE";
@@ -40,14 +42,14 @@ function montar(injecao, qual) {
 }
 
 /** Abre a pagina, espera o script injetado terminar e devolve o JSON dele. */
-function rodar(injecao, { minutos = 3, pagina = "letreiro" } = {}) {
+function rodar(injecao, { minutos = 3, pagina = "letreiro", busca = "" } = {}) {
   const { pasta, arquivo } = montar(injecao, pagina);
   let dom;
   try {
     dom = execFileSync(
       CHROME,
       ["--headless", "--disable-gpu", "--no-sandbox",
-       `--virtual-time-budget=${minutos * 60000}`, "--dump-dom", "file://" + arquivo],
+       `--virtual-time-budget=${minutos * 60000}`, "--dump-dom", "file://" + arquivo + busca],
       { maxBuffer: 1024 * 1024 * 1024, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
     );
   } finally {

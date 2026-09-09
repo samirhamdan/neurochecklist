@@ -47,10 +47,17 @@ class Base(unittest.TestCase):
 
 
 class TesteASemente(Base):
-    """Os seis do C2 entram como dado, uma vez so."""
+    """A semente entra como dado, cada SKU uma vez so."""
 
-    def test_o_banco_nasce_com_os_seis(self):
-        self.assertEqual(len(self.d.templates(so_ativos=False)), 6)
+    def semente(self):
+        with open(os.path.join(RAIZ, "web", "nucleo", "templates-iniciais.json"),
+                  encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_o_banco_nasce_com_a_semente_inteira(self):
+        """Contado pela semente, e nao pelo numero do dia: o C4 acrescentou
+        chaveiros e a versao anterior deste teste reprovou uma boa noticia."""
+        self.assertEqual(len(self.d.templates(so_ativos=False)), len(self.semente()))
 
     def test_todos_nascem_em_teste(self):
         """§6: nenhum vai para venda antes de sair da impressora."""
@@ -71,7 +78,40 @@ class TesteASemente(Base):
         t = self.d.template("M3D-TB-001")
         self.assertEqual(t["modelo"], "Renomeado por mim")
         self.assertEqual(t["limite_nome"], 8)
-        self.assertEqual(len(self.d.templates(so_ativos=False)), 6, "a semente entrou duas vezes")
+        self.assertEqual(len(self.d.templates(so_ativos=False)), len(self.semente()),
+                         "a semente entrou duas vezes")
+
+    def envelhecer(self):
+        """Devolve o banco ao estado do C3: marcador antigo, sem lista de vistos."""
+        with self.d.conectar() as conn:
+            conn.execute("DELETE FROM templates WHERE tipo = 'chaveiro'")
+            conn.execute("DELETE FROM semente_vista")
+            conn.commit()
+        importlib.reload(self.d)
+
+    def test_template_novo_chega_a_um_banco_que_ja_existia(self):
+        """A VPS do Samir e um banco que ja existe.
+
+        A primeira correcao do C3 marcava "a semente ja rodou" e resolvia a
+        ressurreicao -- mas fechava a porta: o chaveiro do C4 nunca chegaria
+        la. Cada entrada da semente diz de qual sprint veio, e so as do sprint
+        anterior sao dadas por vistas.
+        """
+        self.envelhecer()
+        novos = [t["sku"] for t in self.d.templates(tipo="chaveiro")]
+        self.assertTrue(novos, "o template novo nao chegou ao banco antigo")
+
+    def test_mas_o_que_voce_apagou_continua_apagado(self):
+        self.envelhecer()
+        alvo = self.d.templates(tipo="chaveiro")[0]["sku"]
+        self.d.apagar_template(alvo)
+        importlib.reload(self.d)
+        self.assertIsNone(self.d.template(alvo), "o template apagado voltou")
+
+    def test_nem_os_antigos_voltam(self):
+        self.d.apagar_template("M3D-TB-001")
+        importlib.reload(self.d)
+        self.assertIsNone(self.d.template("M3D-TB-001"))
 
     def test_a_semente_e_a_mesma_lista_que_a_ferramenta_le(self):
         """conferir_topos.js roda fora do servidor e le o mesmo arquivo."""
@@ -109,7 +149,9 @@ class TesteEmTesteNaoVaiParaLoja(Base):
                                            ativo="0", publicado="1"),
                                "samir", sku_antigo="M3D-TB-002")
         self.assertEqual(self.d.templates(so_publicados=True), [])
-        self.assertEqual(len(self.d.templates(so_ativos=False)), 6, "sumiu do painel tambem")
+        self.assertEqual(len(self.d.templates(so_ativos=False)),
+                         len(self.d.templates(so_ativos=False)), "sumiu do painel tambem")
+        self.assertIsNotNone(self.d.template("M3D-TB-002"), "sumiu do painel tambem")
 
 
 class TesteLicenca(Base):
@@ -146,6 +188,28 @@ class TesteOSkuEOsCampos(Base):
         self.d.salvar_template(self.campos(), "samir")
         with self.assertRaises(ValueError):
             self.d.salvar_template(self.campos(modelo="Outro"), "samir")
+
+    def test_o_prefixo_do_sku_tem_que_combinar_com_a_peca(self):
+        """M3D-TB-042 num chaveiro nao quebra nada hoje -- e por isso passaria.
+
+        Seis meses depois, ninguem sabe o que M3D-TB-042 e, e o arquivo que o
+        cliente recebeu tambem nao diz.
+        """
+        with self.assertRaises(ValueError):
+            self.d.salvar_template(self.campos(sku="M3D-TB-900", tipo="chaveiro"), "samir")
+        with self.assertRaises(ValueError):
+            self.d.salvar_template(self.campos(sku="M3D-CH-900", tipo="topo"), "samir")
+
+    def test_cada_peca_aceita_o_seu_prefixo(self):
+        for tipo, prefixo in self.d.tipos_de_peca().items():
+            with self.subTest(tipo=tipo):
+                sku = self.d.salvar_template(
+                    self.campos(sku=f"M3D-{prefixo}-90{len(tipo)}", tipo=tipo), "samir")
+                self.assertEqual(self.d.template(sku)["tipo"], tipo)
+
+    def test_peca_que_nao_existe_e_recusada(self):
+        with self.assertRaises(ValueError):
+            self.d.salvar_template(self.campos(sku="M3D-XX-900", tipo="lithophane"), "samir")
 
     def test_forma_que_o_gerador_nao_conhece_e_recusada(self):
         """Cartao com forma inventada abre uma tela que ignora a escolha."""
@@ -258,21 +322,21 @@ class TesteAsRotas(unittest.TestCase):
         promessa "nao aparece na loja, em NENHUMA rota" pede -- e o dia em
         que existir vitrine ela ja nasce obedecendo.
         """
-        r = self.anonimo.get("/topo/templates")
+        r = self.anonimo.get("/criar/topo/templates")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.get_json()["templates"], [])
         self.assertFalse(r.get_json()["painel"])
 
     def test_publicado_aparece_para_quem_nao_entrou(self):
         self.d.publicar_template("M3D-TB-003", True, "samir")
-        dados_ = self.anonimo.get("/topo/templates").get_json()
+        dados_ = self.anonimo.get("/criar/topo/templates").get_json()
         self.assertEqual([t["sku"] for t in dados_["templates"]], ["M3D-TB-003"])
 
     def test_de_dentro_do_painel_o_gerador_ve_tudo(self):
         """Voce precisa gerar para TESTAR antes de publicar. Senao a regra do
         §6 vira impossivel: so publica quem imprimiu, e so imprime quem gera."""
-        d = self.cliente.get("/topo/templates").get_json()
-        self.assertEqual(len(d["templates"]), 6)
+        d = self.cliente.get("/criar/topo/templates").get_json()
+        self.assertEqual(len(d["templates"]), len(self.d.templates(tipo="topo")))
         self.assertTrue(d["painel"])
         self.assertTrue(all(t["emTeste"] for t in d["templates"]))
 
@@ -313,7 +377,7 @@ class TesteAsRotas(unittest.TestCase):
                 self.assertEqual(metodo(rota).status_code, 404)
 
     def test_registrar_geracao_pela_api(self):
-        r = self.cliente.post("/topo/geracao", json={
+        r = self.cliente.post("/criar/topo/geracao", json={
             "sku": "M3D-TB-001", "nome": "BEATRIZ", "numero": "7", "tamanho": 180,
             "arquivo": "M3D-TB-001_BEATRIZ_7_18CM.stl", "gramas": 33, "preco": 40})
         self.assertEqual(r.status_code, 201)
@@ -321,13 +385,13 @@ class TesteAsRotas(unittest.TestCase):
 
     def test_a_api_de_geracao_exige_sessao(self):
         """Sem isto, qualquer um enche a tabela de geracoes da rua."""
-        r = self.anonimo.post("/topo/geracao", json={"sku": "M3D-TB-001", "nome": "X",
+        r = self.anonimo.post("/criar/topo/geracao", json={"sku": "M3D-TB-001", "nome": "X",
                                                     "tamanho": 180})
         self.assertEqual(r.status_code, 302)
         self.assertEqual(self.d.geracoes(), [])
 
     def test_geracao_sem_nome_devolve_400(self):
-        r = self.cliente.post("/topo/geracao", json={"sku": "M3D-TB-001", "tamanho": 180})
+        r = self.cliente.post("/criar/topo/geracao", json={"sku": "M3D-TB-001", "tamanho": 180})
         self.assertEqual(r.status_code, 400)
 
     def test_o_menu_leva_para_templates(self):
@@ -361,7 +425,7 @@ class TesteOCodigoNaoGuardaMaisTemplates(unittest.TestCase):
                         "a constante de templates voltou para o codigo")
 
     def test_a_pagina_busca_os_templates_do_servidor(self):
-        with open(os.path.join(RAIZ, "web", "topo-de-bolo.html"), encoding="utf-8") as f:
+        with open(os.path.join(RAIZ, "web", "gerador.html"), encoding="utf-8") as f:
             pagina = f.read()
-        self.assertIn('fetch("templates")', pagina)
+        self.assertIn('fetch("templates?tipo="', pagina)
         self.assertIn('fetch("geracao"', pagina)

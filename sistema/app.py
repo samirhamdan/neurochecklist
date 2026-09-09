@@ -474,15 +474,26 @@ def criar_app() -> Flask:
     def letreiros():
         return send_from_directory(os.path.join(RAIZ, "web"), "gerador-letreiros.html")
 
+    # UMA tela para todas as pecas de template. Ate o C3 era /topo/, com a
+    # pagina inteira dedicada ao topo de bolo; o chaveiro teria copiado as 400
+    # linhas dela. Agora quem muda e o registro em web/nucleo/pecas.js.
+    @app.route("/criar/<peca>/")
+    @auth.exige_login
+    def gerador(peca):
+        if peca not in dados.tipos_de_peca():
+            abort(404)
+        return send_from_directory(os.path.join(RAIZ, "web"), "gerador.html")
+
     @app.route("/topo/")
     @auth.exige_login
     def topo_de_bolo():
-        return send_from_directory(os.path.join(RAIZ, "web"), "topo-de-bolo.html")
+        """O endereco antigo, para link salvo no navegador nao virar 404."""
+        return redirect(url_for("gerador", peca="topo"))
 
     @app.route("/letreiros/<any(nucleo, fontes, libs):pasta>/<path:arquivo>")
-    @app.route("/topo/<any(nucleo, fontes, libs):pasta>/<path:arquivo>")
+    @app.route("/criar/<peca>/<any(nucleo, fontes, libs):pasta>/<path:arquivo>")
     @auth.exige_login
-    def partilhado(pasta, arquivo):
+    def partilhado(pasta, arquivo, peca=None):
         return send_from_directory(os.path.join(RAIZ, "web", pasta), arquivo)
 
     # ------------------------------------------------------------- templates
@@ -546,15 +557,16 @@ def criar_app() -> Flask:
     # sprint 8 vai usar. Sem sessao ela entrega so o que esta PUBLICADO --
     # §10, "separar templates em teste dos publicados". Quem decide e a rota,
     # e nao a tela que chama.
-    @app.route("/topo/templates")
-    def templates_do_topo():
+    @app.route("/criar/<peca>/templates")
+    def templates_da_peca(peca):
         de_dentro = auth.autenticado()
-        lista = dados.templates(so_publicados=not de_dentro)
+        tipo = request.args.get("tipo", peca)
+        lista = dados.templates(so_publicados=not de_dentro, tipo=tipo)
         return {"templates": lista, "painel": de_dentro}
 
-    @app.route("/topo/geracao", methods=["POST"])
+    @app.route("/criar/<peca>/geracao", methods=["POST"])
     @auth.exige_login
-    def registrar_geracao_rota():
+    def registrar_geracao_rota(peca):
         try:
             id_ = dados.registrar_geracao(request.get_json(silent=True) or request.form,
                                           session.get("usuario", ""))
@@ -562,9 +574,9 @@ def criar_app() -> Flask:
             return {"erro": str(erro)}, 400
         return {"id": id_}, 201
 
-    @app.route("/topo/marca")
+    @app.route("/criar/<peca>/marca")
     @auth.exige_login
-    def topo_marca():
+    def marca_no_nome(peca):
         """§18: termo de marca no nome do CLIENTE, e nao so no template.
 
         A exposicao maior nao e o template que voce escolhe: e o cliente

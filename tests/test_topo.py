@@ -58,8 +58,14 @@ class TesteASemente(unittest.TestCase):
                   encoding="utf-8") as f:
             self.t = json.load(f)
 
-    def test_a_semente_tem_os_seis_do_c2(self):
-        self.assertEqual(len(self.t), 6)
+    def test_a_semente_tem_os_do_c2_e_os_do_c4(self):
+        """Cada entrada diz de qual sprint veio -- e o que faz template novo
+        chegar num banco que ja existe sem ressuscitar o que foi apagado."""
+        por_sprint = {}
+        for t in self.t:
+            por_sprint.setdefault(t.get("desde", "C2"), []).append(t["sku"])
+        self.assertEqual(len(por_sprint["C2"]), 6, "os seis topos do C2")
+        self.assertTrue(por_sprint.get("C4"), "o chaveiro do C4 nao esta na semente")
 
     def test_todo_template_da_semente_tem_o_que_o_banco_exige(self):
         for t in self.t:
@@ -68,11 +74,17 @@ class TesteASemente(unittest.TestCase):
                               "fonte", "limite_nome"):
                     self.assertTrue(t.get(campo), f"{t.get('sku')} sem {campo}")
 
-    def test_o_sku_segue_o_padrao_do_documento(self):
-        """§7: M3D-TB-001."""
+    def test_o_sku_combina_com_o_tipo_da_peca(self):
+        """§7: M3D-TB-001 para topo, M3D-CH-001 para chaveiro.
+
+        Prefixo trocado nao quebra nada hoje, e por isso mesmo passaria --
+        seis meses depois ninguem sabe o que M3D-TB-042 e.
+        """
+        prefixos = {"topo": "TB", "chaveiro": "CH"}
         for t in self.t:
             with self.subTest(sku=t["sku"]):
-                self.assertRegex(t["sku"], r"^M3D-TB-\d{3}$")
+                self.assertRegex(t["sku"], r"^M3D-[A-Z]{2}-\d{3}$")
+                self.assertEqual(t["sku"].split("-")[1], prefixos[t.get("tipo", "topo")])
 
     def test_todos_nascem_em_teste(self):
         """§6: nenhum vai para venda antes de sair da impressora."""
@@ -93,6 +105,12 @@ class TesteASemente(unittest.TestCase):
             with self.subTest(sku=t["sku"]):
                 self.assertEqual(t["licenca"], "própria")
 
+    def test_toda_entrada_diz_de_qual_sprint_veio(self):
+        for t in self.t:
+            with self.subTest(sku=t["sku"]):
+                self.assertRegex(t.get("desde", ""), r"^C\d$",
+                                 "sem `desde`, um banco antigo nunca receberia este")
+
     def test_toda_forma_da_semente_existe_no_gerador(self):
         """Forma inventada na semente vira template que abre e ignora a escolha."""
         for t in self.t:
@@ -105,8 +123,10 @@ class TesteNomeDeArquivo(unittest.TestCase):
     """§11: M3D-TB-001_MARIA_5_18CM.3mf"""
 
     def nome(self, *args):
-        return js("const T=require('./topo.js');"
-                  f"console.log(JSON.stringify(T.nomeDeArquivo(...{json.dumps(list(args))})))")
+        # Mudou de topo.js para pecas.js no C4: e a convencao de toda peca que
+        # vem de template, e o chaveiro usa a mesma.
+        return js("const P=require('./pecas.js');"
+                  f"console.log(JSON.stringify(P.nomeDeArquivo(...{json.dumps(list(args))})))")
 
     def test_o_exemplo_do_documento_sai_igual(self):
         self.assertEqual(self.nome("M3D-TB-001", "MARIA", 5, 180, "3mf"),
@@ -247,18 +267,19 @@ class TesteAPecaNaoCopiouAPlataforma(unittest.TestCase):
         self.assertIn("function conexaofragil", oficina)
         self.assertIn("traco_minimo", oficina)
 
-    def test_a_pagina_do_topo_carrega_a_plataforma_e_nao_uma_copia(self):
-        with open(os.path.join(RAIZ, "web", "topo-de-bolo.html"), encoding="utf-8") as f:
+    def test_a_pagina_do_gerador_carrega_a_plataforma_e_nao_uma_copia(self):
+        with open(os.path.join(RAIZ, "web", "gerador.html"), encoding="utf-8") as f:
             pagina = f.read()
         for arquivo in ("libs/libs.js", "fontes/fontes.js", "nucleo/nucleo.js",
-                        "nucleo/texto.js", "nucleo/oficina.js", "nucleo/topo.js"):
+                        "nucleo/texto.js", "nucleo/oficina.js", "nucleo/topo.js",
+                        "nucleo/chaveiro.js", "nucleo/pecas.js"):
             with self.subTest(arquivo=arquivo):
                 self.assertTrue(f'src="{arquivo}"' in pagina, f"{arquivo} nao e carregado")
 
     def test_as_duas_paginas_usam_as_mesmas_fontes_e_bibliotecas(self):
         """§4: "fontes previamente testadas". Sao as do letreiro, que ja
         passaram pela mesa -- e uma copia so, num arquivo so."""
-        for nome in ("gerador-letreiros.html", "topo-de-bolo.html"):
+        for nome in ("gerador-letreiros.html", "gerador.html"):
             with open(os.path.join(RAIZ, "web", nome), encoding="utf-8") as f:
                 pagina = f.read()
             with self.subTest(pagina=nome):

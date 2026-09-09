@@ -63,24 +63,8 @@
   // web/nucleo/templates-iniciais.json guarda os seis primeiros, e serve
   // apenas de SEMENTE para o banco -- nao e lido em tempo de execucao.
 
-  /** §11: M3D-TB-001_MARIA_5_18CM.3mf
-   *
-   * O tamanho e o PEDIDO (o preset que a pessoa escolheu), e nao a largura
-   * medida da peca. Com a largura medida, dois pedidos diferentes viravam o
-   * mesmo arquivo -- 180 mm e 175 mm arredondam para 17CM, e um sobrescrevia
-   * o outro na pasta de downloads sem avisar.
-   */
-  function nomeDeArquivo(sku, nome, numero, tamanhoMM, extensao) {
-    const limpo = String(nome || '').toUpperCase().normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') || 'SEM-NOME';
-    const partes = [sku, limpo];
-    if (numero !== undefined && numero !== null && String(numero) !== '') {
-      partes.push(String(numero).replace(/[^0-9A-Za-z]/g, ''));
-    }
-    partes.push(Math.round(tamanhoMM / 10) + 'CM');
-    return partes.join('_') + '.' + (extensao || 'stl');
-  }
+  // O nome de arquivo do §11 mora em pecas.js desde o C4: e a convencao de
+  // toda peca que vem de template, e o chaveiro usa a mesma.
 
   function barra(x0, x1, y0, y1) { return retangulo(x0, y0, x1, y1); }
 
@@ -392,6 +376,6 @@
     return { gerar, lugarDaHaste };
   }
 
-  return { Gerador, MEDIDAS, TAMANHOS, nomeDeArquivo,
+  return { Gerador, MEDIDAS, TAMANHOS,
            coracao, estrela, arquear, barra, SIZE };
 });

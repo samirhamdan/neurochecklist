@@ -18,7 +18,9 @@
     "licenca": "própria",
     "preco": 0,
     "publicado": 0,
-    "ativo": 1
+    "ativo": 1,
+    "tipo": "topo",
+    "desde": "C2"
   },
   {
     "sku": "M3D-TB-002",
@@ -38,7 +40,9 @@
     "licenca": "própria",
     "preco": 0,
     "publicado": 0,
-    "ativo": 1
+    "ativo": 1,
+    "tipo": "topo",
+    "desde": "C2"
   },
   {
     "sku": "M3D-TB-003",
@@ -58,7 +62,9 @@
     "licenca": "própria",
     "preco": 0,
     "publicado": 0,
-    "ativo": 1
+    "ativo": 1,
+    "tipo": "topo",
+    "desde": "C2"
   },
   {
     "sku": "M3D-TB-004",
@@ -78,7 +84,9 @@
     "licenca": "própria",
     "preco": 0,
     "publicado": 0,
-    "ativo": 1
+    "ativo": 1,
+    "tipo": "topo",
+    "desde": "C2"
   },
   {
     "sku": "M3D-TB-005",
@@ -99,7 +107,9 @@
     "licenca": "própria",
     "preco": 0,
     "publicado": 0,
-    "ativo": 1
+    "ativo": 1,
+    "tipo": "topo",
+    "desde": "C2"
   },
   {
     "sku": "M3D-TB-006",
@@ -119,6 +129,52 @@
     "licenca": "própria",
     "preco": 0,
     "publicado": 0,
-    "ativo": 1
+    "ativo": 1,
+    "tipo": "topo",
+    "desde": "C2"
+  },
+  {
+    "sku": "M3D-CH-001",
+    "tipo": "chaveiro",
+    "modelo": "Chaveiro de nome",
+    "categoria": "Lembrancinha",
+    "resumo": "O nome em letras cheias, com argola. O de sempre.",
+    "campos": [
+      "nome"
+    ],
+    "frase": "",
+    "fonte": "luckiest",
+    "forma": "",
+    "arco": 0,
+    "base": 0,
+    "limite_nome": 10,
+    "limite_numero": 0,
+    "licenca": "própria",
+    "preco": 0,
+    "publicado": 0,
+    "ativo": 1,
+    "desde": "C4"
+  },
+  {
+    "sku": "M3D-CH-002",
+    "tipo": "chaveiro",
+    "modelo": "Chaveiro gamer",
+    "categoria": "Lembrancinha",
+    "resumo": "Mesmo chaveiro, letra angular.",
+    "campos": [
+      "nome"
+    ],
+    "frase": "",
+    "fonte": "gamer",
+    "forma": "",
+    "arco": 0,
+    "base": 0,
+    "limite_nome": 9,
+    "limite_numero": 0,
+    "licenca": "própria",
+    "preco": 0,
+    "publicado": 0,
+    "ativo": 1,
+    "desde": "C4"
   }
 ]

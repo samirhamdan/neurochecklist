@@ -104,11 +104,19 @@ MODELOS: tuple[Modelo, ...] = (
            nota="Logo de terceiro com marca registrada ativa não entra no catálogo "
                 "comercial — só peça encomendada pelo dono da marca.",
            busca=("marca", "empresa", "placa", "fachada", "brinde")),
+    Modelo(slug="chaveiro", nome="Chaveiro de nome", categoria=FESTA,
+           resumo="O nome em letras ligadas, com argola. Peça de bolso.",
+           gerador="Gerador de chaveiro", rota="/criar/chaveiro/", cores=(1,),
+           saida="STL",
+           nota="Escolhido para o C4 por ser o único dos dez do plano com demanda "
+                "dentro do próprio sistema: está nos pedidos, no custo e nas licenças. "
+                "Os templates nascem EM TESTE, como manda o §6.",
+           busca=("chaveiro", "argola", "lembrancinha", "bolso", "nome")),
     Modelo(slug="topo-de-bolo", nome="Topo de bolo", categoria=FESTA,
            resumo="Nome, idade e tema em cima do bolo, a partir de um template.",
            # Uma camada, uma cor: o gerador emite UMA peca. Topo de duas cores
            # pede desenho em duas camadas, que e outro sprint.
-           gerador="Gerador de topo de bolo", rota="/topo/", cores=(1,), saida="STL",
+           gerador="Gerador de topo de bolo", rota="/criar/topo/", cores=(1,), saida="STL",
            nota="Os seis templates estão EM TESTE: o desenho sai, mas nenhum foi "
                 "impresso e aprovado ainda. O §6 do documento manda testar na mesa "
                 "antes de vender.",

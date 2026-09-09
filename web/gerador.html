@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Topo de bolo — Morumbi 3D</title>
+<title>Gerador — Morumbi 3D</title>
 <style>
 /* Mobile-first (§15): uma coluna, poucos campos por vez. O desktop ganha uma
    segunda coluna la embaixo, e nao o contrario. */
@@ -17,6 +17,10 @@
   --ambar:#9A6B12; --ambar-fundo:#FDF3E0;
 }
 *{box-sizing:border-box}
+/* `display` de classe ganha do [hidden] do navegador. Sem isto, esconder o
+   campo de numero no chaveiro nao escondia nada: a tela pedia so o nome e
+   mostrava "Idade ou numero" assim mesmo. Ja tinha me pegado na tela Criar. */
+[hidden]{display:none !important}
 body{
   margin:0;background:var(--bancada);color:var(--tinta);
   font:16px/1.5 Barlow,"Segoe UI",system-ui,sans-serif;
@@ -138,7 +142,7 @@ main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
 
 <header class="topo">
   <span class="marca">Morumbi <b>3</b><span>D</span></span>
-  <span style="font-size:14px;color:#B9BEC4">topo de bolo</span>
+  <span style="font-size:14px;color:#B9BEC4" id="rotulo-peca"></span>
   <a class="volta" href="/criar">← Criar</a>
 </header>
 
@@ -150,14 +154,14 @@ main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
     </section>
 
     <section class="passo">
-      <h2><i>2.</i> Escreva o que vai no topo</h2>
+      <h2><i>2.</i> <span id="rotulo-passo2">Escreva o nome</span></h2>
       <label class="campo">
         <span>Nome <em class="conta" id="conta-nome"></em></span>
         <input id="nome" type="text" value="Maria" autocomplete="off" spellcheck="false"
                enterkeyhint="done">
       </label>
       <label class="campo" id="caixa-numero">
-        <span>Idade ou número <em class="conta" id="conta-numero"></em></span>
+        <span id="rotulo-numero">Idade ou número <em class="conta" id="conta-numero"></em></span>
         <input id="numero" type="text" inputmode="numeric" value="5" autocomplete="off">
       </label>
     </section>
@@ -170,20 +174,17 @@ main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
 
   <div class="lado-direito">
     <section class="previa">
-      <canvas id="desenho" width="1000" height="700"
-              aria-label="Prévia do topo de bolo"></canvas>
+      <canvas id="desenho" width="1000" height="700" aria-label="Prévia da peça"></canvas>
       <p class="estado" id="estado">Carregando as fontes…</p>
       <dl class="medidas" id="medidas"></dl>
     </section>
 
     <div class="avisos" id="avisos"></div>
 
-    <button class="gerar" id="gerar" disabled>GERAR MEU TOPO<small id="arquivo"></small></button>
+    <button class="gerar" id="gerar" disabled><span id="chamada">GERAR</span><small id="arquivo"></small></button>
     <a class="zap" id="zap" href="#" target="_blank" rel="noopener">Mandar no WhatsApp</a>
 
-    <p class="rodape">Modelo <b>em teste</b>: o desenho está pronto e a peça é gerada, mas
-    ela ainda não foi impressa e aprovada. Nenhum template vai para venda antes de sair da
-    impressora e passar na mão — é a regra do §6 do documento.</p>
+    <p class="rodape" id="rodape"></p>
   </div>
 </main>
 
@@ -193,17 +194,29 @@ main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
 <script src="nucleo/texto.js"></script>
 <script src="nucleo/oficina.js"></script>
 <script src="nucleo/topo.js"></script>
+<script src="nucleo/chaveiro.js"></script>
+<script src="nucleo/pecas.js"></script>
 <script>
 (function(){
   const $ = id => document.getElementById(id);
-  const O = MorumbiOficina, TP = MorumbiTopo;
+  const O = MorumbiOficina;
+
+  // Qual peca esta tela esta desenhando. Vem do endereco -- /criar/topo/ ou
+  // /criar/chaveiro/ -- e o ?peca= existe para as ferramentas, que abrem a
+  // pagina como file:// e nao tem caminho de rota.
+  const daBusca = new URLSearchParams(location.search).get("peca");
+  const daRota = (location.pathname.match(/\/criar\/([a-z]+)\/?$/) || [])[1];
+  const TIPO = MorumbiPecas.peca(daBusca) ? daBusca
+             : MorumbiPecas.peca(daRota) ? daRota : MorumbiPecas.tipos()[0];
+  const PECA = MorumbiPecas.peca(TIPO);
+  const TP = PECA.geometria;
 
   // Os templates vem do banco desde o C3 (§12): acrescentar um e cadastrar
   // pela tela /templates, e nao mexer no codigo. Sem sessao, a rota entrega
   // so os PUBLICADOS -- e a porta que a vitrine vai usar.
   let TEMPLATES = [], noPainel = false;
-  const PADRAO = { sku: "", tamanho: 180 };
-  const CHAVE = "morumbi3d.topo";
+  const PADRAO = { sku: "", tamanho: PECA.tamanhos[Math.floor(PECA.tamanhos.length / 2)] };
+  const CHAVE = "morumbi3d.gerador." + TIPO;   // um por peca
   let est = Object.assign({}, PADRAO);
   let G = null, R = null, timer = null;
   let ultimo = { gramas: 0, preco: 0 };   // o que a previa mostrou, para o registro
@@ -222,6 +235,19 @@ main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
     try{ localStorage.setItem(CHAVE, JSON.stringify(
       Object.assign({}, est, { nome: $("nome").value, numero: $("numero").value })));
     }catch(e){}
+  }
+
+  // ---------- a tela se veste conforme a peca ----------
+  $("rotulo-peca").textContent = PECA.rotulo;
+  $("chamada").textContent = PECA.chamada;
+  $("rodape").innerHTML = PECA.aviso;
+  $("rotulo-passo2").textContent = PECA.passo2;
+  // Quem usa leitor de tela ouve isto no lugar do desenho.
+  $("desenho").setAttribute("aria-label", "Prévia do " + PECA.rotulo);
+  document.title = PECA.nome + " — Morumbi 3D";
+  if (PECA.rotuloNumero) {
+    $("rotulo-numero").innerHTML =
+      PECA.rotuloNumero + ' <em class="conta" id="conta-numero"></em>';
   }
 
   // ---------- passo 1: os modelos ----------
@@ -251,7 +277,7 @@ main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
   }
 
   // ---------- passo 3: os tamanhos ----------
-  $("tamanhos").innerHTML = TP.TAMANHOS.map(t =>
+  $("tamanhos").innerHTML = PECA.tamanhos.map(t =>
     `<button type="button" class="opt" data-v="${t}" aria-pressed="false">${t/10} cm</button>`
   ).join("");
   $("tamanhos").addEventListener("click", e => {
@@ -318,8 +344,10 @@ main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
     setTimeout(() => {
       let r;
       try {
+        // O pedido leva TUDO o que o template declara; cada peca usa o que
+        // entende e ignora o resto. E o contrato que faz uma tela servir duas.
         r = G.gerar({ nome, numero, frase: t.frase, tamanho: est.tamanho,
-                      fonte: t.fonte, base: t.base, forma: t.forma, arco: t.arco });
+                      fonte: t.fonte, base: !!t.base, forma: t.forma, arco: t.arco });
       } catch (e) {
         falhar(["Não consegui desenhar: " + (e && e.message || e)]); return;
       }
@@ -372,24 +400,26 @@ main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
     ultimo = { gramas: e.g, preco };
     const h = Math.floor(e.min/60), min = Math.round(e.min%60);
     $("estado").textContent = "";
+    const extras = (PECA.medidas ? PECA.medidas(R) : [])
+      .map(([r, v]) => `<dt>${r}</dt><dd>${v}</dd>`).join("");
     $("medidas").innerHTML = `
       <dt>Modelo</dt><dd>${modelo().modelo}</dd>
       <dt>Peça</dt><dd>${(R.bb.w/10).toFixed(1)} × ${(R.bb.h/10).toFixed(1)} cm · ${R.espessura} mm</dd>
-      <dt>Hastes</dt><dd>${R.hastes} de ${TP.MEDIDAS.haste.altura} mm</dd>
+      ${extras}
       <dt>Estimativa</dt><dd>${e.g.toFixed(0)} g · ${h}h${String(min).padStart(2,"0")}</dd>
       <dt>Preço</dt><dd class="preco">R$ ${preco}</dd>`;
 
     const vist = O.vistoriar(R);
     const msgs = (R.avisos || []).slice();
     for (const m of vist.motivos) msgs.push(["mal", m]);
-    if (!msgs.some(x => x[0] === "mal")) msgs.unshift(["bem","Peça inteira, com haste firme e dentro da mesa."]);
+    if (!msgs.some(x => x[0] === "mal")) msgs.unshift(["bem", PECA.tudoCerto]);
     $("avisos").innerHTML = msgs.map(([t,m]) => `<div class="aviso ${t}">${m}</div>`).join("");
 
-    const arq = TP.nomeDeArquivo(est.sku, R.nome, R.numero, est.tamanho, "stl");
+    const arq = MorumbiPecas.nomeDeArquivo(est.sku, R.nome, R.numero, est.tamanho, "stl");
     $("gerar").disabled = !vist.ok;
     $("arquivo").textContent = vist.ok ? arq : "corrija os avisos acima";
     $("zap").href = "https://wa.me/?text=" + encodeURIComponent(
-      `Quero este topo de bolo da Morumbi 3D: ${modelo().modelo} — ` +
+      `Quero este ${PECA.rotulo} da Morumbi 3D: ${modelo().modelo} — ` +
       `${R.nome}${R.numero ? " " + R.numero : ""}, ${(R.bb.w/10).toFixed(0)} cm. ` +
       `Preço estimado R$ ${preco}.`);
   }
@@ -415,7 +445,7 @@ main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
   $("gerar").addEventListener("click", () => {
     if (!R) return;
     const stl = MorumbiNucleo.stlBinario(R.camadas);
-    const arquivo = TP.nomeDeArquivo(est.sku, R.nome, R.numero, est.tamanho, "stl");
+    const arquivo = MorumbiPecas.nomeDeArquivo(est.sku, R.nome, R.numero, est.tamanho, "stl");
     const blob = new Blob([stl.buffer], { type: "model/stl" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -441,7 +471,7 @@ main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
     est.sku = TEMPLATES.length ? TEMPLATES[0].sku : "";
     if (salvo) {
       if (salvo.est.sku && tem(salvo.est.sku)) est.sku = salvo.est.sku;
-      if (TP.TAMANHOS.includes(salvo.est.tamanho)) est.tamanho = salvo.est.tamanho;
+      if (PECA.tamanhos.includes(salvo.est.tamanho)) est.tamanho = salvo.est.tamanho;
       if (salvo.nome) $("nome").value = salvo.nome;
       if (salvo.numero) $("numero").value = salvo.numero;
     }
@@ -459,7 +489,8 @@ main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
     }
   }
 
-  fetch("templates")
+  // A tela so pede os templates DA SUA PECA: a rota filtra, e nao o navegador.
+  fetch("templates?tipo=" + TIPO)
     .then(r => r.ok ? r.json() : { templates: [] })
     .then(d => { TEMPLATES = d.templates || []; noPainel = !!d.painel; comecar(); })
     .catch(() => { $("estado").textContent =

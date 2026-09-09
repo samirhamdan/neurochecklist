@@ -162,6 +162,27 @@ peça já separada; para isso é `corpos`, e os dois são cobrados.
 O `empilhar` do `texto.js` aceita um parâmetro `sobrepor` justamente por isso:
 sem ele converge no ponto do toque, que é a ligação mais fraca possível.
 
+### Peça nova = um módulo de geometria + uma entrada em `pecas.js`
+
+Desde o C4 há **uma** tela de gerador (`web/gerador.html`) para todas as peças
+de template. `web/nucleo/pecas.js` é o registro: nome, rótulo, prefixo de SKU,
+campos, tamanhos, textos, e a linha extra que a peça mostra nas medidas.
+
+O módulo de geometria precisa de `Gerador(fontes).gerar(pedido)` devolvendo
+`{viavel, paths, camadas, bb, avisos, corpos, esperado, espessura, nome, …}`
+ou `{viavel:false, motivo}`. Tudo o mais — vistoria, estimativa, preço, nome
+de arquivo, registro de geração — vem da plataforma.
+
+Há teste que reprova texto de uma peça só dentro da tela (`haste`, `argola`,
+`topo de bolo`): é o começo da segunda cópia.
+
+### A semente de templates diz de qual sprint veio
+
+`templates-iniciais.json` tem um campo `desde` (`"C2"`, `"C4"`). Num banco que
+já existe, só as entradas de sprints anteriores são dadas por vistas — é assim
+que template novo chega à VPS sem ressuscitar o que o Samir apagou. Já errei
+nos dois sentidos: por SKU (ressuscitava) e por "já rodou" (nunca chegava).
+
 ### Templates de topo de bolo moram no BANCO, não no código
 
 Desde o C3 são linhas da tabela `templates`, editadas em `/templates`.
