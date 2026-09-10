@@ -269,6 +269,22 @@ ROTULOS = {
     "orcamento": "Orçamento", "refugada": "Refugada",
 }
 
+# O que cada etapa E, para a coluna vazia poder ensinar em vez de ficar em
+# branco. Fica ao lado de ETAPAS de proposito: coluna nova sem convite fica
+# vermelha no teste, em vez de nascer muda.
+CONVITES = {
+    "aguardando": "Peça entra aqui quando um pedido é aprovado. Enquanto for "
+                  "orçamento, ela não ocupa a mesa.",
+    "imprimindo": "Arraste para cá quando puser na impressora. É a etapa que "
+                  "baixa o filamento e o insumo do estoque.",
+    "montagem": "Peça que saiu da mesa e ainda precisa de mão: tirar suporte, "
+                "colar, lixar, pintar.",
+    "a entregar": "Pronta, esperando o cliente. A impressora já está livre — "
+                  "por isso estas horas não contam em “na mesa”.",
+    "entregue": "Saiu daqui. Marcar o pedido inteiro como entregue move as "
+                "peças que faltarem.",
+}
+
 # Etapas que ocupam a bancada. "A entregar" ja saiu da impressora, entao a
 # fila do painel -- que conta horas e trocas de cor -- para antes dela.
 EM_PRODUCAO = ("aguardando", "imprimindo", "montagem")
@@ -562,9 +578,23 @@ def somar_valor(pedidos_: list[dict]) -> float:
     return round(sum(p["valor"] or 0 for p in pedidos_), 2)
 
 
+# `gramas_est` e `horas_est` sao o total da LINHA, e nao de uma unidade: quem
+# multiplica e o app ao montar o item do pedido ("peso e tempo sao por peca no
+# catalogo; a fila precisa do total"). Por isso somar aqui e somar direto -- e
+# por isso a baixa de insumo multiplica e a de filamento nao: o que e por
+# unidade la e a quantidade do vinculo produto-insumo.
+#
+# Ha teste que prende esse contrato (test_producao), porque so a leitura de
+# `_baixar` faz a assimetria parecer defeito. Ela nao e.
+
 def horas_na_mesa(fila: list[dict]) -> float:
     """Horas previstas do que esta na bancada. A entregar ja saiu da impressora."""
     return round(sum(p["horas_est"] or 0 for p in fila), 2)
+
+
+def gramas_na_fila(pecas: list[dict]) -> float:
+    """Quanto filamento uma pilha de pecas vai comer."""
+    return round(sum(p["gramas_est"] or 0 for p in pecas), 1)
 
 
 def parado_em_filamento(filamentos_: list[dict]) -> float:
@@ -1307,10 +1337,18 @@ def quadro() -> dict:
             " WHERE p.status IN ({}) ORDER BY d.prazo IS NULL, d.prazo, p.id".format(
                 ", ".join("?" for _ in ETAPAS)), ETAPAS).fetchall()
     pecas = [dict(l, dias=_dias_ate(l["prazo"])) for l in linhas]
+    por_etapa = {e: [p for p in pecas if p["status"] == e] for e in ETAPAS}
     return {
         "etapas": ETAPAS,
         "rotulos": ROTULOS,
-        "por_etapa": {e: [p for p in pecas if p["status"] == e] for e in ETAPAS},
+        "convites": CONVITES,
+        "por_etapa": por_etapa,
+        # Peca, hora e grama por coluna -- pelas MESMAS funcoes que o painel
+        # usa. "Quantas peças" ja estava no cabecalho; sozinho ele nao diz se
+        # a coluna e meia hora ou dois dias de mesa.
+        "totais": {e: {"pecas": len(v),
+                       "horas": horas_na_mesa(v),
+                       "gramas": gramas_na_fila(v)} for e, v in por_etapa.items()},
         "pecas": pecas,
         # O mesmo numero que o painel mostra em "na mesa", pela mesma funcao.
         "horas_na_mesa": horas_na_mesa([p for p in pecas if p["status"] in EM_PRODUCAO]),

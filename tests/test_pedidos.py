@@ -243,7 +243,17 @@ class TesteTelas(unittest.TestCase):
         }, follow_redirects=False)
 
     def test_quantidade_multiplica_peso_e_tempo(self):
-        """Seis chaveiros ocupam a mesa de seis, nao de um."""
+        """Seis chaveiros ocupam a mesa de seis, nao de um.
+
+        E aqui que a multiplicacao acontece, e e por isso que ela NAO acontece
+        de novo na baixa de estoque: `gramas_est` e `horas_est` ja sao o total
+        da LINHA. A baixa de insumo multiplica porque o que e por unidade la e
+        a quantidade do vinculo produto-insumo.
+
+        Eu ja li o `_baixar` e achei que a assimetria fosse defeito -- cheguei
+        a "consertar" e ver este teste ficar vermelho, que foi o que me contou
+        que o defeito era meu. Fica registrado aqui e no CLAUDE.md.
+        """
         self.assertEqual(self._criar(6).status_code, 302)
         item = self.dados.pedido(1)["itens"][0]
         self.assertAlmostEqual(item["gramas_est"], 83.7 * 6, places=1)

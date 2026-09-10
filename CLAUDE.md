@@ -255,6 +255,42 @@ marca, `display:none`. O foco simplesmente ficava fora da gaveta recém-aberta.
 Pior: o teste do Escape passava, porque "voltar o foco para o botão" era um
 no-op. Filtre por `getClientRects().length > 0`.
 
+### `gramas_est` e `horas_est` são o total da LINHA
+
+Quem multiplica é `app.py` ao montar o item do pedido ("peso e tempo são por
+peça no catálogo; a fila precisa do total"). Por isso a baixa de **filamento**
+não multiplica de novo — e a de **insumo** multiplica, porque o que é por
+unidade lá é a quantidade do vínculo produto-insumo.
+
+Li o `_baixar`, achei que a assimetria fosse defeito, "consertei" e vi
+`test_quantidade_multiplica_peso_e_tempo` ficar vermelho. O defeito era meu.
+Antes de mexer nessa conta, leia o teste.
+
+Cuidado ao semear banco de exemplo chamando `salvar_pedido` direto: ele grava
+o que você mandar. Semeie `gramas = por_unidade * quantidade`, senão a tela de
+teste mostra número que a tela de verdade não mostraria.
+
+### `web/gerador.html` é arquivo ESTÁTICO
+
+`send_from_directory` o entrega cru — Jinja não passa por ali. Um `{# … #}`
+sai **impresso na tela**, e eu já paguei esse: um comentário meu apareceu
+como texto no meio da prévia. Use `<!-- -->`.
+
+### Tela vazia ensina; espera fala
+
+Toda tela do menu tem que dizer alguma coisa com o banco zerado, e
+`tests/test_vazios.py` varre todas elas — não basta não quebrar. O recado
+precisa de uma **saída**, não só do fato: "Nenhum pedido." é um fato.
+
+As colunas do quadro têm `dados.CONVITES`, ao lado de `ETAPAS`: etapa nova sem
+convite fica vermelha no teste, em vez de nascer muda.
+
+No gerador, a prévia leva ~1,9 s até haver o que ver na primeira carga. O
+`#estado` ganha a classe `cobrindo` e ocupa a área da prévia enquanto **não há
+desenho**; assim que há peça, volta a ser a linha de 14 px. Cobrir a peça a
+cada tecla piscaria pior do que deixar o desenho anterior no lugar pelos
+273 ms do redesenho — há teste para os dois lados.
+
 ### O erro sabe de qual campo ele é
 
 `dados.ErroDeCampo(campo, mensagem)` — herda de `ValueError`, então quem já

@@ -281,6 +281,112 @@ class TesteNadaSaiDaTela(NoNavegador):
                 self.assertEqual(self.larguras(largura), [])
 
 
+class TesteAEsperaFala(NoNavegador):
+    """O gerador ficava 1,9 s com a tela branca na primeira carga.
+
+    A linha de 14 px embaixo de um retângulo vazio de 700 px não alcança o
+    olho, e nesse tempo a página parece travada. Nada disso se mede lendo
+    HTML: o que a tela mostra depende de quando o desenho fica pronto.
+    """
+
+    def abrir_gerador(self, devagar=False):
+        if devagar:
+            # Segura o arquivo de fontes: é a primeira carga de verdade, no
+            # telefone dele. Com o cache quente a cobertura nem pisca.
+            self.pg.route("**/fontes/fontes.js",
+                          lambda rota: (time.sleep(1.0), rota.continue_()) and None)
+        self.pg.goto(f"{SITE}/criar/topo/", wait_until="commit")
+
+    def cobrindo(self):
+        return self.pg.evaluate(
+            "() => !!document.querySelector('.estado.cobrindo')")
+
+    def test_enquanto_carrega_a_previa_diz_o_que_esta_fazendo(self):
+        self.abrir_gerador(devagar=True)
+        # Medir DENTRO da espera, e não depois: entre achar o seletor e medir,
+        # o desenho pode ter ficado pronto e a cobertura ter saído -- foi o que
+        # aconteceu na primeira versão deste teste, que mediu altura zero.
+        foto = self.pg.wait_for_function("""() => {
+            const e = document.querySelector('.estado.cobrindo');
+            if (!e) return null;
+            const r = e.getBoundingClientRect();
+            return {texto: e.innerText.trim(), alto: Math.round(r.height)};
+        }""", timeout=8000).json_value()
+        self.assertTrue(foto["texto"], "a cobertura apareceu sem dizer nada")
+        # E cobre MESMO a área da prévia, e não uma linha de 14 px embaixo dela.
+        self.assertGreater(foto["alto"], 200, f"a cobertura não cobre a prévia: {foto}")
+
+    def test_quando_o_desenho_fica_pronto_a_cobertura_sai(self):
+        self.abrir_gerador()
+        self.pg.wait_for_selector("#medidas dd", timeout=15000)
+        self.assertFalse(self.cobrindo(), "a cobertura ficou por cima da peça")
+
+    def test_redesenhar_NAO_cobre_a_peca_que_ja_esta_na_tela(self):
+        """Com peça na tela, "Desenhando…" é uma linha embaixo.
+
+        Cobrir o desenho por 273 ms a cada tecla piscaria pior do que deixar
+        o desenho anterior no lugar até o novo ficar pronto.
+        """
+        self.abrir_gerador()
+        self.pg.wait_for_selector("#medidas dd", timeout=15000)
+        # Vigia a cobertura DURANTE o redesenho inteiro, e não só no instante
+        # seguinte à tecla: o redesenho não é imediato, e amostrar uma vez
+        # passava com a cobertura ligada -- foi o que a mutação mostrou.
+        self.pg.evaluate("""() => {
+            window.__cobriu = false;
+            window.__vigia = new MutationObserver(() => {
+                if (document.querySelector('.estado.cobrindo')) window.__cobriu = true;
+            });
+            window.__vigia.observe(document.getElementById('estado'),
+                                   {attributes: true, attributeFilter: ['class']});
+        }""")
+        self.pg.fill("#nome", "ANA")
+        self.pg.wait_for_timeout(900)
+        self.assertFalse(self.pg.evaluate("() => window.__cobriu"),
+                         "a cobertura tapou a peça durante o redesenho")
+        self.assertFalse(self.cobrindo())
+
+    def test_sem_modelo_nenhum_a_previa_ensina_e_da_a_saida(self):
+        """Ficava branco para sempre, sem uma palavra.
+
+        A rota devolve lista vazia AQUI, e nao um DELETE no banco: o servidor
+        e o banco sao um so para o arquivo inteiro, e a primeira versao deste
+        teste apagou os templates que os testes seguintes usavam.
+        """
+        self.pg.route("**/templates?tipo=*", lambda rota: rota.fulfill(
+            status=200, content_type="application/json", body='{"templates": []}'))
+        self.abrir_gerador()
+        self.pg.wait_for_selector(".estado.cobrindo", timeout=10000)
+        texto = self.pg.eval_on_selector("#estado", "e => e.innerText")
+        self.assertIn("Nenhum modelo", texto)
+        self.assertTrue(self.visivel('#estado a[href="/templates"]'),
+                        "a tela vazia precisa oferecer uma saída")
+
+    def test_a_roda_para_quem_pediu_menos_movimento(self):
+        """`prefers-reduced-motion` não é enfeite: é acessibilidade.
+
+        A primeira versão procurava a palavra na folha de estilo -- e passava
+        com a regra apagada, porque `sistema.css` também tem a palavra. Aqui
+        se mede a animação da própria roda, num navegador que pediu calma.
+        """
+        ctx = _navegador.new_context(viewport={"width": 1280, "height": 900},
+                                     reduced_motion="reduce")
+        self.addCleanup(ctx.close)
+        ctx.route("**/*", lambda rota: rota.continue_()
+                  if "127.0.0.1" in rota.request.url else rota.abort())
+        pg = ctx.new_page()
+        pg.goto(f"{SITE}/entrar", wait_until="domcontentloaded")
+        pg.fill("[name=usuario]", "samir"); pg.fill("[name=senha]", "segredo")
+        pg.click("form.entrada button[type=submit]"); pg.wait_for_selector("nav")
+        pg.route("**/fontes/fontes.js",
+                 lambda rota: (time.sleep(1.0), rota.continue_()) and None)
+        pg.goto(f"{SITE}/criar/topo/", wait_until="commit")
+        pg.wait_for_selector(".estado.cobrindo .girando", timeout=8000)
+        animacao = pg.eval_on_selector(".estado .girando",
+                                       "e => getComputedStyle(e).animationName")
+        self.assertEqual(animacao, "none", "a roda gira para quem pediu menos movimento")
+
+
 class TesteFormularioQuePerdoa(NoNavegador):
     """O U4 medido onde ele vale.
 

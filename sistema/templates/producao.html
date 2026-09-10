@@ -29,9 +29,19 @@
     <section class="coluna" data-etapa="{{ etapa }}">
       <header>
         <h3>{{ rotulos[etapa] }}</h3>
-        <span class="conta">{{ por_etapa[etapa]|length }}</span>
+        <span class="conta">{{ totais[etapa].pecas }}</span>
       </header>
+      {# Peça sozinha não diz se a coluna é meia hora ou dois dias de mesa. #}
+      {% if totais[etapa].pecas %}
+        <p class="soma mono">{{ totais[etapa].horas|numero(1) }} h ·
+          {{ totais[etapa].gramas|numero(0) }} g</p>
+      {% endif %}
       <div class="pilha" data-etapa="{{ etapa }}">
+        {# Coluna vazia ensina o que a etapa é, em vez de ficar em branco.
+           O texto mora em dados.CONVITES, ao lado da lista de etapas. #}
+        {% if not por_etapa[etapa] %}
+          <p class="convite">{{ convites[etapa] }}</p>
+        {% endif %}
         {% for p in por_etapa[etapa] %}
         <article class="ficha" draggable="true" data-peca="{{ p.id }}">
           <div class="ficha-topo">

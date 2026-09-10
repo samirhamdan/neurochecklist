@@ -269,7 +269,7 @@ cd morumbi3d
 python3 -m unittest discover -s tests -t .
 ```
 
-618 testes, **sem rede**. Os da curadoria e do gerador de letra caixa rodam
+634 testes, **sem rede**. Os da curadoria e do gerador de letra caixa rodam
 sem dependência nenhuma; os do sistema pedem Flask, e os dois que abrem o
 gerador de logo se pulam sozinhos quando `opencv`/`trimesh` não estão
 instalados — quem só quer o painel não precisa de 180 MB de biblioteca.

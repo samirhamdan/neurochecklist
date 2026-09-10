@@ -296,7 +296,8 @@ cheia, a pergunta certa não é “quanto sobra”, é “quanto sobra por hora 
 <h2>Os sprints</h2>
 <p class="desce">Em ordem de dor. O primeiro consertou o que quebrava todas as telas; o
 segundo é o que você pediu; o terceiro fez as tabelas caberem na mão; o quarto fez os
-formulários pararem de perder trabalho. Os quatro estão no ar.</p>
+formulários pararem de perder trabalho; o quinto fez as telas vazias e as esperas falarem.
+<b>Os cinco estão no ar.</b></p>
 
 <div class="sprints">
 
@@ -541,21 +542,62 @@ formulários pararem de perder trabalho. Os quatro estão no ar.</p>
       Comece um cliente no celular, escreva o nome e tente sair. Tem que perguntar.</div>
   </article>
 
-  <article class="sprint depois">
+  <article class="sprint">
     <div class="cab">
       <span class="num">U5</span>
       <h3>Telas vazias que ensinam</h3>
-      <span class="custo">Tamanho P · por último</span>
+      <span class="custo feito">✓ no ar</span>
     </div>
-    <p>O quadro de produção com cinco colunas vazias não diz o que fazer. As telas de lista
-    já têm um recado de vazio bom; o quadro, os gráficos e o gerador sem template ainda não.</p>
+    <p>As telas de lista já tinham um recado de vazio bom. O quadro de produção e o gerador
+    não.</p>
+    <div class="depois-medido">
+      <b>Medido depois</b>
+      <span><i>colunas mudas</i> 3 → 0</span>
+      <span><i>gerador em branco</i> 1,9 s → 0</span>
+      <span><i>17/17</i> mutações mortas</span>
+    </div>
+    <p>Das cinco colunas do quadro, <b>três ficavam vazias e nenhuma dizia nada</b> — um
+    retângulo em branco onde devia estar “o que chega aqui, e como”. Agora cada uma ensina
+    a sua etapa, e o texto mora ao lado da lista de etapas no código: etapa nova sem
+    convite fica vermelha no teste, em vez de nascer muda.</p>
+    <p>O cabeçalho contava <b>peças</b> e só. “3” não diz se a coluna é meia hora ou dois
+    dias de mesa — agora cada uma soma <b>hora e grama</b>, pelas mesmas funções que o
+    painel usa. As colunas da bancada somadas dão exatamente o “na mesa” do painel, e há
+    teste que confere: “à entregar” já saiu da impressora, e por isso não conta.</p>
+    <p><b>O gerador ficava 1,9 s com a tela branca</b> na primeira carga. Havia um aviso —
+    uma linha de 14 px embaixo de um retângulo vazio de 700 px, que não alcança o olho.
+    Agora o aviso ocupa a área da prévia enquanto não há desenho, com uma roda que gira
+    (e que para, para quem pediu menos movimento no aparelho). Assim que há peça, ele volta
+    a ser a linha discreta: cobrir o desenho a cada tecla piscaria pior do que deixar o
+    anterior no lugar durante os 273 ms do redesenho. Há teste para os dois lados.</p>
+    <p>E o gerador <b>sem modelo nenhum</b> ficava branco para sempre, sem uma palavra. Hoje
+    ele diz o que um modelo é, e leva até a tela de templates.</p>
+    <p><b>O que eu quase quebrei.</b> Medindo os totais por coluna fui ler a baixa de
+    estoque e achei um defeito: o insumo multiplicava pela quantidade e o filamento não —
+    trinta chaveiros tirariam 9 g do rolo em vez de 270. “Consertei”, e um teste de 2026
+    ficou vermelho: o peso já vem multiplicado de quem monta o item do pedido, e a
+    assimetria estava certa. Desfiz. O comentário que faltava está no código agora, para o
+    próximo que ler aquela linha não repetir o caminho.</p>
     <span class="rotulo">Entra</span>
     <ul class="lista">
       <li>Coluna vazia do quadro convida em vez de ficar em branco</li>
       <li>Totais por coluna no quadro: peças, horas e gramas</li>
-      <li>Estado de carregando onde a tela demora — o gerador leva alguns segundos para
-          desenhar e hoje fica parado sem explicar</li>
+      <li>Estado de carregando onde a tela demora — o gerador levava 1,9 s parado sem
+          explicar</li>
+      <li>Gerador sem modelo nenhum ensina o que um modelo é, e leva até os templates</li>
     </ul>
+    <span class="rotulo">Eu testo</span>
+    <ul class="lista">
+      <li>Toda tela do menu ensina alguma coisa com o banco zerado — varridas todas, não
+          basta não quebrar</li>
+      <li>O recado de vazio tem uma <b>saída</b>, e não só o fato: “Nenhum pedido.” é um
+          fato</li>
+      <li>O convite da etapa certa na coluna certa — trocado, ensina a coisa errada e
+          ninguém percebe</li>
+    </ul>
+    <div class="confere"><b>Você confere</b>
+      Abra a Produção. As colunas vazias têm que te dizer o que entra em cada uma — e o
+      total de horas da primeira coluna tem que bater com o “na mesa” do painel.</div>
   </article>
 
 </div>

@@ -950,3 +950,19 @@ th a.ordenar.ativa .seta{visibility:visible;color:var(--azul)}
 /* Nem todo erro e de um campo: o de compra sem item e da tabela. */
 .titulo-cartao.com-erro{color:var(--vermelho)}
 [id^=campo-]{scroll-margin-top:76px}
+
+/* ------------------------------------- U5: a coluna vazia ensina, e soma
+   Medido antes: das cinco colunas do quadro, três ficavam vazias e nenhuma
+   dizia nada. O cabeçalho contava peças e só — e "3" não diz se a coluna é
+   meia hora ou dois dias de mesa. */
+.coluna .soma{
+  margin:0 0 8px;font-size:11.5px;color:var(--suave);
+  font-variant-numeric:tabular-nums;
+}
+.convite{
+  margin:0;padding:14px 13px;font-size:13px;line-height:1.5;color:var(--suave);
+  border:1px dashed var(--linha-forte);border-radius:5px;background:transparent;
+}
+/* Enquanto se arrasta uma peça para cá, o convite sai da frente: quem já está
+   com a peça na mão não precisa mais da explicação. */
+.pilha.alvo .convite{opacity:.35}
