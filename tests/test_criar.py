@@ -71,7 +71,9 @@ class TesteCatalogo(unittest.TestCase):
     def test_a_busca_acha_pelo_tema_e_nao_so_pelo_nome(self):
         """Ninguem procura "letreiro terror". Procura "halloween"."""
         casos = {"halloween": "letreiro-terror", "princesa": "letreiro-magia",
-                 "bolo": "topo-de-bolo", "empresa": "logo-3d"}
+                 "bolo": "topo-de-bolo", "empresa": "logo-3d",
+                 "doces": "bandeja", "mesa do bolo": "display",
+                 "brinde": "lembrancinha"}
         for termo, esperado in casos.items():
             achados = [m.slug for m in self.c.MODELOS if termo in m.procuravel]
             with self.subTest(termo=termo):
@@ -196,9 +198,9 @@ class TesteTela(unittest.TestCase):
                 r = self.cliente.get(m.rota)
                 self.assertEqual(r.status_code, 200, f"{m.slug}: {m.rota} devolveu {r.status_code}")
 
-    def test_o_menu_tem_criar_e_perdeu_os_dois_links_soltos(self):
+    def test_o_menu_tem_personalizar_e_perdeu_os_dois_links_soltos(self):
         painel = self.cliente.get("/").get_data(as_text=True)
-        self.assertTrue('href="/criar"' in painel, "Criar nao entrou no menu")
+        self.assertTrue('href="/criar"' in painel, "Personalizar nao entrou no menu")
         self.assertNotIn("Gerar letreiro</a>", painel)
         self.assertNotIn("Gerar logo</a>", painel)
 

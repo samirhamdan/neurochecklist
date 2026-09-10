@@ -27,10 +27,9 @@ from dataclasses import dataclass, field
 NO_AR = "no ar"
 EM_OBRA = "em construção"
 
-# Festa e o que a Morumbi Festas ja vende; identidade e o lado empresa. Nao
-# invento categoria para modelo que nao existe -- ela nasce com o primeiro.
 FESTA = "Festa"
 IDENTIDADE = "Identidade"
+DECORACAO = "Decoração"
 
 
 @dataclass(frozen=True)
@@ -114,13 +113,41 @@ MODELOS: tuple[Modelo, ...] = (
            busca=("chaveiro", "argola", "lembrancinha", "bolso", "nome")),
     Modelo(slug="topo-de-bolo", nome="Topo de bolo", categoria=FESTA,
            resumo="Nome, idade e tema em cima do bolo, a partir de um template.",
-           # Uma camada, uma cor: o gerador emite UMA peca. Topo de duas cores
-           # pede desenho em duas camadas, que e outro sprint.
            gerador="Gerador de topo de bolo", rota="/criar/topo/", cores=(1,), saida="STL",
            nota="Os seis templates estão EM TESTE: o desenho sai, mas nenhum foi "
                 "impresso e aprovado ainda. O §6 do documento manda testar na mesa "
                 "antes de vender.",
            busca=("bolo", "aniversário", "festa", "idade", "topo")),
+    Modelo(slug="display", nome="Display de mesa", categoria=DECORACAO,
+           resumo="Peça em pé para a mesa do bolo: número, tema ou silhueta.",
+           gerador="Gerador de displays", cores=(1, 2), saida="STL",
+           busca=("display", "centro de mesa", "mesa do bolo", "numero",
+                  "silhueta", "enfeite", "decoração")),
+    Modelo(slug="bandeja", nome="Bandeja decorativa", categoria=DECORACAO,
+           resumo="Bandeja para doces e salgados com borda personalizada.",
+           gerador="Gerador de bandejas", cores=(1, 2), saida="STL",
+           busca=("bandeja", "doces", "salgados", "porta doces",
+                  "mesa de doces", "travessa")),
+    Modelo(slug="personagem", nome="Personagem temático", categoria=FESTA,
+           resumo="Boneco ou silhueta de personagem para decoração de mesa.",
+           gerador="Gerador de personagens", cores=(1, 2), saida="STL",
+           nota="Personagem de franquia (Disney, Marvel etc.) só sob encomenda "
+                "do dono da marca — não entra no catálogo.",
+           busca=("personagem", "boneco", "mascote", "silhueta",
+                  "figura", "tema", "herói")),
+    Modelo(slug="lembrancinha", nome="Lembrancinha personalizada", categoria=FESTA,
+           resumo="Peça pequena para dar aos convidados: porta-foto, caixinha ou enfeite.",
+           gerador="Gerador de lembrancinhas", cores=(1,), saida="STL",
+           busca=("lembrancinha", "brinde", "convidado", "recordação",
+                  "porta foto", "caixinha", "mimo")),
+    Modelo(slug="kit-de-mesa", nome="Kit de mesa completo", categoria=DECORACAO,
+           resumo="Conjunto coordenado: display, bandeja e lembrancinhas no mesmo tema.",
+           gerador="Gerador de kits de mesa", cores=(1, 2),
+           cores_rotulo="depende do kit", saida="pacote STL",
+           nota="Combina os outros geradores num pacote só. "
+                "É o objetivo final da linha de personalização.",
+           busca=("kit", "conjunto", "pacote", "mesa completa",
+                  "decoração completa", "festa completa")),
 )
 
 

@@ -1,41 +1,48 @@
 {% extends "base.html" %}
-{% block titulo %}Criar — Morumbi 3D{% endblock %}
+{% block titulo %}Personalizar — Morumbi 3D{% endblock %}
 {% block corpo %}bancada{% endblock %}
 {% block conteudo %}
 {% include "_topo.html" %}
 <main id="conteudo" class="pagina">
   <div class="cabecalho-lista">
-    <h2 class="secao">Criar</h2>
+    <h2 class="secao">Personalizar</h2>
   </div>
 
-  <div class="cartao filtros">
+  <div class="cartao filtros filtros-linha">
     <input class="busca" id="busca" type="search" autocomplete="off"
            placeholder="Procurar por nome, tema ou ocasião — princesa, halloween, empresa…">
-    <div class="grupo-chip" data-filtro="categoria">
-      <b>Categoria</b>
-      <button type="button" class="chip" data-v="" aria-pressed="true">Tudo</button>
-      {% for c in categorias %}
-      <button type="button" class="chip" data-v="{{ c }}" aria-pressed="false">{{ c }}</button>
-      {% endfor %}
-    </div>
-    <div class="grupo-chip" data-filtro="cores">
-      <b>Cores</b>
-      <button type="button" class="chip" data-v="" aria-pressed="true">Tanto faz</button>
-      {% for n in cores %}
-      <button type="button" class="chip" data-v="{{ n }}" aria-pressed="false">
-        {{ '1 cor' if n == 1 else '%d cores'|format(n) }}</button>
-      {% endfor %}
-    </div>
-    <div class="grupo-chip" data-filtro="status">
-      <b>Situação</b>
-      <button type="button" class="chip" data-v="" aria-pressed="true">Tudo</button>
-      <button type="button" class="chip" data-v="{{ no_ar }}" aria-pressed="false">Dá para gerar hoje</button>
-      <button type="button" class="chip" data-v="{{ em_obra }}" aria-pressed="false">Em construção</button>
+    <div class="filtros-selecao">
+      <label class="filtro-select">
+        <span>Categoria</span>
+        <select id="filtro-categoria" data-filtro="categoria">
+          <option value="">Todas</option>
+          {% for c in categorias %}
+          <option value="{{ c }}">{{ c }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="filtro-select">
+        <span>Cores</span>
+        <select id="filtro-cores" data-filtro="cores">
+          <option value="">Tanto faz</option>
+          {% for n in cores %}
+          <option value="{{ n }}">{{ '1 cor' if n == 1 else '%d cores'|format(n) }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="filtro-select">
+        <span>Situação</span>
+        <select id="filtro-status" data-filtro="status">
+          <option value="">Todas</option>
+          <option value="{{ no_ar }}">Pronto para gerar</option>
+          <option value="{{ em_obra }}">Em construção</option>
+        </select>
+      </label>
     </div>
   </div>
 
   <p class="conta-modelos" id="conta">
-    <b>{{ conta.total }}</b> modelos · {{ conta.no_ar }} dão para gerar hoje</p>
+    <b>{{ conta.total }}</b> modelos · {{ conta.no_ar }} prontos para gerar</p>
 
   <div class="modelos" id="lista">
     {% for m in modelos %}
@@ -60,7 +67,7 @@
 
   <div class="cartao cartao-vazio" id="nada" hidden>
     <b>Nenhum modelo com esse filtro.</b>
-    <span>Limpe a busca ou volte para “Tudo”. Se é uma peça que um cliente pediu e não
+    <span>Limpe a busca ou volte para "Todas". Se é uma peça que um cliente pediu e não
     está aqui, ela é candidata a virar modelo.</span>
   </div>
 
@@ -91,16 +98,13 @@
     }
     nada.hidden = vistos > 0;
     conta.innerHTML = vistos === cartoes.length
-      ? `<b>${vistos}</b> modelos · ${cartoes.filter(c => c.dataset.status === "no ar").length} dão para gerar hoje`
+      ? `<b>${vistos}</b> modelos · ${cartoes.filter(c => c.dataset.status === "no ar").length} prontos para gerar`
       : `<b>${vistos}</b> de ${cartoes.length} modelos`;
   }
 
-  for (const grupo of document.querySelectorAll(".grupo-chip")) {
-    grupo.addEventListener("click", e => {
-      const b = e.target.closest(".chip");
-      if (!b) return;
-      [...grupo.querySelectorAll(".chip")].forEach(x => x.setAttribute("aria-pressed", x === b));
-      escolha[grupo.dataset.filtro] = b.dataset.v;
+  for (const sel of document.querySelectorAll(".filtros-selecao select")) {
+    sel.addEventListener("change", () => {
+      escolha[sel.dataset.filtro] = sel.value;
       aplicar();
     });
   }

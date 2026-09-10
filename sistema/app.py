@@ -66,8 +66,8 @@ MENU = (
         ("lista_insumos", "Insumos", "insumos"),
         ("editar_empresa", "Empresa", "empresa"),
     )),
-    ("Criação", "criacao", (
-        ("tela_criar", "Criar", "criar"),
+    ("Personalização", "personalizacao", (
+        ("tela_criar", "Personalizar", "personalizar"),
         ("lista_templates", "Templates", "templates"),
     )),
 )
@@ -621,7 +621,7 @@ def criar_app() -> Flask:
     @app.route("/criar")
     @auth.exige_login
     def tela_criar():
-        return render_template("criar.html", aba="criar", modelos=criar.MODELOS,
+        return render_template("criar.html", aba="personalizar", modelos=criar.MODELOS,
                                categorias=criar.categorias(), cores=criar.cores_possiveis(),
                                conta=criar.contagem(), no_ar=criar.NO_AR,
                                em_obra=criar.EM_OBRA)

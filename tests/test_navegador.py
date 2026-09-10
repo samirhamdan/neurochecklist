@@ -176,7 +176,7 @@ class TesteFiltroDeCriar(NoNavegador):
         self.pg.wait_for_selector(".modelo")
 
     def chip(self, filtro, valor):
-        self.pg.click(f'.grupo-chip[data-filtro="{filtro}"] .chip[data-v="{valor}"]')
+        self.pg.select_option(f'select[data-filtro="{filtro}"]', valor)
         self.pg.wait_for_timeout(120)
 
     def test_sem_filtro_aparecem_todos_e_o_vazio_fica_escondido(self):

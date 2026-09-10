@@ -75,7 +75,7 @@ class TesteOMenuEDado(Base):
         """Sem isto, quem chega em Filamentos ve os tres grupos fechados."""
         casos = {"painel": "operacao", "producao": "operacao",
                  "lista_filamentos": "cadastros", "lista_compras": "cadastros",
-                 "tela_criar": "criacao", "lista_templates": "criacao"}
+                 "tela_criar": "personalizacao", "lista_templates": "personalizacao"}
         for endereco, esperado in casos.items():
             with self.subTest(endereco=endereco):
                 self.assertEqual(self.modulo._grupo_de(endereco), esperado)

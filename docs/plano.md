@@ -4,7 +4,7 @@ Duas trilhas, numeradas **por dependência** e não por preferência.
 
 - **Gestão (1 a 9)** — o que registra: cadastros, pedidos, produção,
   financeiro, loja, marketplace.
-- **Criação (C1 a C4)** — o que gera: a plataforma de geradores e os
+- **Personalização (C0 a C9)** — o que gera: a plataforma de geradores e os
   produtos personalizáveis que nascem dela.
 
 As duas se encontram em dois pontos, e só neles: o **produto** (sprint 1) e
@@ -245,6 +245,122 @@ atualiza, tabela de preços aparece com R$ em pt-BR).
 loja própria, Shopee e Mercado Livre — nada é construído até haver demanda
 comprovada. O que vem agora é melhoria do que já está no ar.
 
+---
+
+## Melhoria — Menu Personalização ✅ FEITO
+
+O menu "Criação" virou **Personalização**, e a tela "Criar" virou
+**Personalizar**. O catálogo agora mostra 14 modelos: 9 que já funcionam e
+5 em construção. Os filtros de categoria, cores e situação trocaram os botões
+de chip por **dropdowns**, mais fáceis de operar no telefone.
+
+A nova categoria **Decoração** agrupa as peças de mesa: displays, bandejas e
+kits. A ordem dos cinco geradores novos segue a prioridade de demanda e a
+dependência entre eles — o Kit de Mesa vem por último porque consome os outros.
+
+---
+
+## Sprint C5 — Gerador de Displays
+**Tamanho M · depende do C1**
+
+Display é a peça que fica em pé na mesa do bolo: número da idade, silhueta do
+tema, nome do aniversariante. Sai de uma faixa curta de texto ou de uma forma
+com base, em duas cores possíveis (base e frente). É o passo natural depois
+do topo de bolo: a geometria é mais simples (não tem arco nem haste), mas a
+demanda de mesa de festa é imediata.
+
+**Entra:** gerador `/criar/display/` · formas pré-definidas (retângulo,
+estrela, coração, nuvem) · texto ou número centralizado · base com encaixe
+para ficar em pé · opção de uma ou duas cores · templates editáveis pela tela
+`/templates`.
+
+**Eu testo:** peça em pé não tomba (centro de gravidade sobre a base) · duas
+cores separam em dois STL · malha fechada em todos os templates · a base cabe
+na mesa · peça de uma cor gera um arquivo só.
+
+**Você confere:** imprima o display de "5 anos" com estrela e verifique que
+fica em pé na mesa sem apoio extra.
+
+## Sprint C6 — Gerador de Bandejas
+**Tamanho M · depende do C1**
+
+Bandeja impressa em 3D com borda decorativa para doces e salgados. A peça
+ocupa quase toda a mesa de impressão (até 300 mm) e sai em uma ou duas cores.
+Completa o trio com o display: mesa do bolo e mesa de doces resolvidas.
+
+**Entra:** gerador `/criar/bandeja/` · formas de borda (lisa, ondulada,
+recortada, tema) · tamanhos pré-definidos que cabem na mesa · texto opcional
+na borda · uma ou duas cores.
+
+**Eu testo:** a bandeja cabe na mesa Bambu A2L · a borda é estruturalmente
+resistente (espessura mínima) · malha fechada e manifold · peça de 300 mm não
+ultrapassa os limites.
+
+**Você confere:** imprima uma bandeja média e coloque brigadeiros em cima — a
+borda aguenta o peso e a peça fica plana na mesa.
+
+## Sprint C7 — Gerador de Personagens
+**Tamanho G · depende do C1**
+
+Silhueta de personagem para decoração de mesa, tipo boneco em pé. Usa imagem
+vetorial ou forma paramétrica como base, com nome do aniversariante. É onde a
+personalização mostra valor: o pacote "festa da Maria" ganha personagem com o
+nome dela.
+
+**Entra:** gerador `/criar/personagem/` · base de silhuetas genéricas (sem
+marca registrada) · nome do aniversariante na base · uma ou duas cores ·
+placa de apoio para ficar em pé.
+
+**Eu testo:** personagem em pé sem apoio extra · filtro de marca recusa
+personagem de franquia · silhueta e nome não se sobrepõem · malha fechada.
+
+**Você confere:** imprima dois personagens genéricos (menino e menina) e
+coloque na mesa de festa.
+
+**Atenção:** personagem de franquia (Disney, Marvel etc.) **não entra no
+catálogo** — só sob encomenda do dono da marca. O filtro de marca que já
+existe no topo de bolo vale aqui também.
+
+## Sprint C8 — Gerador de Lembrancinhas
+**Tamanho M · depende do C1**
+
+Peça pequena para dar aos convidados: chaveiro temático, porta-foto, caixinha
+decorada, enfeite de mesa. É o produto de maior volume por festa (20 a 50
+unidades), então a calculadora de preço por volume entra como peça central.
+
+**Entra:** gerador `/criar/lembrancinha/` · tipos de peça (chaveiro temático,
+porta-foto, caixinha, enfeite) · nome do convidado ou do aniversariante ·
+tema da festa na decoração · preço por volume automático.
+
+**Eu testo:** a peça cabe na bandeja de impressão em lote (usando a
+calculadora de volume) · malha fechada · estimativa de preço por unidade
+diminui com o volume · uma cor por padrão.
+
+**Você confere:** imprima um lote de 10 lembrancinhas e verifique que o preço
+unitário calculado bate com o real.
+
+## Sprint C9 — Gerador de Kits de Mesa
+**Tamanho G · depende do C5, C6, C7 e C8**
+
+O objetivo final da linha de personalização. Combina display, bandeja,
+personagem e lembrancinhas num pacote coordenado com o mesmo tema e cores.
+Transforma a Morumbi 3D em fábrica digital de decoração personalizada.
+
+**Entra:** gerador `/criar/kit/` · seleção de peças do kit (quais geradores
+incluir) · tema único aplicado a todas as peças · cores coordenadas · lista
+de peças com peso total, tempo total e preço do pacote · desconto de kit
+sobre a soma avulsa.
+
+**Eu testo:** o kit gera todas as peças selecionadas · o preço do kit é menor
+que a soma avulsa · o peso total bate com a soma dos pesos · todas as peças
+do kit cabem na mesa · cores são consistentes entre as peças.
+
+**Você confere:** monte um kit "Festa da Maria, 5 anos" com display, bandeja,
+2 personagens e 30 lembrancinhas. Imprima tudo e avalie se as peças combinam
+entre si na mesa.
+
+---
+
 ## Sprint 7 — Relatórios
 **Tamanho M · depende do 3 e do 5**
 
@@ -356,7 +472,7 @@ como saber qual das duas está certa. Os testes seguem o link e comparam.
 
 ---
 
-# Trilha de Criação — a plataforma de geradores
+# Trilha de Personalização — a plataforma de geradores
 
 ## A descoberta que barateia tudo
 
@@ -646,13 +762,14 @@ apagado.
 mostrava "Idade ou número" assim mesmo — `display` de classe ganha da regra do
 navegador. Terceira vez neste projeto; agora está no CLAUDE.md e tem teste.
 
-**Você confere:** abra **Criar → Chaveiro de nome**, escreva um nome curto em
-5 cm e gere. Depois tente "GUILHERME" em 3 cm: o sistema tem que recusar, e
-dizer que 9 letras em 35 mm é apertado — não uma desculpa genérica.
+**Você confere:** abra **Personalizar → Chaveiro de nome**, escreva um nome
+curto em 5 cm e gere. Depois tente "GUILHERME" em 3 cm: o sistema tem que
+recusar, e dizer que 9 letras em 35 mm é apertado — não uma desculpa genérica.
 
-**Os nove restantes:** placa, display, lembrancinha, caixa, organizador, vaso,
-cortador, lithophane, mapa. Cada um é hoje um módulo de geometria mais uma
-entrada no registro. Me diga qual cliente pediu, e ele entra.
+**Os próximos cinco**, escolhidos por demanda e complementaridade: display
+(C5), bandeja (C6), personagem (C7), lembrancinha (C8), kit de mesa (C9). O
+kit combina os outros quatro num pacote coordenado — é o objetivo final da
+linha de personalização. Me diga qual cliente pediu, e o próximo anda.
 
 ## Quatro decisões já tomadas
 
@@ -689,4 +806,4 @@ entrada no registro. Me diga qual cliente pediu, e ele entra.
 | Preço na vitrine | Catálogo com preço; personalizado sob consulta | Sprints 6 e 8 |
 | Entrega | Entrega via Melhor Envio, e retirada | Sprints 1 e 8 |
 | Marketplace | Preparar para Shopee e Mercado Livre | Campos no sprint 2; integração no 9 |
-| Geradores | Plataforma de personalização, começando por topo de bolo | Trilha de Criação, C1 a C4 |
+| Geradores | Plataforma de personalização, começando por topo de bolo | Trilha de Personalização, C0 a C9 |
