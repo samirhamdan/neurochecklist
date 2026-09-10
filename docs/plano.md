@@ -215,6 +215,32 @@ celular com a marca e o valor certos.
 
 ---
 
+## Melhoria — Calculadora de preço por volume ✅ FEITO
+
+Integrada no cadastro de produtos, não em tela separada.
+
+**O problema:** o preço sugerido (piso + gramas × valor) faz sentido para peça
+avulsa, mas quem encomenda 20 a 50 mesas precisa de preço por volume — e R$ 55
+por centro de mesa pequeno é inviável nessa escala. A taxa de setup (preparar a
+mesa, tirar peças, limpar) dilui quando se imprime uma bandeja inteira de uma vez.
+
+**O que entrou:** checkbox "Usar tabela de preços por volume" no formulário de
+produto. Ativado, mostra dimensões da peça (mm), margem desejada (%) e taxa de
+setup (R$). A calculadora em tempo real mostra quantas peças cabem na bandeja
+da Bambu Lab A2L (330 × 320 mm, com 80% de ocupação) e uma tabela com preço
+unitário e retorno/hora para 1 un., 1 bandeja, 4 bandejas e lote grande.
+
+As faixas são estritamente crescentes: a última é sempre maior que 4 bandejas,
+para que o preço nunca suba com o volume. Python (`custo.preco_por_volume`) e
+JavaScript do formulário fazem a mesma conta.
+
+**Testado:** 7 testes unitários (flag desativada, 4 faixas, preço diminui com
+volume, bandeja 80%, peça grande cabe menos, margem maior sobe preço, setup
+dilui); navegador com Playwright (seção esconde/mostra, cabe na bandeja
+atualiza, tabela de preços aparece com R$ em pt-BR).
+
+---
+
 **Aqui o desenvolvimento pausa.** Do 6 em diante — financeiro, relatórios,
 loja própria, Shopee e Mercado Livre — nada é construído até haver demanda
 comprovada. O que vem agora é melhoria do que já está no ar.
