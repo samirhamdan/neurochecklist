@@ -996,6 +996,12 @@ def campos_produto(dados: dict) -> dict:
         preco=_numero(dados.get("preco")) or None,
         observacao=_limpo(dados.get("observacao")),
         ativo=1 if dados.get("ativo", "1") in (1, "1", True, "on") else 0,
+        dimensao_x=_numero(dados.get("dimensao_x")) or None,
+        dimensao_y=_numero(dados.get("dimensao_y")) or None,
+        usa_preco_volume=1 if dados.get("usa_preco_volume", "") in (1, "1", "on") else 0,
+        margem_volume=_numero(dados.get("margem_volume")) or 150,
+        taxa_setup=_numero(dados.get("taxa_setup")) or 5.0,
+        preco_fixo=_numero(dados.get("preco_fixo")) or None,
     )
 
 

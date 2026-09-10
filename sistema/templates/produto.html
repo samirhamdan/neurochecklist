@@ -129,6 +129,55 @@
       </div>
 
       <div class="cartao">
+        <h3 class="titulo-cartao">Preço por volume</h3>
+        <label class="marca-caixa">
+          <input type="checkbox" name="usa_preco_volume" value="1" {{ 'checked' if atual and atual.usa_preco_volume }}>
+          Usar tabela de preços por volume
+        </label>
+
+        <div id="volume-section" style="{{ 'display:none' if not (atual and atual.usa_preco_volume) }}">
+          <div class="linha">
+            <label class="campo{{ ' com-erro' if campo_erro == 'dimensao_x' }}" id="campo-dimensao_x"><span>Comprimento (mm)</span>
+              <input name="dimensao_x" id="dimensao_x" type="number" step="0.1" min="10"
+                     value="{{ '%.1f'|format(atual.dimensao_x) if atual and atual.dimensao_x else '100' }}" inputmode="decimal">
+            {% if campo_erro == 'dimensao_x' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+            </label>
+            <label class="campo{{ ' com-erro' if campo_erro == 'dimensao_y' }}" id="campo-dimensao_y"><span>Largura (mm)</span>
+              <input name="dimensao_y" id="dimensao_y" type="number" step="0.1" min="10"
+                     value="{{ '%.1f'|format(atual.dimensao_y) if atual and atual.dimensao_y else '100' }}" inputmode="decimal">
+            {% if campo_erro == 'dimensao_y' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+            </label>
+          </div>
+
+          <p class="nota" id="cabe-bandeja">Cabe na bandeja: — unidades</p>
+
+          <div class="linha">
+            <label class="campo{{ ' com-erro' if campo_erro == 'margem_volume' }}" id="campo-margem_volume"><span>Margem desejada (%)</span>
+              <input name="margem_volume" id="margem_volume" type="number" step="10" min="100"
+                     value="{{ '%.0f'|format(atual.margem_volume) if atual and atual.margem_volume else '150' }}" inputmode="numeric">
+            {% if campo_erro == 'margem_volume' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+            </label>
+            <label class="campo{{ ' com-erro' if campo_erro == 'taxa_setup' }}" id="campo-taxa_setup"><span>Taxa de setup (R$)</span>
+              <input name="taxa_setup" id="taxa_setup" type="number" step="0.50" min="0"
+                     value="{{ '%.2f'|format(atual.taxa_setup) if atual and atual.taxa_setup else '5.00' }}" inputmode="decimal">
+            {% if campo_erro == 'taxa_setup' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+            </label>
+          </div>
+
+          <div id="tabela-volume" style="margin-top: 12px; padding: 12px; background: var(--bancada); border-radius: 4px; display:none">
+            <p class="nota" style="margin-top:0"><b>Tabela de preços:</b></p>
+            <div id="linhas-volume"></div>
+          </div>
+        </div>
+
+        <label class="campo{{ ' com-erro' if campo_erro == 'preco_fixo' }}" id="campo-preco_fixo" style="margin-top: 12px"><span>Preço fixo (se volume estiver desativado)</span>
+          <input name="preco_fixo" type="number" step="0.01" min="0" placeholder="deixe vazio para usar o sugerido"
+                 value="{{ '%.2f'|format(atual.preco_fixo) if atual and atual.preco_fixo else '' }}" inputmode="decimal">
+        {% if campo_erro == 'preco_fixo' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+      </div>
+
+      <div class="cartao">
         <h3 class="titulo-cartao">Insumos da peça</h3>
         {% if insumos %}
           <div class="lista-insumos">
@@ -228,6 +277,65 @@
       maximumFractionDigits: 1}) + "%";
     document.getElementById("v-hora").textContent = money(c.por_hora);
   });
+
+  // Cálculo de preço por volume
+  const bandeja = { x: 330, y: 320 };
+  const calcularVolume = () => {
+    const dimX = parseFloat(document.getElementById("dimensao_x").value) || 100;
+    const dimY = parseFloat(document.getElementById("dimensao_y").value) || 100;
+    const margem = parseFloat(document.getElementById("margem_volume").value) || 150;
+    const taxa = parseFloat(document.getElementById("taxa_setup").value) || 5;
+    const usaVolume = document.querySelector('input[name="usa_preco_volume"]').checked;
+    const custoNum = document.getElementById("v-custo").textContent.replace("R$ ", "").replace(",", ".");
+    const custo = parseFloat(custoNum) || 0;
+    const horas = parseFloat(document.getElementById("horas").value) || 1;
+
+    // Calcular quantas cabem na bandeja
+    const porLinha = Math.max(1, Math.floor(bandeja.x / dimX));
+    const porColuna = Math.max(1, Math.floor(bandeja.y / dimY));
+    const qtdBandeja = Math.max(1, Math.floor(porLinha * porColuna * 0.8)); // 80% ocupação
+
+    document.getElementById("cabe-bandeja").textContent = `Cabe na bandeja: ${qtdBandeja} unidades`;
+    document.getElementById("volume-section").style.display = usaVolume ? "block" : "none";
+    document.getElementById("preco_fixo").parentElement.style.display = usaVolume ? "none" : "block";
+
+    if (!usaVolume || qtdBandeja === 0) return;
+
+    // Tabela de preços
+    const margemMult = margem / 100;
+    const faixas = [
+      { qtd: 1, desc: "1 unidade" },
+      { qtd: qtdBandeja, desc: `${qtdBandeja} unidades (1 bandeja)` },
+      { qtd: qtdBandeja * 4, desc: `${qtdBandeja * 4} unidades (4 bandejas)` },
+      { qtd: 50, desc: "50+ unidades" }
+    ];
+
+    let html = "";
+    faixas.forEach(f => {
+      const custoTotal = (custo * f.qtd) + taxa;
+      const custoUnitario = custoTotal / f.qtd;
+      const precoUnitario = (custoUnitario * margemMult).toFixed(2);
+      const retornoHora = horas > 0 ? ((precoUnitario - custoUnitario) / horas).toFixed(2) : "0";
+
+      html += `<div style="padding: 8px 0; border-bottom: 1px solid var(--linha); font-size: 13.5px">
+        <div style="margin-bottom: 4px"><b>${f.desc}</b></div>
+        <div>Preço: <span class="mono" style="font-weight: 600">R$ ${Number(precoUnitario).toLocaleString("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+        <div style="color: var(--suave); font-size: 12px">Retorno/hora: R$ ${retornoHora}/h</div>
+      </div>`;
+    });
+
+    document.getElementById("linhas-volume").innerHTML = html;
+    document.getElementById("tabela-volume").style.display = "block";
+  };
+
+  document.getElementById("usa_preco_volume").addEventListener("change", calcularVolume);
+  document.getElementById("dimensao_x").addEventListener("change", calcularVolume);
+  document.getElementById("dimensao_y").addEventListener("change", calcularVolume);
+  document.getElementById("margem_volume").addEventListener("change", calcularVolume);
+  document.getElementById("taxa_setup").addEventListener("change", calcularVolume);
+
+  // Calcular ao carregar
+  calcularVolume();
 })();
 </script>
 {% endblock %}

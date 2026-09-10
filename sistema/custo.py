@@ -156,6 +156,65 @@ def preco_comercial(gramas: float, piso: float, por_grama: float) -> float:
     return float(math.ceil((piso + gramas * por_grama) / 5.0) * 5.0)
 
 
+def preco_por_volume(produto: dict, param: dict[str, float]) -> dict | None:
+    """Tabela de preços por volume para um produto.
+
+    Calcula quantas peças cabem na bandeja Bambu Lab A2L (330×320 mm) e retorna
+    preços para 1, 8, 32 e 50+ unidades, considerando a diluição do setup.
+    """
+    if not produto.get("usa_preco_volume"):
+        return None
+
+    # Dimensões da peça (em mm)
+    dim_x = float(produto.get("dimensao_x") or 100)
+    dim_y = float(produto.get("dimensao_y") or 100)
+
+    # Bandeja Bambu Lab A2L: 330 × 320 mm
+    bandeja_x, bandeja_y = 330, 320
+
+    # Quantas peças cabem (layout simples, com margem)
+    por_linha = max(1, int(bandeja_x / dim_x))
+    por_coluna = max(1, int(bandeja_y / dim_y))
+    quantidade_por_bandeja = max(1, int(por_linha * por_coluna * 0.8))  # 80% de ocupação
+
+    # Parâmetros de cálculo
+    conta_unitaria = conta_de_produto(produto, param).com_preco(produto.get("preco_fixo"))
+    custo_prod = conta_unitaria.custo
+    margem = float(produto.get("margem_volume") or 150) / 100.0  # 150% = 2.5x
+    taxa_setup = float(produto.get("taxa_setup") or 5.0)
+
+    # Cálculo para cada faixa de volume
+    faixas = [
+        (1, "1 unidade"),
+        (quantidade_por_bandeja, f"{quantidade_por_bandeja} unidades (1 bandeja)"),
+        (quantidade_por_bandeja * 4, f"{quantidade_por_bandeja * 4} unidades (4 bandejas)"),
+        (50, "50+ unidades"),
+    ]
+
+    tabela = []
+    for quantidade, descricao in faixas:
+        custo_total = (custo_prod * quantidade) + taxa_setup
+        custo_unitario = custo_total / quantidade
+        preco_unitario = round(custo_unitario * margem, 2)
+
+        # Calcular retorno por hora (usando as horas do produto)
+        horas_totais = (produto.get("horas") or 0) * quantidade
+        retorno_hora = round((preco_unitario - custo_unitario) / (produto.get("horas") or 1), 2) if horas_totais > 0 else 0
+
+        tabela.append({
+            "quantidade": quantidade,
+            "descricao": descricao,
+            "custo_unitario": round(custo_unitario, 2),
+            "preco_unitario": preco_unitario,
+            "retorno_hora": retorno_hora,
+        })
+
+    return {
+        "quantidade_por_bandeja": quantidade_por_bandeja,
+        "tabela": tabela,
+    }
+
+
 def calcular(gramas: float, horas: float, preco_kg: float | None,
              insumos: float = 0.0, minutos: float | None = None, *,
              param: dict[str, float]) -> Conta:
