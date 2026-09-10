@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block titulo %}Empresa — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+{% import "_erro.html" as av with context %}
+<main id="conteudo" class="pagina estreita">
+  <h2 class="secao">Empresa</h2>
+  {{ av.aviso() }}
+  <p class="nota" style="margin-top:0">É isto que sai assinado no orçamento que o cliente
+  recebe. O que estiver em branco simplesmente não aparece no papel.</p>
+
+  <form class="cartao formulario" method="post" data-avisar>
+    <div class="linha">
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'nome' }}" id="campo-nome">
+        <span>Nome</span>
+        <input name="nome" required maxlength="80" placeholder="Morumbi 3D"
+               value="{{ atual.nome or '' }}">
+        {% if campo_erro == 'nome' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+      <label class="campo{{ ' com-erro' if campo_erro == 'documento' }}" id="campo-documento">
+        <span>CNPJ ou CPF</span>
+        <input name="documento" maxlength="40" placeholder="12.345.678/0001-90"
+               value="{{ atual.documento or '' }}">
+        {% if campo_erro == 'documento' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+    </div>
+    <div class="linha">
+      <label class="campo{{ ' com-erro' if campo_erro == 'telefone' }}" id="campo-telefone">
+        <span>Telefone</span>
+        <input name="telefone" type="tel" inputmode="tel" maxlength="24"
+               placeholder="(67) 99999-0000" value="{{ atual.telefone or '' }}">
+        {% if campo_erro == 'telefone' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'email' }}" id="campo-email">
+        <span>E-mail</span>
+        <input name="email" type="email" inputmode="email" maxlength="80"
+               placeholder="contato@morumbi3d.com.br" value="{{ atual.email or '' }}">
+        {% if campo_erro == 'email' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+    </div>
+    <label class="campo{{ ' com-erro' if campo_erro == 'endereco' }}" id="campo-endereco">
+      <span>Endereço</span>
+      <input name="endereco" maxlength="120" placeholder="Rua, número — Campo Grande/MS"
+             value="{{ atual.endereco or '' }}">
+      {% if campo_erro == 'endereco' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+    </label>
+    <label class="campo{{ ' com-erro' if campo_erro == 'site' }}" id="campo-site">
+      <span>Site ou Instagram</span>
+      <input name="site" maxlength="80" placeholder="@morumbi3d"
+             value="{{ atual.site or '' }}">
+      {% if campo_erro == 'site' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+    </label>
+
+    <h3 class="titulo-cartao">O documento</h3>
+    <div class="linha">
+      <label class="campo{{ ' com-erro' if campo_erro == 'cor' }}" id="campo-cor">
+        <span>Cor</span>
+        {# `type=color` abre o seletor do aparelho; o campo de texto ao lado
+           deixa colar o código que veio da identidade visual. #}
+        <span class="par-cor">
+          <input name="cor" type="color" value="{{ atual.cor or '#0040F0' }}"
+                 oninput="this.form.cor_texto.value = this.value.toUpperCase()">
+          <input name="cor_texto" class="mono" maxlength="7" aria-label="Código da cor"
+                 value="{{ (atual.cor or '#0040F0')|upper }}"
+                 oninput="this.form.cor.value = this.value">
+        </span>
+        {% if campo_erro == 'cor' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+      <label class="campo{{ ' com-erro' if campo_erro == 'validade_dias' }}"
+             id="campo-validade_dias">
+        <span>Validade do orçamento (dias)</span>
+        <input name="validade_dias" type="number" step="1" min="1" max="365"
+               inputmode="numeric" value="{{ atual.validade_dias or 7 }}">
+        {% if campo_erro == 'validade_dias' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+    </div>
+    <label class="campo{{ ' com-erro' if campo_erro == 'condicoes' }}" id="campo-condicoes">
+      <span>Condições</span>
+      <input name="condicoes" maxlength="220"
+             placeholder="Metade na aprovação, metade na entrega. Peça personalizada não tem troca."
+             value="{{ atual.condicoes or '' }}">
+      {% if campo_erro == 'condicoes' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+    </label>
+    <p class="nota">A validade é quanto tempo o preço fica de pé. Depois dela o link que o
+    cliente recebeu para de abrir — orçamento de três meses atrás não vale hoje, porque o
+    filamento subiu.</p>
+
+    <div class="acoes principal">
+      <button class="botao" type="submit">Salvar</button>
+      <a class="botao vazado" href="{{ url_for('painel') }}">Voltar</a>
+    </div>
+  </form>
+</main>
+{% endblock %}

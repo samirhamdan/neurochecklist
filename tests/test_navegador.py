@@ -38,6 +38,10 @@ def _navegador_disponivel() -> bool:
 
 TEM_NAVEGADOR = _navegador_disponivel()
 SEM_NAVEGADOR = "playwright ou Chromium nao instalados"
+def _token_de_teste() -> str:
+    return TOKEN
+
+
 def _porta_livre() -> int:
     """Porta que o sistema operacional garante estar livre.
 
@@ -52,6 +56,7 @@ def _porta_livre() -> int:
 
 PORTA = 0
 SITE = ""
+TOKEN = ""
 _navegador = None
 _pw = None
 
@@ -99,6 +104,9 @@ def setUpModule():
         "produto_id": prod, "descricao": "Topo ANA", "cor": "Rosa", "quantidade": 1,
         "valor_unit": 70, "gramas": 83.7, "horas": 5.77}])
     dados.mudar_situacao(ped, "aprovado", "samir")
+    # Um orcamento com link, para a folha publica ter o que abrir.
+    global TOKEN
+    TOKEN = dados.token_do_orcamento(ped)["token"]
 
     import logging
     logging.getLogger("werkzeug").setLevel(logging.ERROR)   # uma linha por GET polui a suite
@@ -279,6 +287,129 @@ class TesteNadaSaiDaTela(NoNavegador):
         for largura in (768, 1280):
             with self.subTest(largura=largura):
                 self.assertEqual(self.larguras(largura), [])
+
+
+class TesteAFolhaDoCliente(NoNavegador):
+    """A única tela sem menu, e a única que abre sem senha.
+
+    O que só o navegador prova: que ela cabe no telefone como as outras, e que
+    o botão de aceitar é um alvo de dedo.
+    """
+
+    def abrir_folha(self):
+        self.pg.set_viewport_size({"width": 420, "height": 800})
+        self.abrir(f"/orcamento/{_token_de_teste()}")
+        self.pg.wait_for_selector(".folha-publica")
+
+    def test_cabe_no_telefone(self):
+        self.abrir_folha()
+        sobra = self.pg.evaluate("() => document.documentElement.scrollWidth") - 420
+        self.assertEqual(sobra, 0, "a folha do cliente rola de lado")
+
+    def test_a_linha_do_item_virou_cartao_aqui_tambem(self):
+        """A folha do cliente herda o U3 de graça, porque é o mesmo CSS."""
+        self.abrir_folha()
+        estilo = self.pg.eval_on_selector("table.tabela tbody tr",
+                                          "e => getComputedStyle(e).display")
+        self.assertEqual(estilo, "flex")
+
+    def test_aceitar_e_um_alvo_de_dedo(self):
+        self.abrir_folha()
+        alto = self.pg.eval_on_selector(".aceitar button",
+                                        "e => e.getBoundingClientRect().height")
+        self.assertGreaterEqual(alto, 44)
+
+    def test_nao_ha_como_entrar_no_sistema_por_aqui(self):
+        """O cliente recebeu um link. Ele não pode virar uma porta."""
+        self.abrir_folha()
+        self.assertFalse(self.visivel("nav") if self.pg.query_selector("nav") else False)
+        destinos = self.pg.eval_on_selector_all(
+            "a", "e => e.map(x => x.getAttribute('href'))")
+        for destino in destinos:
+            self.assertFalse((destino or "").startswith("/pedidos"), destino)
+
+    def test_aceitar_muda_a_tela_e_some_com_o_botao(self):
+        """Aceitar duas vezes não é um segundo acordo.
+
+        Com orçamento PRÓPRIO: aceitar tranca a edição, e o servidor e o banco
+        são um só para o arquivo inteiro. Já derrubei o teste seguinte assim
+        uma vez, no U5.
+        """
+        from sistema import dados
+        cli = dados.salvar_cliente({"nome": "Buffet Estrela"}, "samir")
+        ped = dados.salvar_pedido({"cliente_id": cli}, "samir", itens=[
+            {"descricao": "Topo", "quantidade": 1, "valor_unit": 70}])
+        token = dados.token_do_orcamento(ped)["token"]
+        self.pg.set_viewport_size({"width": 420, "height": 800})
+        self.abrir(f"/orcamento/{token}")
+        self.pg.wait_for_selector(".aceitar")
+        self.pg.fill(".aceitar [name=nome]", "Buffet Estrela")
+        self.pg.click(".aceitar button")
+        self.pg.wait_for_selector(".aceito")
+        self.assertIn("Orçamento aceito", self.pg.inner_text(".aceito"))
+        self.assertIsNone(self.pg.query_selector(".aceitar button"),
+                          "o botão de aceitar continuou na tela")
+
+
+class TesteNenhumCampoNasceIlegivel(NoNavegador):
+    """`.campo input` NASCE escuro.
+
+    A regra base foi escrita para o palco do gerador de logo -- fundo #101215,
+    letra clara. A versão da bancada estava presa a `.formulario` e
+    `.coluna-lado`, e a folha do orçamento, que não é nenhum dos dois, ganhou
+    um campo **preto dentro de um cartão branco**. Vi na foto.
+
+    Isto não se lê no HTML: depende de qual regra ganhou, e a resposta está no
+    estilo COMPUTADO. Por isso o teste mede a cor que o navegador aplicou.
+    """
+
+    TELAS = ("/pedidos/novo", "/produtos/novo", "/filamentos/novo", "/insumos/novo",
+             "/clientes/novo", "/compras/nova", "/templates/novo", "/empresa")
+
+    def claros(self, seletor="body"):
+        """Luminância de cada campo visível, e a do fundo atrás dele."""
+        return self.pg.evaluate("""() => {
+            const luz = c => {
+                const [r, g, b] = c.match(/\\d+/g).map(Number);
+                return (0.2126*r + 0.7152*g + 0.0722*b) / 255;
+            };
+            return [...document.querySelectorAll('input, select, textarea')]
+              .filter(e => e.getClientRects().length > 0 && e.type !== 'color'
+                           && e.type !== 'checkbox' && e.type !== 'file')
+              .map(e => ({nome: e.name || e.type,
+                          campo: luz(getComputedStyle(e).backgroundColor),
+                          letra: luz(getComputedStyle(e).color)}));
+        }""")
+
+    def test_campo_claro_com_letra_escura_em_toda_tela_da_bancada(self):
+        for rota in self.TELAS:
+            self.abrir(rota)
+            self.pg.wait_for_timeout(120)
+            campos = self.claros()
+            self.assertTrue(campos, f"{rota}: nenhum campo para medir")
+            for c in campos:
+                self.assertGreater(c["campo"], 0.5,
+                                   f"{rota}: campo {c['nome']} nasceu escuro")
+                self.assertLess(c["letra"], 0.5,
+                                f"{rota}: letra clara em campo claro ({c['nome']})")
+
+    def test_na_folha_do_cliente_tambem(self):
+        """Ela não é `.formulario` nem `.coluna-lado` -- foi onde apareceu."""
+        self.abrir(f"/orcamento/{_token_de_teste()}")
+        self.pg.wait_for_selector(".aceitar input[name=nome]")
+        campos = self.claros()
+        self.assertTrue(campos)
+        for c in campos:
+            self.assertGreater(c["campo"], 0.5, f"campo {c['nome']} preto na folha branca")
+
+    def test_o_palco_do_gerador_continua_escuro(self):
+        """O conserto não pode ter clareado a tela que É escura de propósito."""
+        self.abrir("/logo/")
+        self.pg.wait_for_timeout(200)
+        if not self.pg.query_selector("body.palco"):
+            self.skipTest("o gerador de logo não está disponível neste servidor")
+        for c in self.claros():
+            self.assertLess(c["campo"], 0.5, "o palco clareou")
 
 
 class TesteAEsperaFala(NoNavegador):

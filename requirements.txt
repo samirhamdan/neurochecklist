@@ -14,6 +14,11 @@ shapely>=2.0
 trimesh>=4.0
 mapbox_earcut>=1.0
 
+# Orcamento em PDF. Python puro (usa o pillow que ja esta acima para a
+# marca), sem biblioteca do sistema -- pesa uns 3 MB, e num VPS de 800 MB
+# isso importa. Uma alternativa como o weasyprint puxaria cairo e pango.
+reportlab>=4.0
+
 # Usados pelo trimesh ao contar corpos e ao cortar peca grande. Nao vem
 # juntos e o erro aparece longe da causa.
 networkx>=3.0

@@ -91,7 +91,10 @@ ORDENS_PEDIDOS = (
     ("situacao", "Situação", "status"),
     ("prazo", "Prazo", "prazo"),
     ("itens", "Itens", "itens"),
-    ("valor", "Valor", "valor"),
+    # Ordena pelo que o cliente PAGA, que e o que a coluna mostra -- ordenar
+    # pelo preco de tabela poria um pedido de R$ 800 com R$ 300 de desconto na
+    # frente de um de R$ 700 inteiro.
+    ("valor", "Valor", lambda p: (p.get("valor") or 0) - (p.get("desconto") or 0)),
     ("liquido", "Líquido", lambda p: p.get("valor_liquido")),
 )
 BUSCA_PEDIDOS = ("cliente", "canal", "id_no_canal")

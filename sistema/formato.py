@@ -17,6 +17,7 @@ do Sul nao tem mais horario de verao desde 2019, entao o deslocamento e fixo.
 """
 from __future__ import annotations
 
+import unicodedata
 from datetime import date, datetime, timedelta, timezone
 
 TRACO = "—"
@@ -30,6 +31,18 @@ try:
     AQUI = ZoneInfo("America/Campo_Grande")
 except Exception:  # pragma: no cover - depende do tzdata da maquina
     AQUI = timezone(timedelta(hours=-4), "-04")
+
+
+def sem_acento_simples(texto: str) -> str:
+    """Para NOME DE ARQUIVO. 'Ana Paula Ribeiro' -> 'Ana Paula Ribeiro',
+    'José Antônio' -> 'Jose Antonio'.
+
+    Nome de arquivo com acento sobrevive no Linux e no telefone, mas quebra
+    no Windows dele quando o arquivo passa por WhatsApp Web e volta.
+    """
+    cru = unicodedata.normalize("NFKD", str(texto))
+    limpo = "".join(c for c in cru if not unicodedata.combining(c))
+    return "".join(c if c.isalnum() or c in " -_" else "" for c in limpo)
 
 
 def numero(valor, casas: int = 2) -> str:

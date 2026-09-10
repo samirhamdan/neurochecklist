@@ -57,7 +57,11 @@
        Sem isto o aviso aparecia justamente no botão de desistir, que é onde
        ele mais irrita. */
     form.querySelectorAll("a.botao").forEach(a =>
-      a.addEventListener("click", () => { saindo = true; }));
+      a.addEventListener("click", () => {
+        /* Link que abre noutra aba NÃO sai desta página -- marcar "saindo"
+           ali desarmaria o aviso para o resto da sessão. */
+        if (a.target !== "_blank") saindo = true;
+      }));
   });
 
   window.addEventListener("beforeunload", function (ev) {

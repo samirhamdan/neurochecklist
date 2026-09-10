@@ -457,6 +457,60 @@ O bug acima passou por uma conferência minha no navegador: eu perguntei por
 tela mostrava tudo. **Pergunte se o elemento tem caixa** (`offsetParent !==
 null`), que é o que a pessoa vê. É a regra de `tests/test_navegador.py`.
 
+### O campo nasce ESCURO; quem clareia é a classe do `<body>`
+
+`.campo input` no topo da folha é o palco (fundo `#101215`). Bancada e folha
+do cliente reescrevem por **`body.bancada` / `body.publico`**, nunca pelo
+container. Escrevi `.formulario .campo input` uma vez e a folha do cliente —
+que não é formulário nem coluna lateral — nasceu com campo preto sobre papel
+branco: o cliente digitava o nome dele e não via o que digitava.
+
+Manter as duas versões escondia qual delas trabalhava: apagar `body.bancada`
+não quebrava teste nenhum, porque todo `.formulario` está dentro de uma tela
+`bancada`. Uma regra só, e `TesteNenhumCampoNasceIlegivel` mede a luminância
+de cada campo de cada tela do menu.
+
+### O orçamento aceito não é mais editável
+
+Aceite é um combinado com o cliente. Depois dele, `salvar_pedido` recusa
+(`_aceito`), e renovar o link não reabre nada. Mudou o combinado? Pedido novo.
+Sem isso o número que o cliente aceitou e o que está no banco divergem em
+silêncio, e quem tem o PDF na mão é ele.
+
+`aceitar_orcamento` faz `UPDATE ... WHERE aceito_em IS NULL`: dois cliques no
+botão são um aceite só, com a data do primeiro. E grava `ETAPAS[0]`, não o
+texto `'na fila'` — os nomes de etapa mudam por migração, e literal solto no
+código envelhece calado.
+
+### O link vencido não conta QUAL dos dois foi
+
+`/orcamento/<token>` é a única rota sem senha do sistema. A tela do vencido
+diz a mesma coisa para link que expirou e para link que nunca existiu — dizer
+"esse orçamento não existe" transformaria a rota num detector de token válido.
+Quem já aceitou continua abrindo o link mesmo vencido: é o comprovante dele.
+
+### `reportlab` e não `weasyprint`
+
+Os dois geram o PDF. O `weasyprint` puxa cairo, pango e gobject do sistema; o
+`reportlab` é Python puro sobre o pillow que já está no `requirements.txt`, uns
+3 MB. Num VPS de 2 GB com `MemoryMax=800M` e um worker, isso decide.
+
+O `Canvas` do orçamento usa `pageCompression=0` **de propósito**: é o que
+deixa o teste ler o texto dentro do PDF sem instalar leitor. E dentro do PDF
+`ç` sai como a sequência octal `\347` — `texto_do_pdf()` em
+`tests/test_orcamento.py` desescapa antes de comparar.
+
+### O número do papel sai da mesma função do painel
+
+`orcamento.linhas()` chama `dados.total_do_pedido`, a mesma do painel e da
+ficha. É a regra do U2 valendo para o PDF, e aqui ela custou caro: a linha viva
+da ficha somava os itens sem descontar, então a tela dizia "Total R$ 760,00" e
+o papel que o cliente recebia dizia R$ 720,00.
+
+Desconto entra em três contas: `min(max(desconto, 0), valor)` (nunca negativo,
+nunca maior que o pedido), a comissão incide sobre o que o cliente **paga**, e
+`somar_valor` no painel conta o líquido — o preço de tabela não entra no caixa.
+
 ### `networkidle` no teste de navegador mede a internet
 
 As telas puxam fonte do Google. Numa máquina sem saída, `wait_for_load_state

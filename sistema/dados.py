@@ -14,8 +14,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
 import sqlite3
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from . import formato
@@ -239,6 +240,24 @@ CREATE TABLE IF NOT EXISTS semente_vista (
 CREATE TABLE IF NOT EXISTS parametros (
     chave  TEXT PRIMARY KEY,
     valor  REAL NOT NULL
+);
+
+-- Quem assina o orcamento. Uma linha so (id = 1) -- e uma empresa, e uma
+-- tabela de uma linha e mais honesta do que uma de chave/valor com dez
+-- chaves soltas que ninguem sabe se ainda existem.
+CREATE TABLE IF NOT EXISTS empresa (
+    id         INTEGER PRIMARY KEY CHECK (id = 1),
+    nome       TEXT NOT NULL DEFAULT 'Morumbi 3D',
+    documento  TEXT NOT NULL DEFAULT '',
+    telefone   TEXT NOT NULL DEFAULT '',
+    email      TEXT NOT NULL DEFAULT '',
+    endereco   TEXT NOT NULL DEFAULT '',
+    site       TEXT NOT NULL DEFAULT '',
+    -- Cor do documento. Nasce no azul da marca; o Samir muda se quiser.
+    cor        TEXT NOT NULL DEFAULT '#0040F0',
+    validade_dias INTEGER NOT NULL DEFAULT 7,
+    condicoes  TEXT NOT NULL DEFAULT '',
+    atualizado_em TEXT NOT NULL DEFAULT ''
 );
 """
 
@@ -482,6 +501,23 @@ def _migrar(conn: sqlite3.Connection) -> None:
         # Ate o C4 so havia topo de bolo, entao todo template existente e topo.
         conn.execute("ALTER TABLE templates ADD COLUMN tipo TEXT NOT NULL DEFAULT 'topo'")
 
+    # Desconto em REAIS, e nao em porcentagem: e assim que o desconto e dado
+    # no balcao ("faco por 600"), e porcentagem obrigaria a arredondar duas
+    # vezes -- uma para achar o valor, outra para escrever no papel.
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(pedidos)")}
+    for coluna, tipo in (("desconto", "REAL NOT NULL DEFAULT 0"),
+                         ("token", "TEXT"), ("token_expira", "TEXT"),
+                         ("aceito_em", "TEXT"), ("aceito_por", "TEXT")):
+        if coluna not in colunas:
+            conn.execute(f"ALTER TABLE pedidos ADD COLUMN {coluna} {tipo}")
+    # Um token vale para UM orcamento. O indice unico e quem garante isso, e
+    # nao a funcao que sorteia -- sorteio repetido acontece.
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_pedidos_token"
+                 " ON pedidos (token) WHERE token IS NOT NULL")
+
+    if not conn.execute("SELECT 1 FROM empresa WHERE id = 1").fetchone():
+        conn.execute("INSERT INTO empresa (id, atualizado_em) VALUES (1, ?)", (agora(),))
+
     _semear_templates(conn)
     conn.commit()
 
@@ -573,9 +609,19 @@ def _dias_ate(prazo: str | None) -> int | None:
 # quem olha nao tem como saber qual das duas esta certa. Entao a funcao e uma
 # so, e recebe a LISTA que a tela ja tem em maos.
 
+def total_do_pedido(pedido_: dict) -> float:
+    """O que o cliente PAGA: a soma dos itens menos o desconto.
+
+    Existe porque tres telas e o PDF precisam do mesmo numero. `valor` sozinho
+    e a soma dos itens -- o preco de tabela -- e depois de dar 40 reais de
+    desconto ele deixa de ser o que entra no caixa.
+    """
+    return round((pedido_["valor"] or 0) - (pedido_["desconto"] or 0), 2)
+
+
 def somar_valor(pedidos_: list[dict]) -> float:
     """O quanto vale uma lista de pedidos. Serve ao painel e ao rodape da tabela."""
-    return round(sum(p["valor"] or 0 for p in pedidos_), 2)
+    return round(sum(total_do_pedido(p) for p in pedidos_), 2)
 
 
 # `gramas_est` e `horas_est` sao o total da LINHA, e nao de uma unidade: quem
@@ -1066,6 +1112,126 @@ def _comissao_do_canal(conn, canal: str) -> float:
     return float(linha["comissao"]) if linha else 0.0
 
 
+# ------------------------------------------------------------------ empresa
+#
+# Quem assina o orcamento. Uma linha so: e uma empresa.
+
+CAMPOS_EMPRESA = ("nome", "documento", "telefone", "email", "endereco", "site",
+                  "cor", "condicoes")
+
+
+def campos_empresa(dados: dict) -> dict:
+    campos = {c: _limpo(dados.get(c)) for c in CAMPOS_EMPRESA}
+    campos["validade_dias"] = max(1, int(_numero(dados.get("validade_dias"), 7)))
+    return campos
+
+
+def empresa() -> dict:
+    with conectar() as conn:
+        return dict(conn.execute("SELECT * FROM empresa WHERE id = 1").fetchone())
+
+
+RE_COR = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+
+def salvar_empresa(dados: dict, autor: str) -> None:
+    campos = campos_empresa(dados)
+    if not campos["nome"]:
+        raise ErroDeCampo("nome", "O orçamento precisa sair assinado por alguém.")
+    if not RE_COR.match(campos["cor"] or ""):
+        raise ErroDeCampo("cor", "A cor tem que ser um código de seis dígitos, "
+                                 "como #0040F0.")
+    with conectar() as conn:
+        colunas = ", ".join(f"{c}=:{c}" for c in campos)
+        conn.execute(f"UPDATE empresa SET {colunas}, atualizado_em=:quando WHERE id = 1",
+                     {**campos, "quando": agora()})
+        conn.commit()
+
+
+# ----------------------------------------------------- o link do orcamento
+#
+# O cliente aceita o orcamento SEM senha, por um endereco que so ele tem. Duas
+# regras seguram isso:
+#
+#   * o token e sorteado por `secrets`, com 32 caracteres. Adivinhar um vale
+#      tanto quanto adivinhar uma senha -- e ha indice unico no banco, porque
+#      sorteio repetido acontece e nao pode virar dois pedidos com um link;
+#   * ele EXPIRA. Orcamento e uma proposta de preco, e preco de tres meses
+#     atras nao vale hoje -- o filamento subiu.
+
+def _sortear_token() -> str:
+    return secrets.token_urlsafe(24)
+
+
+def token_do_orcamento(id_: int, dias: int | None = None) -> dict:
+    """Cria (ou renova) o link deste orcamento e devolve token e validade."""
+    if dias is None:
+        dias = int(empresa()["validade_dias"])
+    expira = (formato.hoje() + timedelta(days=max(1, dias))).isoformat()
+    with conectar() as conn:
+        if _aceito(conn, id_):
+            # Renovar o link de um orcamento ja aceito reabriria o que ja foi
+            # combinado. O link antigo continua valendo para LER.
+            linha = conn.execute("SELECT token, token_expira FROM pedidos WHERE id = ?",
+                                 (id_,)).fetchone()
+            return {"token": linha["token"], "expira": linha["token_expira"]}
+        for _ in range(5):        # sorteio repetido acontece; o indice barra
+            token = _sortear_token()
+            try:
+                conn.execute("UPDATE pedidos SET token = ?, token_expira = ? WHERE id = ?",
+                             (token, expira, id_))
+                conn.commit()
+                return {"token": token, "expira": expira}
+            except sqlite3.IntegrityError:
+                continue
+    raise RuntimeError("nao consegui sortear um token livre")
+
+
+def pedido_por_token(token: str) -> dict | None:
+    """O pedido daquele link -- ou None se o link nao existe ou venceu."""
+    if not token:
+        return None
+    with conectar() as conn:
+        linha = conn.execute("SELECT * FROM pedidos WHERE token = ?", (token,)).fetchone()
+        if not linha:
+            return None
+        # Vencido continua legivel para quem ja aceitou: o cliente guarda o
+        # link e volta nele para conferir o que combinou.
+        if not linha["aceito_em"] and (linha["token_expira"] or "") < formato.hoje().isoformat():
+            return None
+        itens = conn.execute(
+            "SELECT * FROM pecas WHERE pedido_id = ? ORDER BY id", (linha["id"],)).fetchall()
+    pedido_ = dict(linha, dias=_dias_ate(linha["prazo"]))
+    pedido_["itens"] = [dict(i) for i in itens]
+    return pedido_
+
+
+def aceitar_orcamento(token: str, quem: str) -> dict | None:
+    """O cliente aceita. Acontece UMA vez -- o segundo clique nao muda a data."""
+    alvo = pedido_por_token(token)
+    if not alvo:
+        return None
+    with conectar() as conn:
+        conn.execute(
+            "UPDATE pedidos SET aceito_em = ?, aceito_por = ?, status = 'aprovado'"
+            " WHERE token = ? AND aceito_em IS NULL",
+            (agora(), _limpo(quem)[:90], token))
+        # Aceitar poe as pecas na fila: e o que "aprovado" significa aqui
+        # dentro, e e a mesma regra de `mudar_situacao`.
+        # ETAPAS[0], e nao "na fila": esse nome antigo so continua funcionando
+        # em `mudar_situacao` porque a migracao o renomeia a cada conexao.
+        conn.execute(
+            f"UPDATE pecas SET status = '{ETAPAS[0]}'"
+            f" WHERE pedido_id = ? AND status = 'orcamento'", (alvo["id"],))
+        conn.commit()
+    return pedido_por_token(token)
+
+
+def _aceito(conn, id_: int) -> bool:
+    linha = conn.execute("SELECT aceito_em FROM pedidos WHERE id = ?", (id_,)).fetchone()
+    return bool(linha and linha["aceito_em"])
+
+
 def _carimbar_entrega(conn, id_: int, situacao: str) -> None:
     """Grava QUANDO o pedido virou entregue -- ou apaga, se ele voltou atras.
 
@@ -1102,19 +1268,34 @@ def salvar_pedido(dados: dict, autor: str, id_: int | None = None,
                               "Escolha o cliente do pedido — é dele que vem o canal, "
                               "e é o canal que responde de onde vêm seus pedidos.")
 
+        # Orcamento que o cliente ACEITOU e um acordo. Mudar item ou preco
+        # depois do aceite e mudar o que foi combinado -- e o PDF que ele
+        # guardou passaria a discordar do sistema, em silencio.
+        if id_ and _aceito(conn, id_):
+            raise ValueError(
+                "Este orçamento já foi aceito pelo cliente e não pode mais ser "
+                "editado. Para mudar o combinado, faça um pedido novo.")
+
         situacao = _limpo(dados.get("status"), "orcamento")
         if situacao not in SITUACOES:
             raise ValueError(f"situacao desconhecida: {situacao}")
 
         itens = itens or []
         valor = round(sum(i["quantidade"] * i["valor_unit"] for i in itens), 2)
+        # Desconto em REAIS, e nao em porcentagem: e assim que ele e dado no
+        # balcao ("faco por 600"). Preso ao valor, porque pedido negativo
+        # entraria no "a receber" DIMINUINDO o total, e o erro so apareceria
+        # no fim do mes.
+        desconto = min(max(_numero(dados.get("desconto")), 0.0), valor)
         comissao = (_numero(dados.get("comissao")) if _limpo(dados.get("comissao"))
                     else _comissao_do_canal(conn, canal))
+        # A comissao do marketplace incide sobre o que o cliente PAGA.
+        liquido = round((valor - desconto) * (1 - comissao / 100.0), 2)
         campos = dict(
             cliente=nome, cliente_id=cliente_id, canal=canal,
             id_no_canal=_limpo(dados.get("id_no_canal")) or None,
-            comissao=comissao,
-            valor=valor, valor_liquido=round(valor * (1 - comissao / 100.0), 2),
+            comissao=comissao, desconto=desconto,
+            valor=valor, valor_liquido=liquido,
             prazo=_limpo(dados.get("prazo")) or None,
             status=situacao, observacao=_limpo(dados.get("observacao")),
         )

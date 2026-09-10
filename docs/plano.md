@@ -190,18 +190,34 @@ recorrente não duplica no mesmo mês.
 **Você confere:** marque um pedido como entregue e veja a conta a receber
 com o valor e o nome do cliente.
 
-## Sprint 6 — Orçamento em PDF
-**Tamanho P · depende do 2**
+## Sprint 6 — Orçamento em PDF ✅ FEITO
 
-**Entra:** dados da empresa e cores do documento · PDF com marca, itens,
-prazo e total · link para o cliente aprovar sem senha.
+**Entrou:** tela **Empresa** (nome, documento, contato, endereço, cor da
+marca, validade padrão, condições) · botão **PDF** na ficha do pedido, com a
+marca, os itens, o prazo e o total · campo **Desconto** ao lado da comissão ·
+**link para o cliente**, que abre sem senha, mostra o orçamento no telefone e
+tem um botão de aceitar.
 
-**Eu testo:** total do PDF bate com a soma dos itens, com desconto e sem ·
-link de aprovação vale para um orçamento só e expira · orçamento aprovado
-não pode ser editado depois.
+O aceite grava quem e quando, e põe as peças na fila. Depois dele o pedido
+trava: para mudar o combinado, pedido novo. O link vence (7 dias por padrão),
+mas para quem já aceitou ele continua abrindo — é o comprovante.
+
+**Testado:** o total do papel é a mesma função do painel (`total_do_pedido`) ·
+desconto não passa do valor nem fica negativo · a comissão incide sobre o que
+o cliente paga · o PDF já nasce com o link · o link vence · aceitar duas vezes
+é um aceite só · orçamento aceito não salva · renovar o link não reabre ·
+a tela do vencido não conta se o link expirou ou nunca existiu · a folha do
+cliente não tem nenhum caminho para dentro do sistema · e nenhum campo de
+nenhuma tela nasce ilegível (a luminância é medida no navegador).
 
 **Você confere:** gere o PDF e mande no seu WhatsApp; tem que abrir no
 celular com a marca e o valor certos.
+
+---
+
+**Aqui o desenvolvimento pausa.** Do 6 em diante — financeiro, relatórios,
+loja própria, Shopee e Mercado Livre — nada é construído até haver demanda
+comprovada. O que vem agora é melhoria do que já está no ar.
 
 ## Sprint 7 — Relatórios
 **Tamanho M · depende do 3 e do 5**

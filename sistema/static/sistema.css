@@ -120,6 +120,7 @@ form.entrada h2{
   font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--palco-suave);font-weight:500;
 }
+body.bancada .campo > span, body.publico .campo > span{color:var(--suave)}
 .campo input{
   font:inherit;font-size:16px;padding:11px 13px;border-radius:4px;
   background:#101215;border:1px solid var(--palco-linha);
@@ -453,14 +454,21 @@ tr.inativo td{opacity:.55}
 .linha > .campo.cresce{flex:1 1 220px;min-width:min(220px,100%)}
 .campo, .campo > *{min-width:0}
 .campo input, .campo select, .campo textarea{max-width:100%}
-.formulario .campo input, .formulario .campo select,
-.coluna-lado .campo input{
+/* O padrao la em cima e o palco escuro (campo #101215, letra clara). Bancada
+   e folha do cliente sao fundo claro, entao o campo TEM que ser reescrito aqui
+   -- e pela CLASSE DO BODY, nao pelo container. Ja escrevi ".formulario .campo
+   input" e a folha do cliente, que nao e formulario nem coluna-lado, nasceu com
+   campo preto sobre papel branco. Manter as duas versoes tambem esconde qual
+   delas trabalha: a mutacao que apagava "body.bancada" sobrevivia. */
+body.bancada .campo input, body.bancada .campo select, body.bancada .campo textarea,
+body.publico .campo input, body.publico .campo select, body.publico .campo textarea{
   font:inherit;font-size:15.5px;padding:9px 11px;border-radius:4px;
   background:var(--mesa);border:1px solid var(--linha-forte);color:var(--tinta);
   width:100%;
 }
-.formulario .campo input:focus, .formulario .campo select:focus,
-.coluna-lado .campo input:focus{border-color:var(--azul);outline:none}
+body.bancada .campo input:focus, body.bancada .campo select:focus,
+body.publico .campo input:focus, body.publico .campo select:focus{
+  border-color:var(--azul);outline:none}
 .marca-caixa{display:flex;align-items:center;gap:9px;font-size:15px;cursor:pointer}
 .acoes{display:flex;gap:10px;align-items:center;margin-top:4px}
 
@@ -966,3 +974,66 @@ th a.ordenar.ativa .seta{visibility:visible;color:var(--azul)}
 /* Enquanto se arrasta uma peça para cá, o convite sai da frente: quem já está
    com a peça na mão não precisa mais da explicação. */
 .pilha.alvo .convite{opacity:.35}
+
+/* --------------------------------------- sprint 6: a cor do documento
+   Dois campos para a mesma cor: o seletor do aparelho e o codigo colado da
+   identidade visual. Um alimenta o outro. */
+.par-cor{display:flex;gap:8px;align-items:center}
+.par-cor input[type=color]{
+  width:46px;height:40px;padding:2px;border:1px solid var(--linha-forte);
+  border-radius:5px;background:var(--mesa);cursor:pointer;
+}
+.par-cor input[name=cor_texto]{flex:1 1 auto;min-width:0;text-transform:uppercase}
+
+/* ================================== sprint 6: a folha que o cliente recebe
+   A ÚNICA tela sem menu. Quem abre é o cliente, num telefone, por um link
+   que veio no WhatsApp — e nada aqui leva para dentro do sistema. */
+body.publico{background:var(--bancada);color:var(--tinta)}
+.folha-publica{
+  max-width:560px;margin:0 auto;padding:20px 16px 40px;
+  display:flex;flex-direction:column;gap:14px;
+}
+.marca-publica{display:flex;align-items:center;gap:11px;padding:4px 2px}
+.marca-publica img{border-radius:7px}
+.marca-publica b{display:block;font-size:17px;letter-spacing:-.01em}
+.marca-publica span{display:block;font-size:13px;color:var(--suave)}
+
+.cabecalho-orcamento{
+  display:flex;justify-content:space-between;align-items:baseline;
+  flex-wrap:wrap;gap:4px 14px;margin-bottom:2px;
+}
+.cabecalho-orcamento h1{
+  margin:0;font-size:24px;font-weight:700;letter-spacing:-.02em;
+}
+.cabecalho-orcamento h1 span{color:var(--marca,var(--azul))}
+.para{margin:0 0 16px;font-size:15px;color:var(--suave)}
+.para b{color:var(--tinta);font-weight:600}
+
+.somas{margin-top:14px;border-top:1px solid var(--linha-forte);padding-top:4px}
+.somas .destaque dd{color:var(--marca,var(--azul))}
+
+.aceito{
+  background:var(--verde-fundo);border-left:3px solid var(--verde);
+  border-radius:0 6px 6px 0;padding:14px 16px;font-size:15px;line-height:1.5;
+}
+.aceito b{display:block;color:var(--verde);font-size:16px;margin-bottom:2px}
+
+.aceitar h2{margin:0 0 2px;font-size:19px;letter-spacing:-.01em}
+.aceitar .campo{margin:14px 0}
+.botao.grande{
+  width:100%;justify-content:center;min-height:52px;font-size:16.5px;
+  background:var(--marca,var(--azul));border-color:var(--marca,var(--azul));
+}
+.rodape-publico{
+  margin:6px 0 0;text-align:center;font-size:12.5px;color:var(--suave);
+}
+
+/* O botão de orçamento na ficha do pedido, e o link para copiar. */
+.link-orcamento{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;
+}
+.link-orcamento input{
+  flex:1 1 200px;min-width:0;font-family:"IBM Plex Mono",monospace;font-size:12px;
+  padding:9px 10px;border:1px solid var(--linha);border-radius:5px;
+  background:var(--bancada);color:var(--suave);
+}

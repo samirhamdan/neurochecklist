@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}Orçamento — link vencido{% endblock %}
+{% block corpo %}publico{% endblock %}
+{% block conteudo %}
+<main id="conteudo" class="folha-publica">
+  <div class="cartao cartao-vazio">
+    <b>Este link não está mais valendo.</b>
+    {# Não diz se nunca existiu ou se venceu: para quem está tentando
+       adivinhar endereços, as duas respostas juntas são uma pista. #}
+    <span>Ou o orçamento passou da validade, ou o endereço está incompleto.
+    Peça um novo para quem te mandou — leva um minuto.</span>
+  </div>
+</main>
+{% endblock %}

@@ -53,7 +53,12 @@
             {%- else %}em {{ p.dias }} d{% endif -%}
           </td>
           <td data-rotulo="Itens" class="num mono">{{ p.itens }}</td>
-          <td data-rotulo="Valor" class="num mono decide">{{ (p.valor or 0)|dinheiro }}</td>
+          {# O que o cliente PAGA. `valor` sozinho e o preco de tabela, e
+             depois de um desconto ele deixa de ser o que entra no caixa. #}
+          <td data-rotulo="Valor" class="num mono decide">
+            {{ ((p.valor or 0) - (p.desconto or 0))|dinheiro }}
+            {%- if p.desconto %}<span class="fraco">-{{ p.desconto|dinheiro }}</span>{% endif -%}
+          </td>
           <td data-rotulo="Líquido" class="num mono {{ 'forte' if p.comissao }}">{{ (p.valor_liquido if p.valor_liquido is not none else (p.valor or 0))|dinheiro }}</td>
           <td class="num acao"><a href="{{ url_for('editar_pedido', id_=p.id) }}">abrir</a></td>
         </tr>

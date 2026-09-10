@@ -15,11 +15,11 @@ from __future__ import annotations
 import os
 
 from flask import (
-    abort,
+    Response, abort,
     Flask, redirect, render_template, request, send_from_directory, session, url_for,
 )
 
-from . import analise, auth, criar, custo, dados, formato, listas
+from . import analise, auth, criar, custo, dados, formato, listas, orcamento
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -64,6 +64,7 @@ MENU = (
         ("lista_compras", "Compras", "compras"),
         ("lista_filamentos", "Filamentos", "filamentos"),
         ("lista_insumos", "Insumos", "insumos"),
+        ("editar_empresa", "Empresa", "empresa"),
     )),
     ("Criação", "criacao", (
         ("tela_criar", "Criar", "criar"),
@@ -433,6 +434,79 @@ def criar_app() -> Flask:
         except ValueError:
             abort(400)
         return redirect(url_for("editar_pedido", id_=id_))
+
+    # ------------------------------------------------------------- orcamento
+    def _link_do_aceite(token: str) -> str:
+        """O endereço que vai no PDF e no WhatsApp.
+
+        `_external=True` porque quem abre é o cliente, num aparelho que não
+        tem ideia de qual é o servidor — um caminho relativo no papel não
+        leva a lugar nenhum.
+        """
+        return url_for("ver_orcamento", token=token, _external=True)
+
+    @app.route("/pedidos/<int:id_>/orcamento.pdf")
+    @auth.exige_login
+    def pdf_do_orcamento(id_):
+        alvo = dados.pedido(id_)
+        if not alvo:
+            abort(404)
+        # Gerar o PDF cria o link, se ainda não houver: o papel e o endereço
+        # nascem juntos, senão o cliente recebe um PDF que manda abrir uma
+        # página que não existe.
+        link = dados.token_do_orcamento(id_)
+        alvo["token_expira"] = link["expira"]
+        try:
+            pdf = orcamento.desenhar(alvo, dados.empresa(), _link_do_aceite(link["token"]))
+        except ImportError:
+            # O venv da VPS pode estar atrás do requirements.txt.
+            abort(503, "O gerador de PDF não está instalado neste servidor.")
+        return Response(pdf, mimetype="application/pdf", headers={
+            # `inline`: no telefone ele abre na hora, em vez de baixar e
+            # sumir na pasta de downloads.
+            "Content-Disposition":
+                f'inline; filename="{orcamento.nome_do_arquivo(alvo)}"',
+        })
+
+    @app.route("/pedidos/<int:id_>/link", methods=["POST"])
+    @auth.exige_login
+    def renovar_link(id_):
+        if not dados.pedido(id_):
+            abort(404)
+        dados.token_do_orcamento(id_)
+        return redirect(url_for("editar_pedido", id_=id_))
+
+    # A ÚNICA rota do sistema sem login. Quem entra é o cliente, com um
+    # endereço de 32 caracteres sorteado que só ele recebeu.
+    @app.route("/orcamento/<token>")
+    def ver_orcamento(token):
+        alvo = dados.pedido_por_token(token)
+        if not alvo:
+            # Não diz se o link nunca existiu ou se venceu: para quem está
+            # tentando adivinhar, as duas respostas juntas são uma pista.
+            return render_template("orcamento_vencido.html"), 404
+        return render_template("orcamento.html", pedido=alvo, token=token,
+                               conteudo=orcamento.linhas(alvo, dados.empresa()),
+                               empresa=dados.empresa())
+
+    @app.route("/orcamento/<token>/aceitar", methods=["POST"])
+    def aceitar_orcamento(token):
+        alvo = dados.aceitar_orcamento(token, request.form.get("nome", ""))
+        if not alvo:
+            return render_template("orcamento_vencido.html"), 404
+        return redirect(url_for("ver_orcamento", token=token))
+
+    @app.route("/empresa", methods=["GET", "POST"])
+    @auth.exige_login
+    def editar_empresa():
+        if request.method == "POST":
+            try:
+                dados.salvar_empresa(request.form, session.get("usuario", ""))
+            except ValueError as erro:
+                return render_template("empresa.html", aba="pedidos", **_erro(erro),
+                                       atual=dados.campos_empresa(request.form)), 400
+            return redirect(url_for("editar_empresa"))
+        return render_template("empresa.html", aba="pedidos", atual=dados.empresa())
 
     @app.route("/canais", methods=["GET", "POST"])
     @auth.exige_login

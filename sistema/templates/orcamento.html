@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block titulo %}Orçamento nº {{ pedido.id }} — {{ empresa.nome }}{% endblock %}
+{% block corpo %}publico{% endblock %}
+{% block conteudo %}
+{# A ÚNICA tela do sistema sem menu. Quem abre é o cliente, e nada aqui leva
+   para dentro do sistema: nem lateral, nem link de painel. #}
+<main id="conteudo" class="folha-publica" style="--marca:{{ empresa.cor }}">
+
+  <header class="marca-publica">
+    <img src="{{ url_for('static', filename='icone-180.png') }}" alt="" width="38" height="38">
+    <div>
+      <b>{{ empresa.nome }}</b>
+      {% if empresa.telefone or empresa.site %}
+        <span>{{ empresa.telefone }}{% if empresa.telefone and empresa.site %} · {% endif %}{{ empresa.site }}</span>
+      {% endif %}
+    </div>
+  </header>
+
+  {% if pedido.aceito_em %}
+    <div class="aceito">
+      <b>Orçamento aceito.</b>
+      <span>{{ pedido.aceito_por or 'Você' }} aceitou em
+        {{ pedido.aceito_em|datahora }}. Já estamos com ele —
+        não precisa fazer mais nada.</span>
+    </div>
+  {% endif %}
+
+  <div class="cartao">
+    <div class="cabecalho-orcamento">
+      <h1>Orçamento <span>nº {{ pedido.id }}</span></h1>
+      {% if pedido.prazo %}
+        <p class="nota" style="margin:0">Entrega em <b>{{ pedido.prazo|data }}</b></p>
+      {% endif %}
+    </div>
+    <p class="para">Para <b>{{ pedido.cliente }}</b></p>
+
+    <div class="rolagem">
+      <table class="tabela">
+        <thead><tr>
+          <th>Item</th><th class="num">Qtd</th>
+          <th class="num">Unitário</th><th class="num">Total</th>
+        </tr></thead>
+        <tbody>
+          {% for i in conteudo.itens %}
+          <tr>
+            <td data-rotulo="Item" class="chave">{{ i.descricao }}
+              {% if i.cor %}<span class="fraco">{{ i.cor }}</span>{% endif %}</td>
+            <td data-rotulo="Qtd" class="num mono">{{ i.quantidade|numero(0) }}</td>
+            <td data-rotulo="Unitário" class="num mono">{{ i.valor_unit|dinheiro }}</td>
+            <td data-rotulo="Total" class="num mono decide">{{ i.total|dinheiro }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <dl class="numeros somas">
+      {% if conteudo.desconto %}
+        <div><dt>Subtotal</dt><dd class="mono">{{ conteudo.subtotal|dinheiro }}</dd></div>
+        <div><dt>Desconto</dt><dd class="mono">- {{ conteudo.desconto|dinheiro }}</dd></div>
+      {% endif %}
+      <div class="destaque"><dt>Total</dt>
+        <dd class="mono" id="total-orcamento">{{ conteudo.total|dinheiro }}</dd></div>
+    </dl>
+
+    {% if pedido.observacao %}<p class="nota">{{ pedido.observacao }}</p>{% endif %}
+    {% if empresa.condicoes %}<p class="nota">{{ empresa.condicoes }}</p>{% endif %}
+  </div>
+
+  {% if not pedido.aceito_em %}
+    <form class="cartao aceitar" method="post"
+          action="{{ url_for('aceitar_orcamento', token=token) }}">
+      <h2>Combinado?</h2>
+      <p class="nota" style="margin-top:0">Aceitar aqui é o mesmo que responder “pode
+      fazer”. A peça entra na fila de produção na hora.</p>
+      <label class="campo"><span>Seu nome</span>
+        <input name="nome" maxlength="90" autocomplete="name" required
+               placeholder="Como você quer assinar">
+      </label>
+      <button class="botao grande" type="submit">Aceitar o orçamento</button>
+      {% if pedido.token_expira %}
+        <p class="nota">Este orçamento vale até <b>{{ pedido.token_expira|data }}</b>.</p>
+      {% endif %}
+    </form>
+  {% endif %}
+
+  <p class="rodape-publico">{{ empresa.nome }}{% if empresa.documento %} ·
+    {{ empresa.documento }}{% endif %}</p>
+</main>
+{% endblock %}
