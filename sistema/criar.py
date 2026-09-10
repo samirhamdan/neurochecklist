@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""O catalogo do que da para CRIAR -- uma tela so, com filtro.
+"""O catalogo do que da para PERSONALIZAR -- uma tela so, com filtro.
 
 Ate aqui cada gerador era um link solto no menu: "Gerar letreiro", "Gerar
 logo". Dois cabem. Doze nao -- e o plano tem doze pela frente. Pior: o menu
@@ -19,6 +19,9 @@ Duas regras seguram a honestidade desta lista:
 
 Acrescentar um modelo e acrescentar uma linha em MODELOS. Nao ha template
 para mexer: a tela e as opcoes de filtro saem daqui.
+
+A arquitetura segue tres niveis: o cliente pensa na NECESSIDADE (categoria),
+escolhe o PRODUTO (subcategoria) e PERSONALIZA (nome, idade, tema, cor).
 """
 from __future__ import annotations
 
@@ -27,9 +30,10 @@ from dataclasses import dataclass, field
 NO_AR = "no ar"
 EM_OBRA = "em construção"
 
-FESTA = "Festa"
-IDENTIDADE = "Identidade"
-DECORACAO = "Decoração"
+FESTAS = "Festas"
+PERSONALIZACAO = "Personalização"
+PRESENTES = "Presentes"
+EMPRESAS = "Empresas"
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,7 @@ class Modelo:
     slug: str
     nome: str
     categoria: str
+    subcategoria: str
     resumo: str
     gerador: str            # de qual ferramenta ele sai
     rota: str = ""          # vazio = ainda nao da para gerar
@@ -64,12 +69,13 @@ class Modelo:
 
     @property
     def procuravel(self) -> str:
-        return " ".join((self.nome, self.categoria, self.gerador, self.resumo)
-                        + self.busca).lower()
+        return " ".join((self.nome, self.categoria, self.subcategoria,
+                         self.gerador, self.resumo) + self.busca).lower()
 
 
 def _letreiro(slug, nome, resumo, cores, nota="", busca=()):
-    return Modelo(slug=f"letreiro-{slug}", nome=f"Letreiro {nome}", categoria=FESTA,
+    return Modelo(slug=f"letreiro-{slug}", nome=f"Letreiro {nome}",
+                  categoria=PERSONALIZACAO, subcategoria="Letreiros",
                   resumo=resumo, gerador="Gerador de letreiros",
                   rota=f"/letreiros/?modelo={slug}", cores=cores, nota=nota, busca=busca)
 
@@ -96,51 +102,36 @@ MODELOS: tuple[Modelo, ...] = (
               busca=("espaço", "foguete", "astronauta", "robô")),
     _letreiro("terror", "Terror", "Letra irregular, duas cores.", cores=(2,),
               busca=("halloween", "monstro", "susto")),
-    Modelo(slug="logo-3d", nome="Logo 3D", categoria=IDENTIDADE,
-           resumo="Transforma uma imagem de logo em peça impressa, separada por cor.",
-           gerador="Gerador de logo 3D", rota="/logo/", cores=(1, 2),
-           cores_rotulo="depende da arte", saida="pacote STL",
-           nota="Logo de terceiro com marca registrada ativa não entra no catálogo "
-                "comercial — só peça encomendada pelo dono da marca.",
-           busca=("marca", "empresa", "placa", "fachada", "brinde")),
-    Modelo(slug="chaveiro", nome="Chaveiro de nome", categoria=FESTA,
-           resumo="O nome em letras ligadas, com argola. Peça de bolso.",
-           gerador="Gerador de chaveiro", rota="/criar/chaveiro/", cores=(1,),
-           saida="STL",
-           nota="Escolhido para o C4 por ser o único dos dez do plano com demanda "
-                "dentro do próprio sistema: está nos pedidos, no custo e nas licenças. "
-                "Os templates nascem EM TESTE, como manda o §6.",
-           busca=("chaveiro", "argola", "lembrancinha", "bolso", "nome")),
-    Modelo(slug="topo-de-bolo", nome="Topo de bolo", categoria=FESTA,
+    Modelo(slug="topo-de-bolo", nome="Topo de bolo",
+           categoria=FESTAS, subcategoria="Mesa do bolo",
            resumo="Nome, idade e tema em cima do bolo, a partir de um template.",
            gerador="Gerador de topo de bolo", rota="/criar/topo/", cores=(1,), saida="STL",
            nota="Os seis templates estão EM TESTE: o desenho sai, mas nenhum foi "
                 "impresso e aprovado ainda. O §6 do documento manda testar na mesa "
                 "antes de vender.",
            busca=("bolo", "aniversário", "festa", "idade", "topo")),
-    Modelo(slug="display", nome="Display de mesa", categoria=DECORACAO,
+    Modelo(slug="display", nome="Display de mesa",
+           categoria=FESTAS, subcategoria="Mesa do bolo",
            resumo="Peça em pé para a mesa do bolo: número, tema ou silhueta.",
            gerador="Gerador de displays", cores=(1, 2), saida="STL",
            busca=("display", "centro de mesa", "mesa do bolo", "numero",
                   "silhueta", "enfeite", "decoração")),
-    Modelo(slug="bandeja", nome="Bandeja decorativa", categoria=DECORACAO,
+    Modelo(slug="bandeja", nome="Bandeja decorativa",
+           categoria=FESTAS, subcategoria="Mesa de doces",
            resumo="Bandeja para doces e salgados com borda personalizada.",
            gerador="Gerador de bandejas", cores=(1, 2), saida="STL",
            busca=("bandeja", "doces", "salgados", "porta doces",
                   "mesa de doces", "travessa")),
-    Modelo(slug="personagem", nome="Personagem temático", categoria=FESTA,
+    Modelo(slug="personagem", nome="Personagem temático",
+           categoria=FESTAS, subcategoria="Decoração",
            resumo="Boneco ou silhueta de personagem para decoração de mesa.",
            gerador="Gerador de personagens", cores=(1, 2), saida="STL",
            nota="Personagem de franquia (Disney, Marvel etc.) só sob encomenda "
                 "do dono da marca — não entra no catálogo.",
            busca=("personagem", "boneco", "mascote", "silhueta",
                   "figura", "tema", "herói")),
-    Modelo(slug="lembrancinha", nome="Lembrancinha personalizada", categoria=FESTA,
-           resumo="Peça pequena para dar aos convidados: porta-foto, caixinha ou enfeite.",
-           gerador="Gerador de lembrancinhas", cores=(1,), saida="STL",
-           busca=("lembrancinha", "brinde", "convidado", "recordação",
-                  "porta foto", "caixinha", "mimo")),
-    Modelo(slug="kit-de-mesa", nome="Kit de mesa completo", categoria=DECORACAO,
+    Modelo(slug="kit-de-mesa", nome="Kit de mesa completo",
+           categoria=FESTAS, subcategoria="Kit completo",
            resumo="Conjunto coordenado: display, bandeja e lembrancinhas no mesmo tema.",
            gerador="Gerador de kits de mesa", cores=(1, 2),
            cores_rotulo="depende do kit", saida="pacote STL",
@@ -148,6 +139,28 @@ MODELOS: tuple[Modelo, ...] = (
                 "É o objetivo final da linha de personalização.",
            busca=("kit", "conjunto", "pacote", "mesa completa",
                   "decoração completa", "festa completa")),
+    Modelo(slug="chaveiro", nome="Chaveiro de nome",
+           categoria=PRESENTES, subcategoria="Lembranças",
+           resumo="O nome em letras ligadas, com argola. Peça de bolso.",
+           gerador="Gerador de chaveiro", rota="/criar/chaveiro/", cores=(1,),
+           saida="STL",
+           busca=("chaveiro", "argola", "lembrancinha", "bolso", "nome",
+                  "brinde", "presente")),
+    Modelo(slug="lembrancinha", nome="Lembrancinha personalizada",
+           categoria=PRESENTES, subcategoria="Lembranças",
+           resumo="Peça pequena para dar aos convidados: porta-foto, caixinha ou enfeite.",
+           gerador="Gerador de lembrancinhas", cores=(1,), saida="STL",
+           busca=("lembrancinha", "brinde", "convidado", "recordação",
+                  "porta foto", "caixinha", "mimo", "presente")),
+    Modelo(slug="logo-3d", nome="Logo 3D",
+           categoria=EMPRESAS, subcategoria="Identidade visual",
+           resumo="Transforma uma imagem de logo em peça impressa, separada por cor.",
+           gerador="Gerador de logo 3D", rota="/logo/", cores=(1, 2),
+           cores_rotulo="depende da arte", saida="pacote STL",
+           nota="Logo de terceiro com marca registrada ativa não entra no catálogo "
+                "comercial — só peça encomendada pelo dono da marca.",
+           busca=("marca", "empresa", "placa", "fachada", "brinde",
+                  "corporativo", "profissional")),
 )
 
 
@@ -158,6 +171,25 @@ def categorias() -> list[str]:
         if m.categoria not in vistas:
             vistas.append(m.categoria)
     return vistas
+
+
+def subcategorias() -> list[str]:
+    """As subcategorias que EXISTEM, na ordem em que aparecem."""
+    vistas = []
+    for m in MODELOS:
+        if m.subcategoria not in vistas:
+            vistas.append(m.subcategoria)
+    return vistas
+
+
+def subcategorias_por_categoria() -> dict[str, list[str]]:
+    """Mapa categoria -> subcategorias, para encadear os dropdowns."""
+    mapa: dict[str, list[str]] = {}
+    for m in MODELOS:
+        subs = mapa.setdefault(m.categoria, [])
+        if m.subcategoria not in subs:
+            subs.append(m.subcategoria)
+    return mapa
 
 
 def cores_possiveis() -> list[int]:

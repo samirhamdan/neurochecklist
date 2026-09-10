@@ -22,6 +22,15 @@
         </select>
       </label>
       <label class="filtro-select">
+        <span>Subcategoria</span>
+        <select id="filtro-subcategoria" data-filtro="subcategoria">
+          <option value="">Todas</option>
+          {% for s in subcategorias %}
+          <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="filtro-select">
         <span>Cores</span>
         <select id="filtro-cores" data-filtro="cores">
           <option value="">Tanto faz</option>
@@ -48,11 +57,13 @@
     {% for m in modelos %}
     <article class="modelo {{ 'planejado' if m.status == em_obra }}"
              data-nome="{{ m.procuravel }}" data-categoria="{{ m.categoria }}"
+             data-subcategoria="{{ m.subcategoria }}"
              data-cores="{{ m.cores|join(' ') }}" data-status="{{ m.status }}">
       <header>
         <h3>{{ m.nome }}</h3>
         <span class="etiqueta {{ 'verde' if m.status == no_ar else 'cinza' }}">{{ m.status }}</span>
       </header>
+      <p class="subcategoria-rotulo">{{ m.subcategoria }}</p>
       <p>{{ m.resumo }}</p>
       <div class="meta">
         <span>{{ m.gerador }}</span><span>{{ m.cor_rotulo }}</span><span>{{ m.saida }}</span>
@@ -82,7 +93,25 @@
   const busca = document.getElementById("busca");
   const conta = document.getElementById("conta");
   const nada = document.getElementById("nada");
-  const escolha = { categoria: "", cores: "", status: "" };
+  const escolha = { categoria: "", subcategoria: "", cores: "", status: "" };
+
+  const mapaSub = {{ mapa_sub|tojson }};
+  const selSub = document.getElementById("filtro-subcategoria");
+
+  function atualizarSubs() {
+    const cat = escolha.categoria;
+    const opcoes = cat ? (mapaSub[cat] || []) : [];
+    const atual = selSub.value;
+    while (selSub.options.length > 1) selSub.remove(1);
+    const fonte = cat ? opcoes : {{ subcategorias|tojson }};
+    for (const s of fonte) {
+      const o = document.createElement("option");
+      o.value = s; o.textContent = s;
+      selSub.appendChild(o);
+    }
+    if (!fonte.includes(atual)) { selSub.value = ""; escolha.subcategoria = ""; }
+    else selSub.value = atual;
+  }
 
   function aplicar() {
     const termo = busca.value.trim().toLowerCase();
@@ -91,6 +120,7 @@
       const ok =
         (!termo || c.dataset.nome.includes(termo)) &&
         (!escolha.categoria || c.dataset.categoria === escolha.categoria) &&
+        (!escolha.subcategoria || c.dataset.subcategoria === escolha.subcategoria) &&
         (!escolha.cores || c.dataset.cores.split(" ").includes(escolha.cores)) &&
         (!escolha.status || c.dataset.status === escolha.status);
       c.hidden = !ok;
@@ -105,6 +135,7 @@
   for (const sel of document.querySelectorAll(".filtros-selecao select")) {
     sel.addEventListener("change", () => {
       escolha[sel.dataset.filtro] = sel.value;
+      if (sel.dataset.filtro === "categoria") atualizarSubs();
       aplicar();
     });
   }

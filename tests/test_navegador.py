@@ -199,9 +199,9 @@ class TesteFiltroDeCriar(NoNavegador):
         self.assertNotIn("Letreiro Terror", esperado)
 
     def test_filtrar_por_categoria(self):
-        self.chip("categoria", "Identidade")
+        self.chip("categoria", "Empresas")
         self.assertEqual(sorted(self.nomes_visiveis()),
-                         self.esperado(lambda m: m.categoria == "Identidade"))
+                         self.esperado(lambda m: m.categoria == "Empresas"))
 
     def test_filtrar_por_situacao_mostra_so_o_que_da_para_gerar(self):
         from sistema import criar
@@ -224,10 +224,10 @@ class TesteFiltroDeCriar(NoNavegador):
         self.assertTrue(self.visivel("#nada"), "sumiu tudo e a tela nao explicou nada")
 
     def test_os_filtros_se_somam(self):
-        self.chip("categoria", "Festa")
+        self.chip("categoria", "Festas")
         self.chip("cores", "1")
         self.assertEqual(sorted(self.nomes_visiveis()),
-                         self.esperado(lambda m: m.categoria == "Festa" and 1 in m.cores))
+                         self.esperado(lambda m: m.categoria == "Festas" and 1 in m.cores))
 
     def test_o_cartao_abre_o_gerador_no_modelo_certo(self):
         """O cartao promete um modelo; o gerador tem que abrir NELE."""

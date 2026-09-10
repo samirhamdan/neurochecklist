@@ -57,6 +57,19 @@ class TesteCatalogo(unittest.TestCase):
         usadas = {m.categoria for m in self.c.MODELOS}
         self.assertEqual(set(self.c.categorias()), usadas)
 
+    def test_as_subcategorias_oferecidas_existem_em_algum_modelo(self):
+        usadas = {m.subcategoria for m in self.c.MODELOS}
+        self.assertEqual(set(self.c.subcategorias()), usadas)
+
+    def test_o_mapa_de_subcategorias_cobre_todas_as_categorias(self):
+        mapa = self.c.subcategorias_por_categoria()
+        self.assertEqual(set(mapa.keys()), {m.categoria for m in self.c.MODELOS})
+        for cat, subs in mapa.items():
+            for s in subs:
+                self.assertTrue(any(m.categoria == cat and m.subcategoria == s
+                                    for m in self.c.MODELOS),
+                                f"{s} listada em {cat} mas nenhum modelo a usa")
+
     def test_as_cores_oferecidas_existem_em_algum_modelo(self):
         usadas = {n for m in self.c.MODELOS for n in m.cores}
         self.assertEqual(set(self.c.cores_possiveis()), usadas)

@@ -623,6 +623,8 @@ def criar_app() -> Flask:
     def tela_criar():
         return render_template("criar.html", aba="personalizar", modelos=criar.MODELOS,
                                categorias=criar.categorias(), cores=criar.cores_possiveis(),
+                               subcategorias=criar.subcategorias(),
+                               mapa_sub=criar.subcategorias_por_categoria(),
                                conta=criar.contagem(), no_ar=criar.NO_AR,
                                em_obra=criar.EM_OBRA)
 
