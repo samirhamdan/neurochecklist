@@ -131,7 +131,7 @@
       <div class="cartao">
         <h3 class="titulo-cartao">Preço por volume</h3>
         <label class="marca-caixa">
-          <input type="checkbox" name="usa_preco_volume" value="1" {{ 'checked' if atual and atual.usa_preco_volume }}>
+          <input type="checkbox" name="usa_preco_volume" id="usa_preco_volume" value="1" {{ 'checked' if atual and atual.usa_preco_volume }}>
           Usar tabela de preços por volume
         </label>
 
@@ -171,7 +171,7 @@
         </div>
 
         <label class="campo{{ ' com-erro' if campo_erro == 'preco_fixo' }}" id="campo-preco_fixo" style="margin-top: 12px"><span>Preço fixo (se volume estiver desativado)</span>
-          <input name="preco_fixo" type="number" step="0.01" min="0" placeholder="deixe vazio para usar o sugerido"
+          <input name="preco_fixo" id="preco_fixo" type="number" step="0.01" min="0" placeholder="deixe vazio para usar o sugerido"
                  value="{{ '%.2f'|format(atual.preco_fixo) if atual and atual.preco_fixo else '' }}" inputmode="decimal">
         {% if campo_erro == 'preco_fixo' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
         </label>
@@ -301,26 +301,30 @@
 
     if (!usaVolume || qtdBandeja === 0) return;
 
-    // Tabela de preços
     const margemMult = margem / 100;
-    const faixas = [
+    const lote4 = qtdBandeja * 4;
+    const ultima = Math.max(50, lote4 + 1);
+    const candidatas = [
       { qtd: 1, desc: "1 unidade" },
-      { qtd: qtdBandeja, desc: `${qtdBandeja} unidades (1 bandeja)` },
-      { qtd: qtdBandeja * 4, desc: `${qtdBandeja * 4} unidades (4 bandejas)` },
-      { qtd: 50, desc: "50+ unidades" }
+      { qtd: qtdBandeja, desc: `${qtdBandeja} un. (1 bandeja)` },
+      { qtd: lote4, desc: `${lote4} un. (4 bandejas)` },
+      { qtd: ultima, desc: `${ultima}+ unidades` }
     ];
+    const visto = new Set();
+    const faixas = candidatas.filter(f => { if (visto.has(f.qtd)) return false; visto.add(f.qtd); return true; });
 
     let html = "";
     faixas.forEach(f => {
       const custoTotal = (custo * f.qtd) + taxa;
       const custoUnitario = custoTotal / f.qtd;
-      const precoUnitario = (custoUnitario * margemMult).toFixed(2);
-      const retornoHora = horas > 0 ? ((precoUnitario - custoUnitario) / horas).toFixed(2) : "0";
+      const precoUnitario = custoUnitario * margemMult;
+      const retornoHora = horas > 0 ? (precoUnitario - custoUnitario) / horas : 0;
+      const fmt = v => v.toLocaleString("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
       html += `<div style="padding: 8px 0; border-bottom: 1px solid var(--linha); font-size: 13.5px">
         <div style="margin-bottom: 4px"><b>${f.desc}</b></div>
-        <div>Preço: <span class="mono" style="font-weight: 600">R$ ${Number(precoUnitario).toLocaleString("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
-        <div style="color: var(--suave); font-size: 12px">Retorno/hora: R$ ${retornoHora}/h</div>
+        <div>Preço: <span class="mono" style="font-weight: 600">R$ ${fmt(precoUnitario)}</span></div>
+        <div style="color: var(--suave); font-size: 12px">Retorno/hora: R$ ${fmt(retornoHora)}/h</div>
       </div>`;
     });
 

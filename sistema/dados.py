@@ -99,6 +99,12 @@ CREATE TABLE IF NOT EXISTS produtos (
     preco        REAL,
     observacao   TEXT NOT NULL DEFAULT '',
     ativo        INTEGER NOT NULL DEFAULT 1,
+    dimensao_x   REAL,
+    dimensao_y   REAL,
+    usa_preco_volume INTEGER NOT NULL DEFAULT 0,
+    margem_volume REAL NOT NULL DEFAULT 150,
+    taxa_setup   REAL NOT NULL DEFAULT 5.0,
+    preco_fixo   REAL,
     criado_em    TEXT NOT NULL,
     criado_por   TEXT NOT NULL DEFAULT ''
 );
@@ -514,6 +520,15 @@ def _migrar(conn: sqlite3.Connection) -> None:
     # nao a funcao que sorteia -- sorteio repetido acontece.
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_pedidos_token"
                  " ON pedidos (token) WHERE token IS NOT NULL")
+
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
+    for coluna, tipo in (("dimensao_x", "REAL"), ("dimensao_y", "REAL"),
+                         ("usa_preco_volume", "INTEGER NOT NULL DEFAULT 0"),
+                         ("margem_volume", "REAL NOT NULL DEFAULT 150"),
+                         ("taxa_setup", "REAL NOT NULL DEFAULT 5.0"),
+                         ("preco_fixo", "REAL")):
+        if coluna not in colunas:
+            conn.execute(f"ALTER TABLE produtos ADD COLUMN {coluna} {tipo}")
 
     if not conn.execute("SELECT 1 FROM empresa WHERE id = 1").fetchone():
         conn.execute("INSERT INTO empresa (id, atualizado_em) VALUES (1, ?)", (agora(),))

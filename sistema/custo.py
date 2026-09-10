@@ -183,13 +183,20 @@ def preco_por_volume(produto: dict, param: dict[str, float]) -> dict | None:
     margem = float(produto.get("margem_volume") or 150) / 100.0  # 150% = 2.5x
     taxa_setup = float(produto.get("taxa_setup") or 5.0)
 
-    # Cálculo para cada faixa de volume
-    faixas = [
+    # Faixas estritamente crescentes, sem duplicatas
+    lote4 = quantidade_por_bandeja * 4
+    ultima = max(50, lote4 + 1)
+    candidatas = [
         (1, "1 unidade"),
-        (quantidade_por_bandeja, f"{quantidade_por_bandeja} unidades (1 bandeja)"),
-        (quantidade_por_bandeja * 4, f"{quantidade_por_bandeja * 4} unidades (4 bandejas)"),
-        (50, "50+ unidades"),
+        (quantidade_por_bandeja, f"{quantidade_por_bandeja} un. (1 bandeja)"),
+        (lote4, f"{lote4} un. (4 bandejas)"),
+        (ultima, f"{ultima}+ unidades"),
     ]
+    faixas, visto = [], set()
+    for qtd, desc in candidatas:
+        if qtd not in visto:
+            faixas.append((qtd, desc))
+            visto.add(qtd)
 
     tabela = []
     for quantidade, descricao in faixas:

@@ -97,6 +97,70 @@ class TestePreco(unittest.TestCase):
         self.assertAlmostEqual(c.por_hora, round((c.preco - c.custo) / 4, 2), places=2)
 
 
+class TestePrecoVolume(unittest.TestCase):
+    """Tabela de precos por volume usando a bandeja da A2L (330x320 mm)."""
+
+    def setUp(self):
+        from sistema import custo
+        from sistema.dados import PADROES
+        self.custo = custo
+        self.param = PADROES
+
+    def _produto(self, **extra):
+        base = dict(gramas=85, horas=3.4, filamento_preco_kg=120.0,
+                    dimensao_x=100, dimensao_y=100,
+                    usa_preco_volume=1, margem_volume=150, taxa_setup=5.0)
+        base.update(extra)
+        return base
+
+    def test_sem_flag_retorna_none(self):
+        p = self._produto(usa_preco_volume=0)
+        self.assertIsNone(self.custo.preco_por_volume(p, self.param))
+
+    def test_retorna_quatro_faixas(self):
+        r = self.custo.preco_por_volume(self._produto(), self.param)
+        self.assertIsNotNone(r)
+        self.assertEqual(len(r["tabela"]), 4)
+        self.assertGreater(r["quantidade_por_bandeja"], 1)
+
+    def test_preco_unitario_diminui_com_volume(self):
+        r = self.custo.preco_por_volume(self._produto(), self.param)
+        precos = [f["preco_unitario"] for f in r["tabela"]]
+        for i in range(1, len(precos)):
+            self.assertLessEqual(precos[i], precos[0],
+                                 "volume maior deve custar igual ou menos por unidade")
+
+    def test_bandeja_calcula_com_ocupacao_80(self):
+        p = self._produto(dimensao_x=100, dimensao_y=100)
+        r = self.custo.preco_por_volume(p, self.param)
+        self.assertEqual(r["quantidade_por_bandeja"], 7)
+
+    def test_peca_grande_cabe_menos(self):
+        pequena = self.custo.preco_por_volume(
+            self._produto(dimensao_x=50, dimensao_y=50), self.param)
+        grande = self.custo.preco_por_volume(
+            self._produto(dimensao_x=150, dimensao_y=150), self.param)
+        self.assertGreater(pequena["quantidade_por_bandeja"],
+                           grande["quantidade_por_bandeja"])
+
+    def test_margem_maior_sobe_preco(self):
+        r150 = self.custo.preco_por_volume(
+            self._produto(margem_volume=150), self.param)
+        r200 = self.custo.preco_por_volume(
+            self._produto(margem_volume=200), self.param)
+        for i in range(4):
+            self.assertGreater(r200["tabela"][i]["preco_unitario"],
+                               r150["tabela"][i]["preco_unitario"])
+
+    def test_setup_dilui_no_volume(self):
+        r = self.custo.preco_por_volume(self._produto(taxa_setup=10.0), self.param)
+        faixa1 = r["tabela"][0]
+        faixa50 = r["tabela"][3]
+        setup_impacto_1 = 10.0 / 1
+        setup_impacto_50 = 10.0 / 50
+        self.assertGreater(setup_impacto_1, setup_impacto_50)
+
+
 class TesteMedirArquivo(unittest.TestCase):
     """A ponte para o analisador nao pode divergir do analisador."""
 
