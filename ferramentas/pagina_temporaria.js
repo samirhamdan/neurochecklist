@@ -22,6 +22,7 @@ const PAGINAS = {
   letreiro: path.join(WEB, "gerador-letreiros.html"),
   // Uma pagina para todas as pecas desde o C4; a peca vai no ?peca=.
   topo: path.join(WEB, "gerador.html"),
+  display: path.join(WEB, "gerador.html"),
   chaveiro: path.join(WEB, "gerador.html"),
 };
 const PAGINA = PAGINAS.letreiro;      // o padrao, para quem ja usava
