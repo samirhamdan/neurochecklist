@@ -49,6 +49,25 @@
              'ainda não foi impressa e aprovada. Nenhum template vai para venda antes de ' +
              'sair da impressora e passar na mão — é a regra do §6 do documento.',
     },
+    display: {
+      tipo: 'display',
+      nome: 'Display de mesa',
+      rotulo: 'display de mesa',
+      sku: 'DM',
+      campos: ['nome', 'numero'],
+      rotuloNumero: 'Idade ou número',
+      chamada: 'GERAR MEU DISPLAY',
+      passo2: 'Escreva o que vai no display',
+      tudoCerto: 'Peça inteira, com pé firme e dentro da mesa.',
+      get tamanhos() { return modulo('display').TAMANHOS; },
+      get geometria() { return modulo('display'); },
+      medidas(R) {
+        return [['Pé', 'integrado, ' + modulo('display').MEDIDAS.pe.altura + ' mm']];
+      },
+      aviso: 'Modelo <b>em teste</b>: o desenho está pronto e a peça é gerada, mas ela ' +
+             'ainda não foi impressa e aprovada. O display precisa ficar em pé na mesa ' +
+             'sem apoio — imprima e confira antes de vender.',
+    },
     chaveiro: {
       tipo: 'chaveiro',
       nome: 'Chaveiro de nome',
