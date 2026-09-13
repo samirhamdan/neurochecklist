@@ -436,11 +436,12 @@ def criar_app() -> Flask:
         ordem, invertido = listas.pedido_da_url(
             request.args, listas.ORDENS_CLIENTES, "nome")
         lista = listas.ordenar(lista, ordem, invertido, listas.ORDENS_CLIENTES)
+        resumo = dados.resumo_clientes()
         return render_template("clientes.html", aba="clientes",
                                clientes=lista, ver=ver, canal_filtro=canal,
                                canais=dados.CANAIS, busca=busca,
                                ordens=listas.ORDENS_CLIENTES, ordem=ordem,
-                               invertido=invertido)
+                               invertido=invertido, **resumo)
 
     @app.route("/clientes/novo", methods=["GET", "POST"])
     @app.route("/clientes/<int:id_>", methods=["GET", "POST"])

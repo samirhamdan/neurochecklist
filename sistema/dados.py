@@ -1355,6 +1355,43 @@ def apagar_historico(id_: int, cliente_id: int) -> None:
         conn.commit()
 
 
+def resumo_clientes() -> dict:
+    hoje = date.today()
+    inicio_mes = hoje.replace(day=1).isoformat()
+    limite_inativo = (hoje - timedelta(days=180)).isoformat()
+
+    with conectar() as conn:
+        total_ativos = conn.execute(
+            "SELECT COUNT(*) FROM clientes WHERE ativo = 1").fetchone()[0]
+
+        novos_mes = conn.execute(
+            "SELECT COUNT(*) FROM clientes WHERE ativo = 1"
+            " AND criado_em >= ?", (inicio_mes,)).fetchone()[0]
+
+        recorrentes = conn.execute(
+            "SELECT COUNT(DISTINCT cliente_id) FROM cliente_historico"
+            " WHERE cliente_id IN (SELECT id FROM clientes WHERE ativo = 1)"
+            " GROUP BY cliente_id HAVING COUNT(*) >= 2").fetchall()
+
+        sem_contato = conn.execute(
+            "SELECT COUNT(*) FROM clientes WHERE ativo = 1 AND id NOT IN"
+            " (SELECT DISTINCT cliente_id FROM cliente_historico"
+            "  WHERE data > ?)", (limite_inativo,)).fetchone()[0]
+
+        por_canal = conn.execute(
+            "SELECT COALESCE(NULLIF(canal,''), '—') AS canal, COUNT(*) AS qtd"
+            " FROM clientes WHERE ativo = 1 GROUP BY canal"
+            " ORDER BY qtd DESC").fetchall()
+
+    return {
+        "total_ativos": total_ativos,
+        "novos_mes": novos_mes,
+        "recorrentes": len(recorrentes),
+        "sem_contato": sem_contato,
+        "por_canal": [dict(r) for r in por_canal],
+    }
+
+
 def canais(so_ativos: bool = True) -> list[dict]:
     with conectar() as conn:
         onde = "WHERE ativo = 1" if so_ativos else ""

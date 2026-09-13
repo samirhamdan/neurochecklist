@@ -16,6 +16,53 @@
     <a class="botao" href="{{ url_for('editar_cliente') }}">Novo cliente</a>
   </div>
 
+  <div class="placar">
+    <a href="{{ url_for('lista_clientes') }}">
+      <span class="rotulo">Ativos</span>
+      <b class="valor">{{ total_ativos }}</b>
+      <span class="nota">cliente{{ 's' if total_ativos != 1 }}</span>
+    </a>
+    <a href="{{ url_for('lista_clientes') }}">
+      <span class="rotulo">Novos no mês</span>
+      <b class="valor">{{ novos_mes }}</b>
+      <span class="nota">cadastrado{{ 's' if novos_mes != 1 }} este mês</span>
+    </a>
+    <a href="{{ url_for('lista_clientes') }}">
+      <span class="rotulo">Recorrentes</span>
+      <b class="valor">{{ recorrentes }}</b>
+      <span class="nota">com 2+ reservas</span>
+    </a>
+    <a href="{{ url_for('lista_clientes') }}">
+      <span class="rotulo">Sem contato</span>
+      <b class="valor">{{ sem_contato }}</b>
+      <span class="nota">há 6+ meses</span>
+    </a>
+  </div>
+
+  {% if por_canal|length > 1 %}
+  <div class="cartao" style="padding:16px 20px">
+    <h3 style="font-size:11.5px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;
+               font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--suave);margin:0 0 10px">
+      Por canal</h3>
+    {% set max_canal = por_canal[0].qtd if por_canal else 1 %}
+    <div style="display:flex;flex-direction:column;gap:6px">
+      {% for c in por_canal %}
+      <div style="display:grid;grid-template-columns:minmax(0,8rem) 1fr auto;gap:10px;align-items:center">
+        <span style="font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.canal }}</span>
+        <span style="position:relative;display:block;height:14px">
+          <i style="position:absolute;top:0;height:14px;border-radius:3px;
+                    background:var(--azul);min-width:2px;
+                    width:{{ (c.qtd / max_canal * 100)|round(1) }}%"></i>
+        </span>
+        <span style="font-size:13px;font-variant-numeric:tabular-nums;
+                     font-family:'IBM Plex Mono',ui-monospace,monospace;
+                     color:var(--suave);white-space:nowrap">{{ c.qtd }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <form class="peneira" method="get">
     {% if ver != 'ativos' %}<input type="hidden" name="ver" value="{{ ver }}">{% endif %}
     <label class="busca">
