@@ -187,7 +187,11 @@ CREATE TABLE IF NOT EXISTS clientes (
     whatsapp   TEXT NOT NULL DEFAULT '',
     email      TEXT NOT NULL DEFAULT '',
     cpf        TEXT NOT NULL DEFAULT '',
-    endereco   TEXT NOT NULL DEFAULT '',
+    endereco      TEXT NOT NULL DEFAULT '',
+    complemento   TEXT NOT NULL DEFAULT '',
+    bairro        TEXT NOT NULL DEFAULT '',
+    cidade        TEXT NOT NULL DEFAULT '',
+    cep           TEXT NOT NULL DEFAULT '',
     canal      TEXT NOT NULL DEFAULT '',
     observacao TEXT NOT NULL DEFAULT '',
     ativo      INTEGER NOT NULL DEFAULT 1,
@@ -579,7 +583,8 @@ def _migrar(conn: sqlite3.Connection) -> None:
             " criado_em TEXT NOT NULL)")
 
     colunas = {r[1] for r in conn.execute("PRAGMA table_info(clientes)")}
-    for coluna in ("email", "cpf", "endereco"):
+    for coluna in ("email", "cpf", "endereco", "complemento", "bairro",
+                    "cidade", "cep"):
         if coluna not in colunas:
             conn.execute(f"ALTER TABLE clientes ADD COLUMN {coluna}"
                          " TEXT NOT NULL DEFAULT ''")
@@ -1279,6 +1284,10 @@ def campos_cliente(dados: dict) -> dict:
         email=_limpo(dados.get("email")),
         cpf=_limpo(dados.get("cpf")),
         endereco=_limpo(dados.get("endereco")),
+        complemento=_limpo(dados.get("complemento")),
+        bairro=_limpo(dados.get("bairro")),
+        cidade=_limpo(dados.get("cidade")),
+        cep=_limpo(dados.get("cep")),
         canal=_limpo(dados.get("canal")),
         observacao=_limpo(dados.get("observacao")),
         ativo=1 if dados.get("ativo", "1") in (1, "1", True, "on") else 0,
@@ -1293,14 +1302,17 @@ def salvar_cliente(dados: dict, autor: str, id_: int | None = None) -> int:
         if id_:
             conn.execute(
                 "UPDATE clientes SET nome=:nome, whatsapp=:whatsapp, email=:email,"
-                " cpf=:cpf, endereco=:endereco, canal=:canal,"
+                " cpf=:cpf, endereco=:endereco, complemento=:complemento,"
+                " bairro=:bairro, cidade=:cidade, cep=:cep, canal=:canal,"
                 " observacao=:observacao, ativo=:ativo WHERE id=:id", {**campos, "id": id_})
             conn.commit()
             return id_
         cur = conn.execute(
-            "INSERT INTO clientes (nome, whatsapp, email, cpf, endereco, canal,"
+            "INSERT INTO clientes (nome, whatsapp, email, cpf, endereco,"
+            " complemento, bairro, cidade, cep, canal,"
             " observacao, ativo, criado_em, criado_por)"
-            " VALUES (:nome, :whatsapp, :email, :cpf, :endereco, :canal,"
+            " VALUES (:nome, :whatsapp, :email, :cpf, :endereco,"
+            " :complemento, :bairro, :cidade, :cep, :canal,"
             " :observacao, :ativo, :criado_em, :criado_por)",
             {**campos, "criado_em": agora(), "criado_por": autor})
         conn.commit()

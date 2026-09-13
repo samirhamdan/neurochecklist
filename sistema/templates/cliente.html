@@ -36,12 +36,40 @@
         {% if campo_erro == 'cpf' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
     </div>
-    <label class="campo{{ ' com-erro' if campo_erro == 'endereco' }}" id="campo-endereco"><span>Endereço</span>
-      <input name="endereco" maxlength="200" autocomplete="street-address"
-             placeholder="Rua, número, bairro"
-             value="{{ (atual and atual.endereco) or '' }}">
-      {% if campo_erro == 'endereco' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-    </label>
+    <div class="linha">
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'endereco' }}" id="campo-endereco"><span>Endereço</span>
+        <input name="endereco" maxlength="200" autocomplete="street-address"
+               placeholder="Rua e número"
+               value="{{ (atual and atual.endereco) or '' }}">
+        {% if campo_erro == 'endereco' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+      <label class="campo{{ ' com-erro' if campo_erro == 'complemento' }}" id="campo-complemento"><span>Complemento</span>
+        <input name="complemento" maxlength="100" autocomplete="address-line2"
+               placeholder="Apto, bloco, sala"
+               value="{{ (atual and atual.complemento) or '' }}">
+        {% if campo_erro == 'complemento' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+    </div>
+    <div class="linha">
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'bairro' }}" id="campo-bairro"><span>Bairro</span>
+        <input name="bairro" maxlength="100" autocomplete="address-level3"
+               placeholder="Ex: Centro"
+               value="{{ (atual and atual.bairro) or '' }}">
+        {% if campo_erro == 'bairro' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+      <label class="campo cresce{{ ' com-erro' if campo_erro == 'cidade' }}" id="campo-cidade"><span>Cidade</span>
+        <input name="cidade" maxlength="100" autocomplete="address-level2"
+               placeholder="Ex: Campo Grande"
+               value="{{ (atual and atual.cidade) or '' }}">
+        {% if campo_erro == 'cidade' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+      <label class="campo{{ ' com-erro' if campo_erro == 'cep' }}" id="campo-cep"><span>CEP</span>
+        <input name="cep" maxlength="10" inputmode="numeric"
+               placeholder="79000-000"
+               value="{{ (atual and atual.cep) or '' }}">
+        {% if campo_erro == 'cep' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
+    </div>
     <label class="campo{{ ' com-erro' if campo_erro == 'canal' }}" id="campo-canal"><span>Canal de origem</span>
       <select name="canal">
         <option value="">Não informado</option>
