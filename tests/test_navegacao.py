@@ -145,6 +145,6 @@ class TesteACascaDeTodaTela(Base):
         from sistema import dados
         dados.salvar_filamento({"nome": "PLA Rosa", "cor": "Rosa", "gramas": 800,
                                 "minimo": 300, "preco_kg": 118}, "samir")
-        pagina = self.cliente.get("/").get_data(as_text=True)
+        pagina = self.cliente.get("/?visao=operacao").get_data(as_text=True)
         self.assertGreaterEqual(len(re.findall(r'class="barra"', pagina)), 1,
                                 "as barras de estoque sumiram do painel")

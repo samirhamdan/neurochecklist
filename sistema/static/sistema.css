@@ -206,6 +206,23 @@ body.bancada{background:var(--bancada);color:var(--tinta)}
   background:var(--bancada);border-radius:3px;padding:1px 5px;
   margin-left:2px;vertical-align:middle;
 }
+.visao-seletor{
+  display:flex;gap:0;margin-bottom:4px;
+  border:1px solid var(--linha);border-radius:6px;
+  width:fit-content;overflow:hidden;
+}
+.visao-aba{
+  padding:10px 18px;font-size:13px;font-weight:500;
+  text-decoration:none;color:var(--suave);
+  transition:background .15s,color .15s;
+  min-height:44px;display:inline-flex;align-items:center;
+}
+.visao-aba:hover{background:var(--bancada);color:var(--tinta)}
+.visao-aba.ativa{
+  background:var(--azul);color:#fff;
+}
+.visao-aba:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+.placar-op{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
 
 /* A barra fina de cima so existe no telefone: e onde mora o botao da gaveta.
    Chama-se `barra-topo` e nao `barra` porque `.barra` ja era das barras de

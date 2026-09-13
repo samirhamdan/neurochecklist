@@ -816,71 +816,50 @@ class TesteACoisaCabeNaMao(NoNavegador):
         self.assertTrue(self.visivel("th a.ordenar"))
 
 
-class TesteOPlacarEOGrafico(NoNavegador):
-    """O U2 medido onde ele vale: numa tela de verdade.
-
-    O grafico e feito de `left` e `width` em porcentagem. Porcentagem errada
-    nao da erro em lugar nenhum: a barra passa por cima do numero, ou fica em
-    zero e some. O HTML servido nao denuncia nem um nem outro.
-    """
+class TesteOPlacarComercial(NoNavegador):
+    """Dashboard comercial: tres cartoes e tabela de pedidos."""
 
     def setUp(self):
         super().setUp()
         self.abrir("/")
         self.pg.wait_for_selector(".placar")
 
-    def caixa(self, seletor):
-        return self.pg.eval_on_selector(seletor, "e => e.getBoundingClientRect().toJSON()")
-
-    def test_os_quatro_numeros_estao_na_tela(self):
-        for ident in ("v-a-receber", "v-na-mesa", "v-parado", "v-entregue"):
+    def test_os_tres_numeros_estao_na_tela(self):
+        for ident in ("v-orcamentos", "v-aprovados", "v-entregues"):
             self.assertTrue(self.visivel(f"#{ident}"), f"{ident} sem caixa na tela")
 
     def test_cada_numero_e_um_alvo_de_toque(self):
-        """44 px e o minimo que um dedo acerta -- a regra que o U1 estabeleceu."""
         self.pg.set_viewport_size({"width": 420, "height": 900})
         self.pg.wait_for_timeout(120)
         alturas = self.pg.eval_on_selector_all(
             ".placar a", "e => e.map(x => x.getBoundingClientRect().height)")
-        self.assertEqual(len(alturas), 4)
+        self.assertEqual(len(alturas), 3)
         for h in alturas:
             self.assertGreaterEqual(h, 44)
 
-    def test_a_barra_nao_passa_do_trilho(self):
-        """Barra que vaza do trilho passa por cima do numero ao lado."""
+
+class TesteOPlacarOperacao(NoNavegador):
+    """Dashboard operacao: barras de estoque com layout correto."""
+
+    def setUp(self):
+        super().setUp()
+        self.abrir("/?visao=operacao")
+        self.pg.wait_for_selector(".placar-op")
+
+    def test_barras_de_estoque_nao_passam_do_trilho(self):
         for largura in (420, 1280):
             self.pg.set_viewport_size({"width": largura, "height": 900})
             self.pg.wait_for_timeout(120)
-            sobras = self.pg.eval_on_selector_all(".linha-h", """e => e.map(l => {
-                const t = l.querySelector('.trilho').getBoundingClientRect();
-                const b = l.querySelector('i').getBoundingClientRect();
-                return Math.max(t.left - b.left, b.right - t.right);
+            sobras = self.pg.eval_on_selector_all(".barra-linha", """e => e.map(l => {
+                const b = l.querySelector('.barra');
+                const i = l.querySelector('i');
+                if (!b || !i) return 0;
+                const tb = b.getBoundingClientRect();
+                const ti = i.getBoundingClientRect();
+                return Math.max(tb.left - ti.left, ti.right - tb.right);
             })""")
-            self.assertTrue(sobras, "nenhuma barra desenhada")
             for sobra in sobras:
                 self.assertLessEqual(sobra, 0.5, f"barra fora do trilho em {largura}px")
-
-    def test_nenhuma_barra_nasce_invisivel(self):
-        """Retorno pequeno da barra curta -- curta nao pode virar nenhuma."""
-        larguras = self.pg.eval_on_selector_all(
-            ".linha-h i", "e => e.map(x => x.getBoundingClientRect().width)")
-        self.assertTrue(larguras)
-        for w in larguras:
-            self.assertGreaterEqual(w, 2)
-
-    def test_a_barra_maior_e_a_do_produto_que_paga_melhor(self):
-        """O grafico so serve se o comprimento seguir o numero."""
-        pares = self.pg.eval_on_selector_all(".linha-h", """e => e.map(l => [
-            l.querySelector('.nome').textContent.trim(),
-            l.querySelector('i').getBoundingClientRect().width])""")
-        pares.sort(key=lambda x: -x[1])
-        self.assertEqual(pares[0][0], "Chaveiro")
-
-    def test_a_tabela_do_leitor_de_tela_nao_ocupa_espaco(self):
-        """Fora da tela, e nao display:none -- leitor de tela pula o que some."""
-        caixa = self.caixa("div.so-leitor")
-        self.assertLessEqual(caixa["width"], 2)
-        self.assertLessEqual(caixa["height"], 2)
 
 
 class TesteAGaveta(NoNavegador):

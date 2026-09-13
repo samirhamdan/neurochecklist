@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block titulo %}Dashboard — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+
+{% include "_topo.html" %}
+
+<main id="conteudo" class="pagina dash">
+
+{% if perfil == 'admin' %}
+  <div class="visao-seletor">
+    <a class="visao-aba" href="{{ url_for('painel', visao='comercial') }}">Comercial</a>
+    <a class="visao-aba ativa" href="{{ url_for('painel', visao='operacao') }}">Operação</a>
+  </div>
+{% endif %}
+
+{% if avisos %}
+  <div class="avisos">
+    {% for a in avisos %}
+      {% if a.tipo == 'filamento_zero' %}
+        <a class="aviso mal" href="{{ url_for('lista_filamentos') }}">Filamento
+          <b>{{ a.item.nome }}</b> zerado — a impressora para na próxima peça
+          dessa cor.</a>
+      {% elif a.tipo == 'atraso' %}
+        <a class="aviso mal" href="{{ url_for('lista_pedidos') }}">Pedido de
+          <b>{{ a.item.cliente }}</b> passou do prazo ({{ a.item.prazo|data }},
+          {{ -a.item.dias }} d).</a>
+      {% else %}
+        <a class="aviso atencao" href="{{ url_for('lista_filamentos') }}">Filamento
+          <b>{{ a.item.nome }}</b> em {{ a.item.gramas|numero(0) }} g
+          — abaixo do mínimo de {{ a.item.minimo|numero(0) }} g.</a>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if vazio %}
+
+  <div class="dash-vazio bloco">
+    <div class="vazio">
+      <h3>Ainda não há produção registrada.</h3>
+      <p>Este painel mostra a fila de produção por etapa, o estoque de filamento
+      e os insumos. Cadastre peças para começar.</p>
+    </div>
+  </div>
+
+{% else %}
+
+  <div class="placar placar-op">
+    {% for etapa in etapas %}
+      <a href="{{ url_for('producao') }}">
+        <span class="rotulo">{{ rotulos[etapa] }}</span>
+        <b class="valor">{{ totais[etapa].pecas }}</b>
+        <span class="nota">{{ totais[etapa].horas|numero(1) }} h · {{ totais[etapa].gramas|numero(0) }} g</span>
+      </a>
+    {% endfor %}
+  </div>
+
+  <div class="painel">
+
+    <section class="bloco">
+      <header><h3>Pedidos em produção</h3></header>
+      <div class="corpo">
+        {% if pedidos %}
+        <div class="rolagem">
+          <table class="lista">
+            <thead>
+              <tr><th>Cliente</th><th>Prazo</th><th class="num">Valor</th></tr>
+            </thead>
+            <tbody>
+              {% for p in pedidos %}
+                <tr>
+                  <td data-rotulo="Cliente" class="chave">{{ p.cliente }}</td>
+                  <td data-rotulo="Prazo">
+                    {% if p.dias is none %}—
+                    {% elif p.dias < 0 %}<span class="etiqueta atrasado">{{ -p.dias }} d atrasado</span>
+                    {% elif p.dias == 0 %}<span class="etiqueta hoje">hoje</span>
+                    {% else %}em {{ p.dias }} d{% endif %}
+                  </td>
+                  <td data-rotulo="Valor" class="num decide">{% if p.valor %}{{ p.valor|dinheiro }}{% else %}—{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <p style="color:var(--suave);font-size:15px">Nenhum pedido em produção.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="bloco">
+      <header>
+        <h3>Estoque de filamento</h3>
+        <span class="nota"><span id="v-parado">{{ parado|dinheiro }}</span> parado
+        {%- if cores_sem_preco %} · {{ cores_sem_preco }} sem preço{% endif %}</span>
+      </header>
+      <div class="corpo">
+        {% if filamento %}
+          <div class="barras">
+            {% for f in filamento %}
+              {% set cheio = (f.gramas / (f.minimo * 4) * 100) if f.minimo else 0 %}
+              <div class="barra-linha">
+                <span class="nome">
+                  <span class="bolinha" style="background:{{ cores.get(f.cor, '#B9BEC4') }}"></span>{{ f.nome }}
+                </span>
+                <span class="barra">
+                  <i class="{{ 'baixo' if f.gramas <= f.minimo else '' }}"
+                     style="width:{{ [cheio, 100]|min|round|int }}%"></i>
+                </span>
+                <span class="g">{{ f.gramas|round|int }} g</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color:var(--suave);font-size:15px">Nenhuma cor cadastrada.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="bloco">
+      <header><h3>Insumos</h3></header>
+      <div class="corpo">
+        {% if insumos %}
+          <div class="barras">
+            {% for i in insumos %}
+              {% set cheio = (i.quantidade / (i.minimo * 4) * 100) if i.minimo else 0 %}
+              <div class="barra-linha">
+                <span class="nome">{{ i.nome }}</span>
+                <span class="barra">
+                  <i class="{{ 'baixo' if i.quantidade <= i.minimo else '' }}"
+                     style="width:{{ [cheio, 100]|min|round|int }}%"></i>
+                </span>
+                <span class="g">{{ i.quantidade|numero(0) }} {{ i.unidade or 'un' }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color:var(--suave);font-size:15px">Nenhum insumo cadastrado.</p>
+        {% endif %}
+      </div>
+    </section>
+
+  </div>
+
+{% endif %}
+
+</main>
+{% endblock %}

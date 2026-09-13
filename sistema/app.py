@@ -178,17 +178,22 @@ def criar_app() -> Flask:
     @app.route("/")
     @auth.exige_login
     def painel():
-        # O grafico sai da MESMA conta que a lista de produtos usa. Se o painel
-        # fizesse a sua propria, o retorno por hora do painel e o da tela de
-        # produtos podiam discordar sem que ninguem soubesse qual valia.
-        #
-        # So os ATIVOS: produto desativado nao disputa hora de impressora, e
-        # deixa-lo no grafico faria a comparacao ser com peca que nao se vende
-        # mais. A tela de produtos lista todos, por isso mostra mais linhas.
-        retorno = custo.retorno_por_hora(dados.produtos(), dados.parametros())
-        return render_template("painel.html", aba="dashboard", retorno=retorno,
-                               modelos=criar.MODELOS, criar_conta=criar.contagem(),
-                               **dados.resumo())
+        perfil = auth.perfil_do_usuario()
+        visao = request.args.get("visao", "")
+
+        if perfil == "comercial":
+            visao = "comercial"
+        elif perfil == "operacao":
+            visao = "operacao"
+        elif not visao:
+            visao = "comercial"
+
+        if visao == "operacao":
+            return render_template("painel_operacao.html", aba="dashboard",
+                                   visao=visao, **dados.resumo_operacao())
+
+        return render_template("painel_comercial.html", aba="dashboard",
+                               visao=visao, **dados.resumo_comercial())
 
     @app.route("/entrar", methods=["GET", "POST"])
     def entrar():

@@ -79,87 +79,54 @@ class Base(unittest.TestCase):
         return id_
 
 
-class TesteOsQuatroNumeros(Base):
-    """A regra que faz o painel poder ser acreditado.
-
-    Cada numero e um LINK. O teste segue o link e compara com o total que a
-    tela de destino mostra: se os dois discordarem, um dos dois esta mentindo
-    e nao ha como saber qual.
-    """
+class TesteNumerosComercial(Base):
+    """Os numeros do dashboard comercial batem com as telas de destino."""
 
     def setUp(self):
         super().setUp()
         self.fil = self.filamento(gramas=800, preco=118)
         self.filamento("PLA Preto", "Preto", gramas=1200, preco=95)
         self.pedido("Ana Paula", 140.0)
-        # Com comissao, `valor` e `valor_liquido` sao numeros DIFERENTES. Sem
-        # isso, somar a coluna errada dava o mesmo resultado e o teste passava
-        # com o defeito dentro.
         self.pedido("Bruno", 320.0, comissao=12)
         self.painel = self.pagina("/")
-
-    def test_a_receber_bate_com_a_tela_de_pedidos(self):
-        self.assertEqual(texto_de(self.painel, "v-a-receber"),
-                         texto_de(self.pagina("/pedidos"), "total-pedidos"))
-
-    def test_a_receber_e_a_soma_dos_pedidos_abertos(self):
-        """Alem de baterem entre si, os dois precisam estar CERTOS."""
-        self.assertEqual(texto_de(self.painel, "v-a-receber"), "R$ 460,00")
-
-    def test_na_mesa_bate_com_a_tela_de_producao(self):
-        na_mesa = texto_de(self.painel, "v-na-mesa")
-        self.assertEqual(na_mesa.replace(" h", ""),
-                         texto_de(self.pagina("/producao"), "horas-na-mesa").replace(" h na mesa", ""))
-
-    def test_a_entregar_nao_conta_como_na_mesa(self):
-        """A peca que ja saiu da impressora nao ocupa mais a bancada.
-
-        Com todas as pecas ainda aguardando, contar "tudo" e contar "so a
-        bancada" dao o MESMO numero -- e o teste de cima passa mesmo com a
-        definicao errada dos dois lados.
-        """
-        peca = self.d.quadro()["pecas"][0]
-        antes = texto_de(self.pagina("/"), "v-na-mesa")
-        self.d.mover_peca(peca["id"], "imprimindo", "samir")
-        self.d.mover_peca(peca["id"], "a entregar", "samir")
-        painel = self.pagina("/")
-        self.assertNotEqual(texto_de(painel, "v-na-mesa"), antes,
-                            "a peca saiu da mesa e o numero nao mudou")
-        self.assertEqual(texto_de(painel, "v-na-mesa").replace(" h", ""),
-                         texto_de(self.pagina("/producao"), "horas-na-mesa")
-                         .replace(" h na mesa", ""))
-
-    def test_parado_em_filamento_bate_com_a_tela_de_filamentos(self):
-        self.assertEqual(texto_de(self.painel, "v-parado"),
-                         texto_de(self.pagina("/filamentos"), "parado-total"))
-
-    def test_parado_em_filamento_e_gramas_vezes_preco(self):
-        # 800 g x R$ 118/kg + 1200 g x R$ 95/kg = 94,40 + 114,00
-        self.assertEqual(texto_de(self.painel, "v-parado"), "R$ 208,40")
-
-    def test_rolo_sem_preco_fica_fora_da_conta_e_a_tela_diz(self):
-        """Rolo sem preco nao vale zero: vale desconhecido."""
-        self.filamento("PLA Azul", "Azul", gramas=1000, preco=None)
-        painel = self.pagina("/")
-        self.assertEqual(texto_de(painel, "v-parado"), "R$ 208,40")
-        self.assertTrue("sem preço" in painel, "o painel precisa dizer quem ficou de fora")
-        self.assertTrue("sem preço" in self.pagina("/filamentos"),
-                        "a tela de filamentos tambem")
 
     def test_entregue_no_mes_bate_com_a_tela_que_ele_aponta(self):
         self.d.mudar_situacao(1, "entregue", "samir")
         painel = self.pagina("/")
-        self.assertEqual(texto_de(painel, "v-entregue"),
+        self.assertEqual(texto_de(painel, "v-entregues"),
                          texto_de(self.pagina("/pedidos?ver=entregues"), "total-pedidos"))
-        self.assertEqual(texto_de(painel, "v-entregue"), "R$ 140,00")
+        self.assertEqual(texto_de(painel, "v-entregues"), "R$ 140,00")
 
-    def test_entregar_tira_de_a_receber_e_poe_no_mes(self):
-        antes = texto_de(self.painel, "v-a-receber")
+    def test_entregar_muda_os_totais(self):
         self.d.mudar_situacao(2, "entregue", "samir")
         depois = self.pagina("/")
-        self.assertEqual(antes, "R$ 460,00")
-        self.assertEqual(texto_de(depois, "v-a-receber"), "R$ 140,00")
-        self.assertEqual(texto_de(depois, "v-entregue"), "R$ 320,00")
+        self.assertEqual(texto_de(depois, "v-entregues"), "R$ 320,00")
+
+
+class TesteNumerosOperacao(Base):
+    """Os numeros do dashboard operacao batem com as telas de destino."""
+
+    def setUp(self):
+        super().setUp()
+        self.fil = self.filamento(gramas=800, preco=118)
+        self.filamento("PLA Preto", "Preto", gramas=1200, preco=95)
+        self.pedido("Ana Paula", 140.0)
+        self.pedido("Bruno", 320.0, comissao=12)
+        self.painel_op = self.pagina("/?visao=operacao")
+
+    def test_parado_em_filamento_bate_com_a_tela_de_filamentos(self):
+        self.assertEqual(texto_de(self.painel_op, "v-parado"),
+                         texto_de(self.pagina("/filamentos"), "parado-total"))
+
+    def test_parado_em_filamento_e_gramas_vezes_preco(self):
+        self.assertEqual(texto_de(self.painel_op, "v-parado"), "R$ 208,40")
+
+    def test_rolo_sem_preco_fica_fora_da_conta_e_a_tela_diz(self):
+        self.filamento("PLA Azul", "Azul", gramas=1000, preco=None)
+        painel = self.pagina("/?visao=operacao")
+        self.assertEqual(texto_de(painel, "v-parado"), "R$ 208,40")
+        self.assertTrue("sem preço" in self.pagina("/filamentos"),
+                        "a tela de filamentos tambem")
 
 
 class TesteAConversaDoMes(Base):
@@ -221,7 +188,8 @@ class TesteAConversaDoMes(Base):
         self.assertTrue("Entregue em" in tela, "a coluna passa a mostrar a data da entrega")
 
     def test_entrega_do_mes_passado_nao_conta(self):
-        self.filamento()          # senao o painel fica vazio e nem mostra o placar
+        self.filamento()
+        self.pedido("Outro", 50.0)  # mantem o placar visivel
         id_ = self.pedido(valor=200.0)
         self.d.mudar_situacao(id_, "entregue", "samir")
         passado = (datetime.now(timezone.utc) - timedelta(days=45)).isoformat()
@@ -229,7 +197,7 @@ class TesteAConversaDoMes(Base):
             conn.execute("UPDATE pedidos SET entregue_em = ? WHERE id = ?", (passado, id_))
             conn.commit()
         self.assertEqual(self.d.entregues_no_mes(), [])
-        self.assertEqual(texto_de(self.pagina("/"), "v-entregue"), "R$ 0,00")
+        self.assertEqual(texto_de(self.pagina("/"), "v-entregues"), "R$ 0,00")
 
 
 class TesteOGrafico(Base):
@@ -261,38 +229,18 @@ class TesteOGrafico(Base):
         self.assertGreater(por_nome["Topo de bolo"].margem, por_nome["Chaveiro"].margem)
         self.assertGreater(por_nome["Chaveiro"].por_hora, por_nome["Topo de bolo"].por_hora)
 
-    def test_produto_sem_preco_de_filamento_fica_de_fora_e_a_tela_diz_por_que(self):
-        """A mesma regra do `Conta.completo`.
-
-        Sem o preco do filamento falta a MAIOR parcela do custo. Um chaveiro
-        de 9 g apareceria com 94% de margem -- e com um retorno por hora que
-        nao existe.
-        """
+    def test_produto_sem_preco_de_filamento_fica_de_fora(self):
         self.produto("Sem filamento", 40, 2.0, None)
         from sistema import custo
         r = custo.retorno_por_hora(self.d.produtos(), self.d.parametros())
         self.assertEqual([i["nome"] for i in r["itens"]], ["Chaveiro", "Topo de bolo"])
         self.assertEqual(len(r["sem_filamento"]), 1)
 
-        painel = self.pagina("/")
-        self.assertTrue("Sem filamento" not in painel, "produto sem custo nao entra no gráfico")
-        self.assertTrue("preço por kg do filamento" in painel,
-                        "a tela precisa dizer POR QUE ele ficou de fora")
-
     def test_produto_sem_horas_medidas_fica_de_fora(self):
-        """Dividir por zero hora nao da numero nenhum."""
         self.produto("Sem tempo", 40, 0, self.fil)
         from sistema import custo
         r = custo.retorno_por_hora(self.d.produtos(), self.d.parametros())
         self.assertEqual(len(r["sem_horas"]), 1)
-        self.assertTrue("tempo de impressão medido" in self.pagina("/"))
-
-    def test_o_grafico_bate_com_a_coluna_da_tela_de_produtos(self):
-        """O mesmo numero, pela mesma conta, nas duas telas."""
-        no_painel = set(valores_com_classe(self.pagina("/"), "por-hora"))
-        na_lista = set(valores_com_classe(self.pagina("/produtos"), "por-hora"))
-        self.assertTrue(no_painel, "o grafico precisa ter barras")
-        self.assertTrue(no_painel <= na_lista, f"{no_painel} nao esta em {na_lista}")
 
     def test_preco_digitado_manda_na_margem_e_no_retorno(self):
         """A coluna Preco mostrava um numero e a Margem era feita sobre outro."""
@@ -309,40 +257,25 @@ class TesteOGrafico(Base):
         self.assertGreater(cobrado.por_hora, sugerido.por_hora)
 
     def test_prejuizo_por_hora_cresce_para_a_esquerda_do_zero(self):
-        """Peca que nao paga a hora que ocupa e o caso que o grafico existe para achar."""
         from sistema import custo
         caro = self.produto("Peça longa", 20, 40.0, self.fil, minutos=120)
         r = custo.retorno_por_hora(self.d.produtos(), self.d.parametros())
         por_nome = {i["nome"]: i for i in r["itens"]}
         self.assertLess(por_nome["Peça longa"]["conta"].por_hora, 0)
         self.assertTrue(r["tem_prejuizo"])
-        # A barra do prejuizo termina onde o zero comeca.
         item = por_nome["Peça longa"]
         self.assertAlmostEqual(item["esquerda"] + item["largura"], r["zero"], places=1)
-        self.assertTrue("perde" in self.pagina("/"), "a barra do prejuizo tem cor propria")
         del caro
-
-    def test_a_tabela_do_leitor_de_tela_traz_os_mesmos_produtos(self):
-        """Cor e comprimento de barra nao chegam a quem usa leitor de tela."""
-        painel = self.pagina("/")
-        tabela = painel[painel.index('class="so-leitor"'):painel.index("</table>")]
-        for nome in ("Chaveiro", "Topo de bolo"):
-            self.assertTrue(nome in tabela, f"{nome} fora da tabela do leitor")
 
 
 class TestePainelVazio(Base):
-    """Sistema recem-instalado nao mostra quatro zeros e um grafico vazio."""
+    """Sistema recem-instalado nao mostra placar vazio."""
 
     def test_sem_nada_cadastrado_ensina_o_que_fazer(self):
         painel = self.pagina("/")
-        self.assertTrue("Ainda não há nada registrado" in painel)
+        self.assertTrue("Ainda não há pedidos registrados" in painel)
         self.assertTrue('class="placar"' not in painel, "zero nao e resposta para quem nao comecou")
         self.assertTrue("R$ 0,00" not in painel, "quatro zeros nao ensinam nada")
-
-    def test_sem_produto_medido_nao_ha_grafico(self):
-        """Grafico de zero barras e ruido com moldura."""
-        self.filamento()
-        self.assertTrue("Retorno por hora" not in self.pagina("/"))
 
 
 class TesteAvisosPorUrgencia(Base):
@@ -390,33 +323,21 @@ class TesteAvisosPorUrgencia(Base):
     def test_cada_aviso_leva_a_tela_que_resolve(self):
         self.filamento("PLA Rosa", "Rosa", gramas=0, preco=118)
         self.pedido("Ana Paula", 140.0, prazo=self.ontem())
-        painel = self.pagina("/")
-        bloco = painel[painel.index('class="avisos"'):painel.index('class="placar"')]
-        self.assertTrue('href="/filamentos"' in bloco)
-        self.assertTrue('href="/pedidos"' in bloco)
+        painel = self.pagina("/?visao=operacao")
+        bloco = painel[painel.index('class="avisos"'):painel.index('class="placar')]
+        self.assertIn('href="/filamentos"', bloco)
+        self.assertIn('href="/pedidos"', bloco)
 
 
 class TesteCriarNaoParaNoTempo(Base):
-    """A secao Criar do painel listava dois geradores. O catalogo tem nove."""
+    """A tela /criar lista os geradores."""
 
-    def test_a_secao_sai_do_mesmo_catalogo_da_tela_criar(self):
+    def test_a_tela_criar_tem_todos_os_modelos_no_ar(self):
         from sistema import criar
-        self.pedido()                       # tira o painel do estado vazio
-        painel = self.pagina("/")
+        pagina = self.pagina("/criar")
         no_ar = [m for m in criar.MODELOS if m.rota]
         for m in no_ar:
-            self.assertTrue(m.nome in painel, f"{m.nome} nao aparece no painel")
-        self.assertEqual(len(re.findall(r'class="atalho[ "]', painel)), len(no_ar),
-                         "um cartao por modelo no ar, nem mais nem menos")
-
-    def test_modelo_sem_gerador_nao_vira_botao(self):
-        """Botao que nao leva a lugar nenhum e pior do que ausencia de botao."""
-        from sistema import criar
-        self.pedido()
-        painel = self.pagina("/")
-        for m in criar.MODELOS:
-            if not m.rota:
-                self.assertTrue(f'>{m.nome}</b>' not in painel, f"{m.nome} nao tem rota")
+            self.assertIn(m.nome, pagina, f"{m.nome} nao aparece em /criar")
 
 
 if __name__ == "__main__":

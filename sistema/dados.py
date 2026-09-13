@@ -828,6 +828,84 @@ def resumo() -> dict:
     }
 
 
+def resumo_comercial() -> dict:
+    """Dashboard comercial: orcamentos, aprovados, em producao, entregues."""
+    with conectar() as conn:
+        orcamentos = [dict(p, dias=_dias_ate(p["prazo"])) for p in conn.execute(
+            "SELECT * FROM pedidos WHERE status = 'orcamento'"
+            " ORDER BY prazo IS NULL, prazo, id").fetchall()]
+        aprovados = [dict(p, dias=_dias_ate(p["prazo"])) for p in conn.execute(
+            "SELECT * FROM pedidos WHERE status = 'aprovado'"
+            " AND id IN (SELECT DISTINCT pedido_id FROM pecas WHERE status IN"
+            " ('aguardando', 'imprimindo', 'montagem', 'a entregar'))"
+            " ORDER BY prazo IS NULL, prazo, id").fetchall()]
+        em_producao = [dict(p, dias=_dias_ate(p["prazo"])) for p in conn.execute(
+            "SELECT * FROM pedidos WHERE status = 'aprovado'"
+            " ORDER BY prazo IS NULL, prazo, id").fetchall()]
+        todos_abertos = [dict(p, dias=_dias_ate(p["prazo"])) for p in conn.execute(
+            "SELECT * FROM pedidos WHERE status NOT IN ('entregue', 'cancelado')"
+            " ORDER BY prazo IS NULL, prazo, id").fetchall()]
+
+    entregues = entregues_no_mes()
+    return {
+        "orcamentos": orcamentos,
+        "aprovados": em_producao,
+        "entregues": entregues,
+        "total_orcamentos": somar_valor(orcamentos),
+        "total_aprovados": somar_valor(em_producao),
+        "total_entregues": somar_valor(entregues),
+        "pedidos": todos_abertos,
+        "mes": formato.mes_por_extenso(),
+        "vazio": not todos_abertos and not entregues,
+    }
+
+
+def resumo_operacao() -> dict:
+    """Dashboard operacao: pecas por etapa, filamento, insumos."""
+    with conectar() as conn:
+        linhas = conn.execute(
+            "SELECT p.*, d.cliente, d.prazo FROM pecas p"
+            " LEFT JOIN pedidos d ON d.id = p.pedido_id"
+            " WHERE p.status IN ({}) ORDER BY d.prazo IS NULL, d.prazo, p.id".format(
+                ", ".join("?" for _ in ETAPAS)), ETAPAS).fetchall()
+
+        fil = conn.execute(
+            "SELECT * FROM filamentos WHERE ativo = 1"
+            " ORDER BY gramas <= minimo DESC, cor, nome").fetchall()
+
+        ins = conn.execute(
+            "SELECT * FROM insumos WHERE ativo = 1"
+            " ORDER BY quantidade <= minimo DESC, nome").fetchall()
+
+        pedidos_ = [dict(p, dias=_dias_ate(p["prazo"])) for p in conn.execute(
+            "SELECT * FROM pedidos WHERE status = 'aprovado'"
+            " ORDER BY prazo IS NULL, prazo, id").fetchall()]
+
+    pecas = [dict(l, dias=_dias_ate(l["prazo"])) for l in linhas]
+    por_etapa = {e: [p for p in pecas if p["status"] == e] for e in ETAPAS}
+    filamento = [dict(f) for f in fil]
+    insumos_ = [dict(i) for i in ins]
+
+    return {
+        "etapas": ETAPAS,
+        "rotulos": ROTULOS,
+        "por_etapa": por_etapa,
+        "totais": {e: {"pecas": len(v),
+                       "horas": horas_na_mesa(v),
+                       "gramas": gramas_na_fila(v)} for e, v in por_etapa.items()},
+        "horas_fila": horas_na_mesa([p for p in pecas if p["status"] in EM_PRODUCAO]),
+        "filamento": filamento,
+        "parado": parado_em_filamento(filamento),
+        "cores_sem_preco": sem_preco(filamento),
+        "insumos": insumos_,
+        "insumos_baixo": [i for i in insumos_ if (i.get("quantidade") or 0) <= (i.get("minimo") or 0)],
+        "pedidos": pedidos_,
+        "avisos": avisos(pedidos_, filamento),
+        "cores": CORES,
+        "vazio": not pecas and not filamento,
+    }
+
+
 RE_SKU = re.compile(r"^M3D-[A-Z]{2}-\d{3}$")
 
 

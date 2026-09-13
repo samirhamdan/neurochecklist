@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block titulo %}Dashboard — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+
+{% include "_topo.html" %}
+
+<main id="conteudo" class="pagina dash">
+
+{% if not com_senha %}
+  <div class="avisos">
+    <div class="aviso mal">Sem <b>MORUMBI_SENHA</b> configurada: qualquer
+      pessoa que alcance este endereço entra. Só permitido rodando no próprio
+      computador.</div>
+  </div>
+{% endif %}
+
+{% if perfil == 'admin' %}
+  <div class="visao-seletor">
+    <a class="visao-aba ativa" href="{{ url_for('painel', visao='comercial') }}">Comercial</a>
+    <a class="visao-aba" href="{{ url_for('painel', visao='operacao') }}">Operação</a>
+  </div>
+{% endif %}
+
+{% if vazio %}
+
+  <div class="dash-vazio bloco">
+    <div class="vazio">
+      <h3>Ainda não há pedidos registrados.</h3>
+      <p>Este painel mostra orçamentos, pedidos aprovados e entregas do mês.
+      Cadastre o primeiro pedido para começar.</p>
+    </div>
+  </div>
+
+{% else %}
+
+  <div class="placar">
+    <a href="{{ url_for('lista_pedidos') }}" id="card-orcamentos">
+      <span class="rotulo">Orçamentos</span>
+      <b class="valor" id="v-orcamentos">{{ total_orcamentos|dinheiro }}</b>
+      <span class="nota">{{ orcamentos|length }} orçamento{{ 's' if orcamentos|length != 1 }}</span>
+    </a>
+    <a href="{{ url_for('lista_pedidos') }}" id="card-aprovados">
+      <span class="rotulo">Aprovados</span>
+      <b class="valor" id="v-aprovados">{{ total_aprovados|dinheiro }}</b>
+      <span class="nota">{{ aprovados|length }} pedido{{ 's' if aprovados|length != 1 }}</span>
+    </a>
+    <a href="{{ url_for('lista_pedidos', ver='entregues') }}" id="card-entregues">
+      <span class="rotulo">Entregue em {{ mes }}</span>
+      <b class="valor" id="v-entregues">{{ total_entregues|dinheiro }}</b>
+      <span class="nota">{{ entregues|length }} pedido{{ 's' if entregues|length != 1 }} entregue{{ 's' if entregues|length != 1 }}</span>
+    </a>
+  </div>
+
+  <section class="dash-secao">
+    <div class="cabecalho-lista">
+      <h2 class="secao">Pedidos abertos</h2>
+    </div>
+    <div class="bloco">
+      <div class="corpo"><div class="rolagem">
+        <table class="lista">
+          <thead>
+            <tr><th>Cliente</th><th>Canal</th><th>Situação</th><th>Prazo</th>
+              <th class="num">Valor</th></tr>
+          </thead>
+          <tbody>
+            {% for p in pedidos %}
+              <tr>
+                <td data-rotulo="Cliente" class="chave">{{ p.cliente }}</td>
+                <td data-rotulo="Canal">{{ p.canal or '—' }}</td>
+                <td data-rotulo="Situação" class="estado"><span class="etiqueta">{{ p.status|capitalize }}</span></td>
+                <td data-rotulo="Prazo">
+                  {% if p.dias is none %}—
+                  {% elif p.dias < 0 %}<span class="etiqueta atrasado">{{ -p.dias }} d atrasado</span>
+                  {% elif p.dias == 0 %}<span class="etiqueta hoje">hoje</span>
+                  {% else %}em {{ p.dias }} d{% endif %}
+                </td>
+                <td data-rotulo="Valor" class="num decide">{% if p.valor %}{{ p.valor|dinheiro }}{% else %}—{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div></div>
+    </div>
+  </section>
+
+{% endif %}
+
+</main>
+{% endblock %}

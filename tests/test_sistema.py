@@ -172,37 +172,49 @@ class TestePainel(unittest.TestCase):
 
     def test_painel_vazio_ensina_o_proximo_passo(self):
         corpo = self.cliente.get("/").get_data(as_text=True)
-        self.assertIn("Ainda não há nada registrado", corpo)
-        self.assertIn("canal de origem", corpo)
+        self.assertIn("Ainda não há pedidos registrados", corpo)
 
-    def test_painel_com_dados_mostra_fila_e_pedidos(self):
+    def test_painel_comercial_mostra_pedidos(self):
         from sistema.dados import agora, conectar
 
         with conectar() as conn:
             conn.execute(
                 "INSERT INTO pedidos (id, cliente, canal, prazo, valor, status, criado_em)"
-                " VALUES (1, 'Ana Paula', 'Instagram', '2030-01-01', 180.0, 'novo', ?)",
+                " VALUES (1, 'Ana Paula', 'Instagram', '2030-01-01', 180.0, 'orcamento', ?)",
+                (agora(),))
+
+        corpo = self.cliente.get("/").get_data(as_text=True)
+        def tem(agulha, porque):
+            self.assertTrue(agulha in corpo, porque)
+
+        tem("Ana Paula", "o cliente do pedido aberto")
+        tem("Pedidos abertos", "a secao de pedidos")
+        self.assertTrue("Ainda não há" not in corpo, "painel com dados nao e vazio")
+
+    def test_painel_operacao_mostra_fila_e_filamento(self):
+        from sistema.dados import agora, conectar
+
+        with conectar() as conn:
+            conn.execute(
+                "INSERT INTO pedidos (id, cliente, canal, prazo, valor, status, criado_em)"
+                " VALUES (1, 'Ana Paula', 'Instagram', '2030-01-01', 180.0, 'aprovado', ?)",
                 (agora(),))
             for cor, horas in (("Vermelho", 3.4), ("Vermelho", 2.1), ("Branco", 1.8)):
                 conn.execute(
                     "INSERT INTO pecas (pedido_id, descricao, cor, horas_est, status, criado_em)"
-                    " VALUES (1, ?, ?, ?, 'na fila', ?)",
+                    " VALUES (1, ?, ?, ?, 'aguardando', ?)",
                     (f"Letreiro {cor}", cor, horas, agora()))
             conn.execute(
                 "INSERT INTO filamentos (nome, tipo, cor, gramas, minimo, criado_em)"
                 " VALUES ('PLA Vermelho', 'PLA', 'Vermelho', 120, 300, ?)", (agora(),))
 
-        corpo = self.cliente.get("/").get_data(as_text=True)
-        # assertIn com pagina inteira despeja a pagina no relatorio de falha.
+        corpo = self.cliente.get("/?visao=operacao").get_data(as_text=True)
         def tem(agulha, porque):
             self.assertTrue(agulha in corpo, porque)
 
-        tem("Ana Paula", "o cliente do pedido aberto")
-        tem("Fila de produção", "o bloco da fila")
-        tem("7,3 h", "horas da fila (3,4 + 2,1 + 1,8), com virgula")
-        tem("6 g de purga", "duas cores = uma troca")
+        tem("Estoque de filamento", "o bloco de filamento")
         tem("abaixo do mínimo", "o aviso de filamento baixo")
-        self.assertTrue("Ainda não há nada" not in corpo, "painel com dados nao e vazio")
+        self.assertTrue("Ainda não há" not in corpo, "painel com dados nao e vazio")
 
 
 if __name__ == "__main__":
