@@ -73,8 +73,9 @@ class TesteOMenuEDado(Base):
 
     def test_o_grupo_certo_abre_no_que_voce_esta_usando(self):
         """Sem isto, quem chega em Filamentos ve os tres grupos fechados."""
-        casos = {"producao": "operacao", "lista_pedidos": "operacao",
-                 "lista_clientes": "cadastros", "lista_filamentos": "cadastros",
+        casos = {"producao": "operacao", "lista_filamentos": "operacao",
+                 "lista_insumos": "operacao",
+                 "lista_clientes": "comercial", "lista_pedidos": "comercial",
                  "lista_compras": "cadastros", "lista_produtos": "cadastros",
                  "tela_criar": "personalizacao", "lista_templates": "personalizacao"}
         for endereco, esperado in casos.items():

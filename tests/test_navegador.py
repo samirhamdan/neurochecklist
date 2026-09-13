@@ -927,13 +927,13 @@ class TesteAGaveta(NoNavegador):
         self.pg.wait_for_timeout(320)
         abertos = self.pg.eval_on_selector_all(
             ".grupo[open] > summary", "e => e.map(x => x.textContent.trim())")
-        self.assertEqual(abertos, ["Cadastros"], "abriu o grupo errado em Filamentos")
+        self.assertEqual(abertos, ["Operação"], "abriu o grupo errado em Filamentos")
 
     def test_os_grupos_funcionam_sem_javascript(self):
         """Sao <details>: abrem pelo teclado sozinhos. Se um dia isso virar
         JavaScript, o menu para de funcionar quando o script nao carregar."""
         self.assertEqual(self.pg.eval_on_selector_all(".grupo", "e => e.map(x => x.tagName)"),
-                         ["DETAILS", "DETAILS", "DETAILS"])
+                         ["DETAILS", "DETAILS", "DETAILS", "DETAILS"])
 
     def test_no_computador_a_lateral_fica_a_vista(self):
         self.pg.set_viewport_size({"width": 1280, "height": 900})

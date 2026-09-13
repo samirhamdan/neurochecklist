@@ -55,16 +55,18 @@ def arquivo_da_marca(base: str) -> str:
 DASHBOARD = ("painel", "Dashboard", "dashboard")
 
 MENU = (
-    ("Cadastros", "cadastros", (
+    ("Comercial", "comercial", (
         ("lista_clientes", "Clientes", "clientes"),
-        ("lista_produtos", "Produtos", "produtos"),
-        ("lista_insumos", "Insumos", "insumos"),
-        ("lista_filamentos", "Filamentos", "filamentos"),
-        ("lista_compras", "Compras", "compras"),
+        ("lista_pedidos", "Pedidos", "pedidos"),
     )),
     ("Operação", "operacao", (
-        ("lista_pedidos", "Pedidos", "pedidos"),
         ("producao", "Produção", "producao"),
+        ("lista_filamentos", "Filamentos", "filamentos"),
+        ("lista_insumos", "Insumos", "insumos"),
+    )),
+    ("Cadastros", "cadastros", (
+        ("lista_produtos", "Produtos", "produtos"),
+        ("lista_compras", "Compras", "compras"),
     )),
     ("Personalização", "personalizacao", (
         ("tela_criar", "Personalizar", "personalizar"),
@@ -84,8 +86,9 @@ def _grupo_de(endpoint: str | None) -> str:
 
 
 ACESSO_GRUPO = {
-    "cadastros": ("admin", "comercial", "operacao"),
+    "comercial": ("admin", "comercial", "operacao"),
     "operacao": ("admin", "comercial", "operacao"),
+    "cadastros": ("admin", "comercial", "operacao"),
     "personalizacao": ("admin",),
 }
 
