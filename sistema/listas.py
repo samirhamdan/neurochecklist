@@ -120,3 +120,11 @@ ORDENS_GERACOES = (
     ("preco", "Preço", "preco"),
 )
 BUSCA_GERACOES = ("nome", "modelo", "sku", "arquivo")
+
+ORDENS_CLIENTES = (
+    ("nome", "Nome", "nome"),
+    ("whatsapp", "WhatsApp", "whatsapp"),
+    ("email", "E-mail", "email"),
+    ("canal", "Canal", "canal"),
+)
+BUSCA_CLIENTES = ("nome", "whatsapp", "email", "cpf", "bairro", "cidade")

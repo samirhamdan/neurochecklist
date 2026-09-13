@@ -3,15 +3,63 @@
 {% block corpo %}bancada{% endblock %}
 {% block conteudo %}
 {% include "_topo.html" %}
+{% import "_ordenar.html" as ord with context %}
 <main id="conteudo" class="pagina">
   <div class="cabecalho-lista">
     <h2 class="secao">Clientes</h2>
+    <span class="abas">
+      <a href="{{ url_for('lista_clientes') }}" class="{{ 'aqui' if ver == 'ativos' }}">Ativos</a>
+      <a href="{{ url_for('lista_clientes', ver='inativos') }}"
+         class="{{ 'aqui' if ver == 'inativos' }}">Inativos</a>
+      <a href="{{ url_for('lista_clientes', ver='todos') }}" class="{{ 'aqui' if ver == 'todos' }}">Todos</a>
+    </span>
     <a class="botao" href="{{ url_for('editar_cliente') }}">Novo cliente</a>
   </div>
+
+  <form class="peneira" method="get">
+    {% if ver != 'ativos' %}<input type="hidden" name="ver" value="{{ ver }}">{% endif %}
+    <label class="busca">
+      <span class="sr">Buscar</span>
+      <input type="search" name="q" value="{{ busca }}" placeholder="Nome, telefone, e-mail ou CPF"
+             autocomplete="off" enterkeyhint="search">
+    </label>
+    <label class="so-telefone">
+      <span class="sr">Ordenar por</span>
+      <select name="ordem" onchange="this.form.submit()">
+        <option value="">Ordem do sistema</option>
+        {% for chave, rotulo, _ in ordens %}
+          <option value="{{ chave }}" {{ 'selected' if ordem == chave }}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span class="sr">Canal</span>
+      <select name="canal" onchange="this.form.submit()">
+        <option value="">Todos os canais</option>
+        {% for c in canais %}
+          <option value="{{ c }}" {{ 'selected' if canal_filtro == c }}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if ordem %}
+      <a class="botao vazado so-telefone virar"
+         href="{{ url_com(dir='asc' if invertido else 'desc') }}"
+         title="{{ 'Menor primeiro' if invertido else 'Maior primeiro' }}">
+        {{ '↓ maior primeiro' if invertido else '↑ menor primeiro' }}</a>
+    {% endif %}
+    <button class="botao vazado" type="submit">Buscar</button>
+  </form>
+
   {% if clientes %}
   <div class="cartao cartao-tabela"><div class="rolagem">
     <table class="tabela">
-      <thead><tr><th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Canal</th><th></th></tr></thead>
+      <thead><tr>
+        {{ ord.cabeca('nome', 'Nome') }}
+        {{ ord.cabeca('whatsapp', 'WhatsApp') }}
+        {{ ord.cabeca('email', 'E-mail') }}
+        {{ ord.cabeca('canal', 'Canal') }}
+        <th></th>
+      </tr></thead>
       <tbody>
         {% for c in clientes %}
         <tr class="{{ 'inativo' if not c.ativo }}">
@@ -24,15 +72,22 @@
         </tr>
         {% endfor %}
       </tbody>
+      <tfoot>
+        <tr><td colspan="5" class="num">{{ clientes|length }} cliente(s)</td></tr>
+      </tfoot>
     </table>
   </div></div>
-  <p class="nota">O <b>canal</b> é o que responde de onde vêm seus pedidos — e essa resposta
-  decide onde vale a pena investir. Ele entra no cliente e é herdado pelo pedido, onde pode
-  ser trocado caso a caso.</p>
+  {% elif busca %}
+  {{ ord.nada_encontrado(busca, 'nome, telefone, e-mail, CPF, bairro e cidade') }}
   {% else %}
   <div class="cartao cartao-vazio">
-    <b>Nenhum cliente cadastrado.</b>
-    <span>Comece pelo último cliente que te chamou no WhatsApp.</span>
+    {% if ver == 'inativos' %}
+      <b>Nenhum cliente inativo.</b>
+      <span>Clientes desativados aparecem aqui.</span>
+    {% else %}
+      <b>Nenhum cliente cadastrado.</b>
+      <span>Comece pelo último cliente que te chamou no WhatsApp.</span>
+    {% endif %}
   </div>
   {% endif %}
 </main>

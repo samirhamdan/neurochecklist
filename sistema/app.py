@@ -421,8 +421,26 @@ def criar_app() -> Flask:
     @app.route("/clientes")
     @auth.exige_perfil("admin", "comercial")
     def lista_clientes():
+        ver = request.args.get("ver", "ativos")
+        if ver == "inativos":
+            lista = [c for c in dados.clientes(False) if not c["ativo"]]
+        elif ver == "todos":
+            lista = dados.clientes(False)
+        else:
+            lista = dados.clientes(True)
+        canal = request.args.get("canal", "")
+        if canal:
+            lista = [c for c in lista if c.get("canal") == canal]
+        busca = request.args.get("q", "")
+        lista = listas.filtrar(lista, busca, listas.BUSCA_CLIENTES)
+        ordem, invertido = listas.pedido_da_url(
+            request.args, listas.ORDENS_CLIENTES, "nome")
+        lista = listas.ordenar(lista, ordem, invertido, listas.ORDENS_CLIENTES)
         return render_template("clientes.html", aba="clientes",
-                               clientes=dados.clientes(False))
+                               clientes=lista, ver=ver, canal_filtro=canal,
+                               canais=dados.CANAIS, busca=busca,
+                               ordens=listas.ORDENS_CLIENTES, ordem=ordem,
+                               invertido=invertido)
 
     @app.route("/clientes/novo", methods=["GET", "POST"])
     @app.route("/clientes/<int:id_>", methods=["GET", "POST"])
