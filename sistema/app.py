@@ -437,10 +437,35 @@ def criar_app() -> Flask:
             except ValueError as erro:
                 return render_template("cliente.html", aba="clientes", **_erro(erro),
                                        atual=dados.campos_cliente(request.form),
+                                       historico=dados.historico_cliente(id_) if id_ else [],
                                        canais=dados.CANAIS), 400
             return redirect(url_for("lista_clientes"))
         return render_template("cliente.html", aba="clientes", atual=atual,
+                               historico=dados.historico_cliente(id_) if id_ else [],
                                canais=dados.CANAIS)
+
+    @app.route("/clientes/<int:id_>/historico", methods=["POST"])
+    @auth.exige_perfil("admin", "comercial")
+    def adicionar_historico(id_):
+        atual = dados.cliente(id_)
+        if not atual:
+            abort(404)
+        try:
+            dados.salvar_historico(id_, request.form, session.get("usuario", ""))
+        except ValueError as erro:
+            return render_template("cliente.html", aba="clientes", **_erro(erro),
+                                   atual=atual,
+                                   historico=dados.historico_cliente(id_),
+                                   canais=dados.CANAIS), 400
+        return redirect(url_for("editar_cliente", id_=id_))
+
+    @app.route("/clientes/<int:id_>/historico/<int:hist_id>", methods=["POST"])
+    @auth.exige_perfil("admin", "comercial")
+    def remover_historico(id_, hist_id):
+        if not dados.cliente(id_):
+            abort(404)
+        dados.apagar_historico(hist_id, id_)
+        return redirect(url_for("editar_cliente", id_=id_))
 
     # --------------------------------------------------------------- pedidos
     def _itens_do_formulario(form) -> list[dict]:

@@ -185,6 +185,9 @@ CREATE TABLE IF NOT EXISTS clientes (
     id         INTEGER PRIMARY KEY,
     nome       TEXT NOT NULL,
     whatsapp   TEXT NOT NULL DEFAULT '',
+    email      TEXT NOT NULL DEFAULT '',
+    cpf        TEXT NOT NULL DEFAULT '',
+    endereco   TEXT NOT NULL DEFAULT '',
     canal      TEXT NOT NULL DEFAULT '',
     observacao TEXT NOT NULL DEFAULT '',
     ativo      INTEGER NOT NULL DEFAULT 1,
@@ -192,6 +195,16 @@ CREATE TABLE IF NOT EXISTS clientes (
     criado_por TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS ix_clientes_nome ON clientes (ativo, nome);
+
+CREATE TABLE IF NOT EXISTS cliente_historico (
+    id         INTEGER PRIMARY KEY,
+    cliente_id INTEGER NOT NULL REFERENCES clientes (id) ON DELETE CASCADE,
+    data       TEXT NOT NULL DEFAULT '',
+    descricao  TEXT NOT NULL,
+    criado_em  TEXT NOT NULL,
+    criado_por TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS ix_cliente_hist ON cliente_historico (cliente_id);
 
 CREATE TABLE IF NOT EXISTS canais (
     nome     TEXT PRIMARY KEY,
@@ -564,6 +577,24 @@ def _migrar(conn: sqlite3.Connection) -> None:
             " ordem INTEGER NOT NULL DEFAULT 1,"
             " arquivo TEXT NOT NULL,"
             " criado_em TEXT NOT NULL)")
+
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(clientes)")}
+    for coluna in ("email", "cpf", "endereco"):
+        if coluna not in colunas:
+            conn.execute(f"ALTER TABLE clientes ADD COLUMN {coluna}"
+                         " TEXT NOT NULL DEFAULT ''")
+
+    if "cliente_historico" not in tabelas:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS cliente_historico ("
+            " id INTEGER PRIMARY KEY,"
+            " cliente_id INTEGER NOT NULL REFERENCES clientes (id) ON DELETE CASCADE,"
+            " data TEXT NOT NULL DEFAULT '',"
+            " descricao TEXT NOT NULL,"
+            " criado_em TEXT NOT NULL,"
+            " criado_por TEXT NOT NULL DEFAULT '')")
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_cliente_hist"
+                     " ON cliente_historico (cliente_id)")
 
     if not conn.execute("SELECT 1 FROM empresa WHERE id = 1").fetchone():
         conn.execute("INSERT INTO empresa (id, atualizado_em) VALUES (1, ?)", (agora(),))
@@ -1245,6 +1276,9 @@ def campos_cliente(dados: dict) -> dict:
     return dict(
         nome=_limpo(dados.get("nome")),
         whatsapp=_limpo(dados.get("whatsapp")),
+        email=_limpo(dados.get("email")),
+        cpf=_limpo(dados.get("cpf")),
+        endereco=_limpo(dados.get("endereco")),
         canal=_limpo(dados.get("canal")),
         observacao=_limpo(dados.get("observacao")),
         ativo=1 if dados.get("ativo", "1") in (1, "1", True, "on") else 0,
@@ -1258,17 +1292,55 @@ def salvar_cliente(dados: dict, autor: str, id_: int | None = None) -> int:
     with conectar() as conn:
         if id_:
             conn.execute(
-                "UPDATE clientes SET nome=:nome, whatsapp=:whatsapp, canal=:canal,"
+                "UPDATE clientes SET nome=:nome, whatsapp=:whatsapp, email=:email,"
+                " cpf=:cpf, endereco=:endereco, canal=:canal,"
                 " observacao=:observacao, ativo=:ativo WHERE id=:id", {**campos, "id": id_})
             conn.commit()
             return id_
         cur = conn.execute(
-            "INSERT INTO clientes (nome, whatsapp, canal, observacao, ativo, criado_em,"
-            " criado_por) VALUES (:nome, :whatsapp, :canal, :observacao, :ativo,"
-            " :criado_em, :criado_por)",
+            "INSERT INTO clientes (nome, whatsapp, email, cpf, endereco, canal,"
+            " observacao, ativo, criado_em, criado_por)"
+            " VALUES (:nome, :whatsapp, :email, :cpf, :endereco, :canal,"
+            " :observacao, :ativo, :criado_em, :criado_por)",
             {**campos, "criado_em": agora(), "criado_por": autor})
         conn.commit()
         return int(cur.lastrowid)
+
+
+def historico_cliente(cliente_id: int) -> list[dict]:
+    with conectar() as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT * FROM cliente_historico WHERE cliente_id = ?"
+            " ORDER BY data DESC, id DESC", (cliente_id,))]
+
+
+def salvar_historico(cliente_id: int, dados: dict, autor: str,
+                     id_: int | None = None) -> int:
+    data = _limpo(dados.get("data"))
+    descricao = _limpo(dados.get("descricao"))
+    if not descricao:
+        raise ErroDeCampo("descricao", "Descreva o que aconteceu.")
+    with conectar() as conn:
+        if id_:
+            conn.execute(
+                "UPDATE cliente_historico SET data=?, descricao=?"
+                " WHERE id=? AND cliente_id=?",
+                (data, descricao, id_, cliente_id))
+            conn.commit()
+            return id_
+        cur = conn.execute(
+            "INSERT INTO cliente_historico (cliente_id, data, descricao,"
+            " criado_em, criado_por) VALUES (?, ?, ?, ?, ?)",
+            (cliente_id, data, descricao, agora(), autor))
+        conn.commit()
+        return int(cur.lastrowid)
+
+
+def apagar_historico(id_: int, cliente_id: int) -> None:
+    with conectar() as conn:
+        conn.execute("DELETE FROM cliente_historico WHERE id=? AND cliente_id=?",
+                     (id_, cliente_id))
+        conn.commit()
 
 
 def canais(so_ativos: bool = True) -> list[dict]:
