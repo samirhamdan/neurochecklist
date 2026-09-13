@@ -485,6 +485,24 @@ body.bancada .campo input:focus, body.bancada .campo select:focus,
 body.publico .campo input:focus, body.publico .campo select:focus{
   border-color:var(--azul);outline:none}
 .marca-caixa{display:flex;align-items:center;gap:9px;font-size:15px;cursor:pointer}
+.foto-thumb{position:relative;width:100px;height:100px;border-radius:6px;overflow:hidden;
+  border:1px solid var(--linha)}
+.foto-thumb img{width:100%;height:100%;object-fit:cover}
+.btn-apagar-foto{position:absolute;top:2px;right:2px;width:24px;height:24px;border:none;
+  border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+.btn-apagar-foto:hover{background:var(--vermelho)}
+.grade-catalogo{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+.cartao-catalogo{border-radius:8px;overflow:hidden;border:1px solid var(--linha);
+  background:var(--bancada)}
+.cartao-catalogo .fotos-slide{position:relative;width:100%;aspect-ratio:4/3;background:var(--palco)}
+.cartao-catalogo .fotos-slide img{width:100%;height:100%;object-fit:cover}
+.cartao-catalogo .info-catalogo{padding:14px}
+.cartao-catalogo .info-catalogo h3{margin:0 0 4px;font-size:15px}
+.cartao-catalogo .info-catalogo .preco{font-size:18px;font-weight:600;color:var(--azul)}
+.indicadores-foto{display:flex;gap:4px;justify-content:center;position:absolute;bottom:6px;left:0;right:0}
+.indicadores-foto span{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.5);cursor:pointer}
+.indicadores-foto span.ativa{background:#fff}
 .acoes{display:flex;gap:10px;align-items:center;margin-top:4px}
 
 .duas-colunas{display:grid;gap:18px;align-items:start}

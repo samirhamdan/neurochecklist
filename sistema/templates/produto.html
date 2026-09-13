@@ -199,6 +199,39 @@
         {% endif %}
       </div>
 
+      <div class="cartao">
+        <h3 class="titulo-cartao">Catálogo</h3>
+        <label class="marca-caixa" id="campo-catalogo">
+          <input type="checkbox" name="catalogo" id="catalogo" value="1"
+                 {{ 'checked' if atual and atual.catalogo }}>
+          Disponível no catálogo
+        </label>
+        <p class="nota">Produtos marcados aparecem na página de catálogo.</p>
+
+        <div id="secao-fotos" {{ 'hidden' if not (atual and atual.catalogo) }}>
+          <p style="margin-top:12px;font-weight:500;font-size:13.5px">Fotos do produto (até 3)</p>
+          <div id="galeria-fotos" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+            {% if atual and atual.id %}
+            {% for f in fotos %}
+            <div class="foto-thumb" data-id="{{ f.id }}">
+              <img src="{{ url_for('servir_foto', produto_id=atual.id, arquivo=f.arquivo) }}"
+                   alt="Foto {{ f.ordem }}">
+              <button type="button" class="btn-apagar-foto" title="Remover foto">&times;</button>
+            </div>
+            {% endfor %}
+            {% endif %}
+          </div>
+          {% if atual and atual.id %}
+          <div id="upload-foto" style="margin-top:8px" {{ 'hidden' if fotos|length >= 3 }}>
+            <input type="file" id="input-foto" accept=".jpg,.jpeg,.png,.webp" hidden>
+            <button type="button" class="botao vazado" id="btn-add-foto">Adicionar foto</button>
+          </div>
+          {% else %}
+          <p class="nota">Salve o produto primeiro para adicionar fotos.</p>
+          {% endif %}
+        </div>
+      </div>
+
       <label class="marca-caixa">
         <input type="checkbox" name="ativo" value="1" {{ 'checked' if not atual or atual.ativo }}>
         Ativo
@@ -340,6 +373,67 @@
 
   // Calcular ao carregar
   calcularVolume();
+
+  // Catálogo: mostrar/esconder seção de fotos
+  const chkCatalogo = document.getElementById("catalogo");
+  const secaoFotos = document.getElementById("secao-fotos");
+  if (chkCatalogo && secaoFotos) {
+    chkCatalogo.addEventListener("change", () => {
+      secaoFotos.hidden = !chkCatalogo.checked;
+    });
+  }
+
+  // Upload de fotos
+  const MAX_FOTOS = 3;
+  const galeria = document.getElementById("galeria-fotos");
+  const inputFoto = document.getElementById("input-foto");
+  const btnAdd = document.getElementById("btn-add-foto");
+  const uploadDiv = document.getElementById("upload-foto");
+
+  function atualizarBotaoFoto() {
+    if (!uploadDiv) return;
+    const total = galeria ? galeria.querySelectorAll(".foto-thumb").length : 0;
+    uploadDiv.hidden = total >= MAX_FOTOS;
+  }
+
+  if (btnAdd && inputFoto) {
+    btnAdd.addEventListener("click", () => inputFoto.click());
+    inputFoto.addEventListener("change", async () => {
+      if (!inputFoto.files.length) return;
+      const fd = new FormData();
+      fd.append("foto", inputFoto.files[0]);
+      btnAdd.disabled = true;
+      btnAdd.textContent = "Enviando…";
+      try {
+        const r = await fetch(location.pathname + "/fotos", { method: "POST", body: fd });
+        const j = await r.json();
+        if (!r.ok) { alert(j.erro || "Erro ao enviar."); return; }
+        const div = document.createElement("div");
+        div.className = "foto-thumb";
+        div.dataset.id = j.id;
+        div.innerHTML = '<img src="/fotos/{{ atual.id if atual and atual.id else 0 }}/' +
+          j.arquivo + '" alt="Foto ' + j.ordem + '">' +
+          '<button type="button" class="btn-apagar-foto" title="Remover foto">&times;</button>';
+        galeria.appendChild(div);
+        atualizarBotaoFoto();
+      } catch(e) { alert("Não consegui enviar. Confira a conexão."); }
+      finally { btnAdd.disabled = false; btnAdd.textContent = "Adicionar foto"; inputFoto.value = ""; }
+    });
+  }
+
+  if (galeria) {
+    galeria.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".btn-apagar-foto");
+      if (!btn) return;
+      const thumb = btn.closest(".foto-thumb");
+      if (!thumb || !confirm("Remover esta foto?")) return;
+      try {
+        const r = await fetch(location.pathname + "/fotos/" + thumb.dataset.id,
+                              { method: "DELETE" });
+        if (r.ok) { thumb.remove(); atualizarBotaoFoto(); }
+      } catch(e) { alert("Erro ao remover."); }
+    });
+  }
 })();
 </script>
 {% endblock %}

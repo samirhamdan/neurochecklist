@@ -160,7 +160,7 @@ class TesteNenhumaTelaFicaMuda(Base):
     """
 
     TELAS = ("/", "/producao", "/pedidos", "/clientes", "/produtos", "/compras",
-             "/filamentos", "/insumos", "/templates", "/criar")
+             "/filamentos", "/insumos", "/templates", "/criar", "/catalogo")
 
     # As marcas de "aqui vai um recado de vazio" que as telas usam.
     ENSINA = ("cartao-vazio", 'class="vazio"', "convite", "nada-encontrado")

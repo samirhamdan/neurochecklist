@@ -107,8 +107,17 @@ CREATE TABLE IF NOT EXISTS produtos (
     margem_volume REAL NOT NULL DEFAULT 150,
     taxa_setup   REAL NOT NULL DEFAULT 5.0,
     preco_fixo   REAL,
+    catalogo     INTEGER NOT NULL DEFAULT 0,
     criado_em    TEXT NOT NULL,
     criado_por   TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS produto_fotos (
+    id         INTEGER PRIMARY KEY,
+    produto_id INTEGER NOT NULL REFERENCES produtos (id) ON DELETE CASCADE,
+    ordem      INTEGER NOT NULL DEFAULT 1,
+    arquivo    TEXT NOT NULL,
+    criado_em  TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS produto_insumos (
@@ -542,6 +551,19 @@ def _migrar(conn: sqlite3.Connection) -> None:
                          ("preco_fixo", "REAL")):
         if coluna not in colunas:
             conn.execute(f"ALTER TABLE produtos ADD COLUMN {coluna} {tipo}")
+
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
+    if "catalogo" not in colunas:
+        conn.execute("ALTER TABLE produtos ADD COLUMN catalogo INTEGER NOT NULL DEFAULT 0")
+
+    if "produto_fotos" not in tabelas:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS produto_fotos ("
+            " id INTEGER PRIMARY KEY,"
+            " produto_id INTEGER NOT NULL REFERENCES produtos (id) ON DELETE CASCADE,"
+            " ordem INTEGER NOT NULL DEFAULT 1,"
+            " arquivo TEXT NOT NULL,"
+            " criado_em TEXT NOT NULL)")
 
     if not conn.execute("SELECT 1 FROM empresa WHERE id = 1").fetchone():
         conn.execute("INSERT INTO empresa (id, atualizado_em) VALUES (1, ?)", (agora(),))
@@ -1123,6 +1145,7 @@ def campos_produto(dados: dict) -> dict:
         margem_volume=_numero(dados.get("margem_volume")) or 150,
         taxa_setup=_numero(dados.get("taxa_setup")) or 5.0,
         preco_fixo=_numero(dados.get("preco_fixo")) or None,
+        catalogo=1 if dados.get("catalogo", "") in (1, "1", "on") else 0,
     )
 
 
@@ -1150,6 +1173,58 @@ def salvar_produto(dados: dict, autor: str, id_: int | None = None,
                 " VALUES (?, ?, ?)", [(id_, i, q) for i, q in vinculos if q > 0])
         conn.commit()
     return id_
+
+
+MAX_FOTOS_CATALOGO = 3
+
+
+def fotos_produto(produto_id: int) -> list[dict]:
+    with conectar() as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT * FROM produto_fotos WHERE produto_id = ? ORDER BY ordem",
+            (produto_id,))]
+
+
+def salvar_foto_produto(produto_id: int, ordem: int, nome_arquivo: str) -> int:
+    with conectar() as conn:
+        cur = conn.execute(
+            "INSERT INTO produto_fotos (produto_id, ordem, arquivo, criado_em)"
+            " VALUES (?, ?, ?, ?)", (produto_id, ordem, nome_arquivo, agora()))
+        conn.commit()
+    return int(cur.lastrowid)
+
+
+def apagar_foto_produto(foto_id: int) -> str | None:
+    """Remove o registro e devolve o nome do arquivo para apagar do disco."""
+    with conectar() as conn:
+        linha = conn.execute("SELECT arquivo FROM produto_fotos WHERE id = ?",
+                             (foto_id,)).fetchone()
+        if not linha:
+            return None
+        conn.execute("DELETE FROM produto_fotos WHERE id = ?", (foto_id,))
+        conn.commit()
+    return linha["arquivo"]
+
+
+def pasta_fotos(produto_id: int) -> Path:
+    p = PASTA / "fotos" / str(produto_id)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def produtos_catalogo() -> list[dict]:
+    with conectar() as conn:
+        linhas = conn.execute(
+            "SELECT p.id, p.nome, p.sku, p.categoria, p.preco, p.gramas, p.horas,"
+            " p.observacao, f.cor AS filamento_cor"
+            " FROM produtos p LEFT JOIN filamentos f ON f.id = p.filamento_id"
+            " WHERE p.catalogo = 1 AND p.ativo = 1 ORDER BY p.nome").fetchall()
+    resultado = []
+    for l in linhas:
+        d = dict(l)
+        d["fotos"] = fotos_produto(d["id"])
+        resultado.append(d)
+    return resultado
 
 
 # ------------------------------------------------------------ clientes

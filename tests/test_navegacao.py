@@ -77,6 +77,7 @@ class TesteOMenuEDado(Base):
                  "lista_insumos": "operacao",
                  "lista_clientes": "comercial", "lista_pedidos": "comercial",
                  "lista_compras": "cadastros", "lista_produtos": "cadastros",
+                 "catalogo": "cadastros",
                  "tela_criar": "personalizacao", "lista_templates": "personalizacao"}
         for endereco, esperado in casos.items():
             with self.subTest(endereco=endereco):
@@ -112,7 +113,7 @@ class TesteACascaDeTodaTela(Base):
     """A lateral desenha em toda tela, e nao esconde nada do que ja havia."""
 
     TELAS = ("/", "/producao", "/pedidos", "/clientes", "/produtos", "/compras",
-             "/filamentos", "/insumos", "/criar", "/templates")
+             "/filamentos", "/insumos", "/criar", "/templates", "/catalogo")
 
     def test_a_lateral_aparece_em_toda_tela(self):
         for rota in self.TELAS:

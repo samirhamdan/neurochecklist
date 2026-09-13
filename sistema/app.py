@@ -67,6 +67,7 @@ MENU = (
     ("Cadastros", "cadastros", (
         ("lista_produtos", "Produtos", "produtos"),
         ("lista_compras", "Compras", "compras"),
+        ("catalogo", "Catálogo", "catalogo"),
     )),
     ("Personalização", "personalizacao", (
         ("tela_criar", "Personalizar", "personalizar"),
@@ -341,9 +342,10 @@ def criar_app() -> Flask:
                     filamentos=dados.filamentos(), insumos=dados.insumos()), 400
             return redirect(url_for("editar_produto", id_=novo_id))
         conta = custo.conta_de_produto(atual, param) if atual else None
+        fotos = dados.fotos_produto(id_) if id_ else []
         return render_template("produto.html", aba="produtos", atual=atual, conta=conta,
                                param=param, filamentos=dados.filamentos(),
-                               insumos=dados.insumos())
+                               insumos=dados.insumos(), fotos=fotos)
 
     @app.route("/produtos/medir", methods=["POST"])
     @auth.exige_perfil("admin", "operacao")
@@ -370,6 +372,50 @@ def criar_app() -> Flask:
         conta = custo.calcular(medida["gramas"], medida["horas"], preco_kg,
                                minutos=float(minutos) if minutos else None, param=param)
         return {"medida": medida, "conta": conta.como_dict()}, 200
+
+    @app.route("/catalogo")
+    @auth.exige_perfil("admin", "comercial", "operacao")
+    def catalogo():
+        return render_template("catalogo.html", aba="catalogo",
+                               produtos=dados.produtos_catalogo())
+
+    @app.route("/produtos/<int:id_>/fotos", methods=["POST"])
+    @auth.exige_perfil("admin", "operacao")
+    def upload_foto(id_):
+        prod = dados.produto(id_)
+        if not prod:
+            abort(404)
+        fotos_atuais = dados.fotos_produto(id_)
+        if len(fotos_atuais) >= dados.MAX_FOTOS_CATALOGO:
+            return {"erro": f"Máximo de {dados.MAX_FOTOS_CATALOGO} fotos."}, 400
+        enviado = request.files.get("foto")
+        if not enviado or not enviado.filename:
+            return {"erro": "Nenhum arquivo enviado."}, 400
+        ext = os.path.splitext(enviado.filename)[1].lower()
+        if ext not in (".jpg", ".jpeg", ".png", ".webp"):
+            return {"erro": "Use JPG, PNG ou WebP."}, 400
+        nome = f"{len(fotos_atuais) + 1}{ext}"
+        pasta = dados.pasta_fotos(id_)
+        enviado.save(str(pasta / nome))
+        ordem = len(fotos_atuais) + 1
+        foto_id = dados.salvar_foto_produto(id_, ordem, nome)
+        return {"id": foto_id, "arquivo": nome, "ordem": ordem}, 201
+
+    @app.route("/produtos/<int:id_>/fotos/<int:foto_id>", methods=["DELETE"])
+    @auth.exige_perfil("admin", "operacao")
+    def apagar_foto(id_, foto_id):
+        arquivo = dados.apagar_foto_produto(foto_id)
+        if not arquivo:
+            abort(404)
+        caminho = dados.pasta_fotos(id_) / arquivo
+        if caminho.exists():
+            caminho.unlink()
+        return {"ok": True}, 200
+
+    @app.route("/fotos/<int:produto_id>/<path:arquivo>")
+    @auth.exige_login
+    def servir_foto(produto_id, arquivo):
+        return send_from_directory(str(dados.pasta_fotos(produto_id)), arquivo)
 
     # -------------------------------------------------------------- clientes
     @app.route("/clientes")

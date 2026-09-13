@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block titulo %}Catálogo — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main id="conteudo" class="pagina">
+  <div class="cabecalho-lista">
+    <h2 class="secao">Catálogo</h2>
+  </div>
+
+  {% if produtos %}
+  <div class="grade-catalogo">
+    {% for p in produtos %}
+    <div class="cartao-catalogo">
+      <div class="fotos-slide" data-produto="{{ p.id }}">
+        {% if p.fotos %}
+          {% for f in p.fotos %}
+          <img src="{{ url_for('servir_foto', produto_id=p.id, arquivo=f.arquivo) }}"
+               alt="{{ p.nome }}" {{ 'hidden' if not loop.first }}>
+          {% endfor %}
+          {% if p.fotos|length > 1 %}
+          <div class="indicadores-foto">
+            {% for f in p.fotos %}
+            <span data-idx="{{ loop.index0 }}" class="{{ 'ativa' if loop.first }}"></span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        {% else %}
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;
+                      color:var(--suave);font-size:13px">Sem foto</div>
+        {% endif %}
+      </div>
+      <div class="info-catalogo">
+        <h3>{{ p.nome }}</h3>
+        {% if p.categoria %}<span class="fraco" style="font-size:12px">{{ p.categoria }}</span>{% endif %}
+        {% if p.preco %}<div class="preco">{{ p.preco|dinheiro }}</div>{% endif %}
+        {% if p.observacao %}<p class="nota" style="margin-top:6px">{{ p.observacao }}</p>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="cartao cartao-vazio">
+    <b>Nenhum produto no catálogo ainda.</b>
+    <span>Marque "Disponível no catálogo" no cadastro de um produto para ele aparecer aqui.</span>
+  </div>
+  {% endif %}
+</main>
+
+<script>
+(function() {
+  document.querySelectorAll(".fotos-slide").forEach(slide => {
+    const imgs = slide.querySelectorAll("img");
+    const dots = slide.querySelectorAll(".indicadores-foto span");
+    if (imgs.length < 2) return;
+    dots.forEach(dot => {
+      dot.addEventListener("click", () => {
+        const idx = parseInt(dot.dataset.idx);
+        imgs.forEach((img, i) => { img.hidden = i !== idx; });
+        dots.forEach((d, i) => { d.classList.toggle("ativa", i === idx); });
+      });
+    });
+  });
+})();
+</script>
+{% endblock %}
