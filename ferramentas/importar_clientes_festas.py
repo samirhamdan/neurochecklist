@@ -4,8 +4,8 @@
 Uso:
     python3 ferramentas/importar_clientes_festas.py caminho/ficha_reserva.csv
 
-Agrupa registros por nome (case-insensitive), pega o mais recente de cada.
-Pula quem já existe no banco. Idempotente: rodar duas vezes não duplica.
+Desduplicação por NOME, CPF e CELULAR: se qualquer um bate, é a
+mesma pessoa. Idempotente: rodar duas vezes não duplica.
 
 Campos mapeados:
     nome           -> nome
@@ -21,6 +21,7 @@ from __future__ import annotations
 import csv
 import importlib
 import os
+import re
 import sys
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,16 +35,63 @@ def ler_planilha(caminho: str) -> list[dict]:
         return list(csv.DictReader(f))
 
 
-def agrupar_por_nome(linhas: list[dict]) -> dict[str, list[dict]]:
-    """Agrupa todas as linhas de cada nome (case-insensitive)."""
-    por_nome: dict[str, list[dict]] = {}
-    for l in linhas:
-        nome = (l.get("nome") or "").strip()
+def _so_digitos(texto: str | None) -> str:
+    return re.sub(r"\D", "", texto or "")
+
+
+def agrupar_clientes(linhas: list[dict]) -> list[list[dict]]:
+    """Agrupa linhas da mesma pessoa por nome, CPF ou celular.
+
+    Se duas linhas compartilham qualquer um dos três identificadores
+    (não vazio), são tratadas como a mesma pessoa — mesmo que os nomes
+    sejam ligeiramente diferentes.
+    """
+    chave_para_grupo: dict[str, int] = {}
+    grupos: dict[int, list[dict]] = {}
+    proximo = 0
+
+    for linha in linhas:
+        nome = (linha.get("nome") or "").strip()
         if not nome:
             continue
-        chave = nome.upper()
-        por_nome.setdefault(chave, []).append(l)
-    return por_nome
+
+        chaves = []
+        chave_nome = f"n:{nome.upper()}"
+        chaves.append(chave_nome)
+
+        cpf = _so_digitos(linha.get("CPF"))
+        if len(cpf) >= 11:
+            chaves.append(f"c:{cpf}")
+
+        tel = _so_digitos(linha.get("TELEFONE C/ DDD"))
+        if len(tel) >= 10:
+            chaves.append(f"t:{tel}")
+
+        encontrados = set()
+        for ch in chaves:
+            if ch in chave_para_grupo:
+                encontrados.add(chave_para_grupo[ch])
+
+        if not encontrados:
+            gid = proximo
+            proximo += 1
+            grupos[gid] = []
+        elif len(encontrados) == 1:
+            gid = encontrados.pop()
+        else:
+            gid = min(encontrados)
+            for antigo in encontrados:
+                if antigo != gid:
+                    grupos[gid].extend(grupos.pop(antigo))
+                    for k, v in list(chave_para_grupo.items()):
+                        if v == antigo:
+                            chave_para_grupo[k] = gid
+
+        grupos[gid].append(linha)
+        for ch in chaves:
+            chave_para_grupo[ch] = gid
+
+    return list(grupos.values())
 
 
 def mapear_canal(texto: str | None) -> str:
@@ -69,7 +117,6 @@ def montar_descricao_historico(linha: dict) -> str:
 
 
 def extrair_data(linha: dict) -> str:
-    """Tenta montar uma data ISO a partir de mes/ano ou do carimbo."""
     mes = (linha.get("mes") or "").strip()
     ano = (linha.get("ano") or "").strip()
     if mes.isdigit() and ano.isdigit() and int(ano) > 2000:
@@ -85,36 +132,57 @@ def importar(caminho_csv: str) -> None:
     importlib.reload(dados)
 
     linhas = ler_planilha(caminho_csv)
-    agrupados = agrupar_por_nome(linhas)
-    existentes = {c["nome"].upper(): c["id"] for c in dados.clientes(False)}
+    grupos = agrupar_clientes(linhas)
+
+    existentes_nome = {c["nome"].upper(): c["id"] for c in dados.clientes(False)}
+    existentes_cpf: dict[str, int] = {}
+    existentes_tel: dict[str, int] = {}
+    for c in dados.clientes(False):
+        cpf = _so_digitos(c.get("cpf"))
+        if len(cpf) >= 11:
+            existentes_cpf[cpf] = c["id"]
+        tel = _so_digitos(c.get("whatsapp"))
+        if len(tel) >= 10:
+            existentes_tel[tel] = c["id"]
 
     importados = 0
     historicos = 0
     pulados = 0
-    for chave, registros in sorted(agrupados.items()):
+    mesclados = 0
+
+    for registros in grupos:
         mais_recente = max(registros,
                           key=lambda r: r.get("Carimbo de data/hora", ""))
 
-        if chave in existentes:
+        nome = (mais_recente.get("nome") or "").strip()
+        cpf = _so_digitos(mais_recente.get("CPF"))
+        tel = _so_digitos(mais_recente.get("TELEFONE C/ DDD"))
+
+        cliente_id = (existentes_nome.get(nome.upper())
+                      or (existentes_cpf.get(cpf) if len(cpf) >= 11 else None)
+                      or (existentes_tel.get(tel) if len(tel) >= 10 else None))
+
+        if cliente_id:
             pulados += 1
             continue
 
-        nome = (mais_recente.get("nome") or "").strip()
-        telefone = (mais_recente.get("TELEFONE C/ DDD") or "").strip()
         email = (mais_recente.get("EMAIL") or "").strip()
-        cpf = (mais_recente.get("CPF") or "").strip()
+        cpf_texto = (mais_recente.get("CPF") or "").strip()
         endereco = (mais_recente.get("ENDEREÇO (COMPLETO)") or "").strip()
         canal = mapear_canal(mais_recente.get("COMO NOS CONHECEU"))
 
         cliente_id = dados.salvar_cliente({
             "nome": nome,
-            "whatsapp": telefone,
+            "whatsapp": (mais_recente.get("TELEFONE C/ DDD") or "").strip(),
             "email": email,
-            "cpf": cpf,
+            "cpf": cpf_texto,
             "endereco": endereco,
             "canal": canal,
         }, "importacao")
         importados += 1
+
+        if len(registros) > 1:
+            mesclados += len(registros) - 1
 
         for reg in sorted(registros,
                           key=lambda r: r.get("Carimbo de data/hora", "")):
@@ -127,6 +195,7 @@ def importar(caminho_csv: str) -> None:
 
     print(f"Importados: {importados}")
     print(f"Históricos criados: {historicos}")
+    print(f"Linhas mescladas (mesmo CPF/celular): {mesclados}")
     print(f"Já existiam (pulados): {pulados}")
     print(f"Total na base agora: {len(dados.clientes(False))}")
 
