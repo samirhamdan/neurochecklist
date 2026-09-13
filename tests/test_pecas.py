@@ -54,8 +54,8 @@ class TesteORegistroDePecas(unittest.TestCase):
         return js("const P=require('./pecas.js');"
                   f"console.log(JSON.stringify(P.peca({json.dumps(tipo)}).{expr}))")
 
-    def test_ha_duas_pecas(self):
-        self.assertEqual(sorted(self.tipos), ["chaveiro", "topo"])
+    def test_ha_tres_pecas(self):
+        self.assertEqual(sorted(self.tipos), ["chaveiro", "display", "topo"])
 
     def test_toda_peca_declara_o_que_a_tela_pede(self):
         for tipo in self.tipos:

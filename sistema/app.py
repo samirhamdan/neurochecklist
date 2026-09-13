@@ -52,19 +52,19 @@ def arquivo_da_marca(base: str) -> str:
 # sozinha, o grupo certo abre no que voce esta usando, e ha um teste que abre
 # cada rota do menu -- item que aponta para lugar nenhum passaria despercebido
 # numa lista escrita a mao.
+DASHBOARD = ("painel", "Dashboard", "dashboard")
+
 MENU = (
-    ("Operação", "operacao", (
-        ("painel", "Painel", "painel"),
-        ("producao", "Produção", "producao"),
-        ("lista_pedidos", "Pedidos", "pedidos"),
-        ("lista_clientes", "Clientes", "clientes"),
-    )),
     ("Cadastros", "cadastros", (
+        ("lista_clientes", "Clientes", "clientes"),
         ("lista_produtos", "Produtos", "produtos"),
-        ("lista_compras", "Compras", "compras"),
-        ("lista_filamentos", "Filamentos", "filamentos"),
         ("lista_insumos", "Insumos", "insumos"),
-        ("editar_empresa", "Empresa", "empresa"),
+        ("lista_filamentos", "Filamentos", "filamentos"),
+        ("lista_compras", "Compras", "compras"),
+    )),
+    ("Operação", "operacao", (
+        ("lista_pedidos", "Pedidos", "pedidos"),
+        ("producao", "Produção", "producao"),
     )),
     ("Personalização", "personalizacao", (
         ("tela_criar", "Personalizar", "personalizar"),
@@ -75,6 +75,8 @@ MENU = (
 
 def _grupo_de(endpoint: str | None) -> str:
     """Qual grupo abre. Sem isto, quem chega em Filamentos ve tudo fechado."""
+    if endpoint == DASHBOARD[0]:
+        return ""
     for _, chave, itens in MENU:
         if any(e == endpoint for e, _, _ in itens):
             return chave
@@ -147,6 +149,7 @@ def criar_app() -> Flask:
             "com_senha": bool(auth.SENHA),
             "usuario": session.get("usuario", ""),
             "marca_simbolo": arquivo_da_marca("marca-simbolo"),
+            "dashboard": DASHBOARD,
             "menu": MENU,
             "grupo_aberto": _grupo_de(request.endpoint),
         }
@@ -163,7 +166,7 @@ def criar_app() -> Flask:
         # deixa-lo no grafico faria a comparacao ser com peca que nao se vende
         # mais. A tela de produtos lista todos, por isso mostra mais linhas.
         retorno = custo.retorno_por_hora(dados.produtos(), dados.parametros())
-        return render_template("painel.html", aba="painel", retorno=retorno,
+        return render_template("painel.html", aba="dashboard", retorno=retorno,
                                modelos=criar.MODELOS, criar_conta=criar.contagem(),
                                **dados.resumo())
 

@@ -36,6 +36,10 @@
     <span>Morumbi <span class="tres">3</span><span class="de">D</span></span>
   </a>
 
+  {% set db_end, db_rot, db_marca = dashboard %}
+  <a class="item-solo{{ ' aqui' if aba == db_marca }}" href="{{ url_for(db_end) }}"
+     {{ 'aria-current=page' if aba == db_marca }}>{{ db_rot }}</a>
+
   {% for titulo, chave, itens in menu %}
   <details class="grupo" {{ 'open' if chave == grupo_aberto }}>
     <summary>

@@ -71,8 +71,11 @@ class TesteASemente(unittest.TestCase):
         for t in self.t:
             with self.subTest(sku=t.get("sku")):
                 for campo in ("sku", "modelo", "categoria", "campos", "licenca",
-                              "fonte", "limite_nome"):
+                              "fonte"):
                     self.assertTrue(t.get(campo), f"{t.get('sku')} sem {campo}")
+                if "nome" in t.get("campos", []):
+                    self.assertTrue(t.get("limite_nome"),
+                                    f"{t.get('sku')} tem campo nome sem limite_nome")
 
     def test_o_sku_combina_com_o_tipo_da_peca(self):
         """§7: M3D-TB-001 para topo, M3D-CH-001 para chaveiro.
@@ -80,7 +83,7 @@ class TesteASemente(unittest.TestCase):
         Prefixo trocado nao quebra nada hoje, e por isso mesmo passaria --
         seis meses depois ninguem sabe o que M3D-TB-042 e.
         """
-        prefixos = {"topo": "TB", "chaveiro": "CH"}
+        prefixos = {"topo": "TB", "display": "DM", "chaveiro": "CH"}
         for t in self.t:
             with self.subTest(sku=t["sku"]):
                 self.assertRegex(t["sku"], r"^M3D-[A-Z]{2}-\d{3}$")
@@ -115,7 +118,7 @@ class TesteASemente(unittest.TestCase):
         """Forma inventada na semente vira template que abre e ignora a escolha."""
         for t in self.t:
             with self.subTest(sku=t["sku"]):
-                self.assertIn(t["forma"], ("", "coracao", "estrela"))
+                self.assertIn(t["forma"], ("", "retangulo", "coracao", "estrela"))
 
 
 @unittest.skipUnless(TEM_NODE, SEM_NODE)

@@ -73,12 +73,17 @@ class TesteOMenuEDado(Base):
 
     def test_o_grupo_certo_abre_no_que_voce_esta_usando(self):
         """Sem isto, quem chega em Filamentos ve os tres grupos fechados."""
-        casos = {"painel": "operacao", "producao": "operacao",
-                 "lista_filamentos": "cadastros", "lista_compras": "cadastros",
+        casos = {"producao": "operacao", "lista_pedidos": "operacao",
+                 "lista_clientes": "cadastros", "lista_filamentos": "cadastros",
+                 "lista_compras": "cadastros", "lista_produtos": "cadastros",
                  "tela_criar": "personalizacao", "lista_templates": "personalizacao"}
         for endereco, esperado in casos.items():
             with self.subTest(endereco=endereco):
                 self.assertEqual(self.modulo._grupo_de(endereco), esperado)
+
+    def test_o_dashboard_nao_abre_grupo_nenhum(self):
+        """Dashboard e item solo, fora de qualquer grupo."""
+        self.assertEqual(self.modulo._grupo_de("painel"), "")
 
     def test_rota_de_fora_do_menu_nao_quebra(self):
         """A ficha de um pedido nao esta no menu; a lateral tem que desenhar."""
@@ -95,6 +100,11 @@ class TesteOMenuEDado(Base):
                 with self.subTest(item=rotulo):
                     self.assertIn('aria-current=page', pagina,
                                   f"{rotulo} nao se marca como a tela atual")
+
+    def test_o_dashboard_marca_onde_voce_esta(self):
+        pagina = self.cliente.get("/", follow_redirects=True).get_data(as_text=True)
+        self.assertIn('aria-current=page', pagina)
+        self.assertIn('item-solo', pagina)
 
 
 class TesteACascaDeTodaTela(Base):
