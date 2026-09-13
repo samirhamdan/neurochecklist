@@ -32,7 +32,8 @@ TEMPLATES = os.path.join(RAIZ, "sistema", "templates")
 
 # As telas onde se digita alguma coisa que vai para o banco.
 FORMULARIOS = ("cliente.html", "compra.html", "filamento.html", "insumo.html",
-               "pedido.html", "produto.html", "template.html", "canais.html")
+               "pedido.html", "produto.html", "template.html", "canais.html",
+               "usuario.html")
 
 
 def texto(nome):

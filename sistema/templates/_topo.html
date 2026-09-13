@@ -59,9 +59,14 @@
   </details>
   {% endfor %}
 
+  {% if perfil == 'admin' %}
+  <a class="item-solo{{ ' aqui' if aba == 'usuarios' }}" href="{{ url_for('lista_usuarios') }}"
+     {{ 'aria-current=page' if aba == 'usuarios' }}>Usuários</a>
+  {% endif %}
+
   {% if com_senha %}
   <div class="quem-sai">
-    <span class="quem">{{ usuario }}</span>
+    <span class="quem">{{ usuario }}{% if perfil %} <span class="perfil-tag">{{ perfil|capitalize }}</span>{% endif %}</span>
     <form method="post" action="{{ url_for('sair') }}">
       <button type="submit">Sair</button>
     </form>

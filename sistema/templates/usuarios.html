@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titulo %}Usuários — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main id="conteudo" class="pagina">
+  <div class="cabecalho-lista">
+    <h2 class="secao">Usuários</h2>
+    <a class="botao" href="{{ url_for('editar_usuario') }}">Novo usuário</a>
+  </div>
+
+  {% if usuarios %}
+  <div class="cartao cartao-tabela"><div class="rolagem">
+    <table class="tabela">
+      <thead><tr>
+        <th>Nome</th><th>Login</th><th>Perfil</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr class="{{ 'inativo' if not u.ativo }}">
+          <td data-rotulo="Nome" class="chave">
+            <a href="{{ url_for('editar_usuario', id_=u.id) }}">{{ u.nome }}</a>
+            {% if not u.ativo %}<span class="etiqueta cinza">inativo</span>{% endif %}
+          </td>
+          <td data-rotulo="Login">{{ u.login }}</td>
+          <td data-rotulo="Perfil"><span class="etiqueta">{{ u.perfil|capitalize }}</span></td>
+          <td class="num acao"><a href="{{ url_for('editar_usuario', id_=u.id) }}">editar</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  {% else %}
+  <div class="cartao cartao-vazio">
+    <b>Nenhum usuário cadastrado.</b>
+    <span>Enquanto não houver usuários no banco, o sistema usa as variáveis de
+    ambiente MORUMBI_USUARIO e MORUMBI_SENHA para autenticar.</span>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

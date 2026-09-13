@@ -1,12 +1,18 @@
 """Autenticacao do sistema de gestao.
 
-O gerador de logo usa Basic auth — o popup do navegador. Aqui a entrada e
-por formulario, com sessao, porque uma tela de login precisa poder dizer o
-que aconteceu quando da errado, e o popup nao diz.
+Dois modos, backwards compatible:
 
-O que se manteve do que ja existia: as mesmas variaveis MORUMBI_USUARIO e
-MORUMBI_SENHA (nenhuma configuracao nova para administrar) e a comparacao em
-tempo constante com hmac.compare_digest.
+  1. Tabela `usuarios` com pelo menos um registro ativo: login contra o banco,
+     senha conferida com werkzeug (bcrypt/scrypt). O perfil (admin, comercial,
+     operacao) controla o que cada um ve.
+
+  2. Fallback: variaveis MORUMBI_USUARIO / MORUMBI_SENHA, comparacao em tempo
+     constante com hmac.compare_digest. Funciona enquanto a tabela nao existir
+     ou estiver vazia — e o que mantem o sistema rodando na VPS ate o Samir
+     criar o primeiro usuario pela tela.
+
+A migracao em dados.py semeia o primeiro admin a partir das variaveis de
+ambiente, entao em producao o modo 2 dura ate a primeira conexao com banco.
 """
 
 from __future__ import annotations
@@ -17,14 +23,14 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from flask import redirect, request, session, url_for
+from flask import abort, redirect, request, session, url_for
+from werkzeug.security import check_password_hash
 
 from .dados import PASTA, conectar
 
 USUARIO = os.environ.get("MORUMBI_USUARIO", "")
 SENHA = os.environ.get("MORUMBI_SENHA", "")
 
-# Quantas tentativas erradas o mesmo endereco pode fazer antes de esperar.
 LIMITE_TENTATIVAS = 5
 JANELA_MINUTOS = 15
 
@@ -47,13 +53,6 @@ def _local(endereco: str) -> bool:
 
 
 def verificar_configuracao(bind: str | None = None) -> None:
-    """Sem senha, o sistema so aceita subir preso ao proprio computador.
-
-    O gerador de logo prometia isso num comentario mas nao verificava: sem
-    MORUMBI_SENHA ele simplesmente liberava tudo, inclusive publicado na
-    internet. Aqui a promessa e checada.
-    """
-
     if SENHA:
         return
     bind = bind if bind is not None else os.environ.get("MORUMBI_BIND", "127.0.0.1:5000")
@@ -68,13 +67,6 @@ def verificar_configuracao(bind: str | None = None) -> None:
 
 
 def chave_de_sessao() -> bytes:
-    """Chave que assina o cookie, guardada em disco.
-
-    Em memoria ela mudaria a cada restart e derrubaria todo mundo; e cada
-    worker do gunicorn geraria a sua, entao a sessao valeria num processo e
-    nao no outro.
-    """
-
     arquivo = PASTA / "chave_sessao"
     if arquivo.exists():
         dados = arquivo.read_bytes().strip()
@@ -88,8 +80,6 @@ def chave_de_sessao() -> bytes:
 
 
 def endereco_do_pedido() -> str:
-    """IP real do visitante. Atras do Caddy, o do proxy nao serve."""
-
     encaminhado = request.headers.get("X-Forwarded-For", "")
     if encaminhado:
         return encaminhado.split(",")[0].strip()
@@ -112,8 +102,6 @@ def bloqueado(ip: str) -> bool:
 
 
 def registrar_erro(ip: str) -> int:
-    """Anota uma tentativa errada. Devolve quantas restam."""
-
     with conectar() as conn:
         conn.executescript(TABELA)
         conn.execute(
@@ -129,12 +117,27 @@ def limpar_tentativas(ip: str) -> None:
         conn.execute("DELETE FROM tentativas_login WHERE ip = ?", (ip,))
 
 
-def confere(usuario: str, senha: str) -> bool:
-    """Compara em tempo constante, e sempre os dois campos.
+def _tem_usuarios_no_banco() -> bool:
+    try:
+        with conectar() as conn:
+            tabelas = {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'")}
+            if "usuarios" not in tabelas:
+                return False
+            return bool(conn.execute(
+                "SELECT 1 FROM usuarios WHERE ativo = 1 LIMIT 1").fetchone())
+    except Exception:
+        return False
 
-    Sair mais cedo quando o usuario esta errado deixaria o tempo de resposta
-    contar quem existe e quem nao existe.
-    """
+
+def confere(usuario: str, senha: str) -> dict | bool:
+    """Confere credenciais. Devolve dict do usuario (banco) ou True (env) ou False."""
+    if _tem_usuarios_no_banco():
+        from . import dados
+        reg = dados.usuario_por_login(usuario or "")
+        if reg and check_password_hash(reg["senha_hash"], senha or ""):
+            return reg
+        return False
 
     ok_usuario = hmac.compare_digest(usuario or "", USUARIO)
     ok_senha = hmac.compare_digest(senha or "", SENHA)
@@ -142,9 +145,13 @@ def confere(usuario: str, senha: str) -> bool:
 
 
 def autenticado() -> bool:
-    if not SENHA:
-        return True   # modo local, ja barrado por verificar_configuracao
-    return session.get("usuario") == USUARIO
+    if not SENHA and not _tem_usuarios_no_banco():
+        return True
+    return bool(session.get("usuario"))
+
+
+def perfil_do_usuario() -> str:
+    return session.get("perfil", "")
 
 
 def exige_login(rota):
@@ -154,3 +161,18 @@ def exige_login(rota):
             return redirect(url_for("entrar", destino=request.full_path.rstrip("?")))
         return rota(*a, **kw)
     return envelope
+
+
+def exige_perfil(*perfis):
+    """Decorator que restringe a rota a certos perfis. Admin sempre entra."""
+    def decorador(rota):
+        @functools.wraps(rota)
+        def envelope(*a, **kw):
+            if not autenticado():
+                return redirect(url_for("entrar", destino=request.full_path.rstrip("?")))
+            atual = perfil_do_usuario()
+            if atual and atual not in ("admin",) + perfis:
+                abort(403)
+            return rota(*a, **kw)
+        return envelope
+    return decorador

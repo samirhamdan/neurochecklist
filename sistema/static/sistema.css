@@ -200,6 +200,12 @@ body.bancada{background:var(--bancada);color:var(--tinta)}
 }
 .quem-sai button:hover{border-color:var(--azul);color:var(--azul)}
 .quem{font-size:13px;color:var(--suave)}
+.perfil-tag{
+  display:inline-block;font-size:10px;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--suave);
+  background:var(--bancada);border-radius:3px;padding:1px 5px;
+  margin-left:2px;vertical-align:middle;
+}
 
 /* A barra fina de cima so existe no telefone: e onde mora o botao da gaveta.
    Chama-se `barra-topo` e nao `barra` porque `.barra` ja era das barras de

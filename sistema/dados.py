@@ -19,6 +19,8 @@ import sqlite3
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+from werkzeug.security import check_password_hash, generate_password_hash
+
 from . import formato
 
 PASTA = Path(os.environ.get("MORUMBI_DADOS", "/var/lib/morumbi3d"))
@@ -264,6 +266,17 @@ CREATE TABLE IF NOT EXISTS empresa (
     validade_dias INTEGER NOT NULL DEFAULT 7,
     condicoes  TEXT NOT NULL DEFAULT '',
     atualizado_em TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS usuarios (
+    id         INTEGER PRIMARY KEY,
+    nome       TEXT NOT NULL,
+    login      TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    senha_hash TEXT NOT NULL,
+    perfil     TEXT NOT NULL DEFAULT 'operacao',
+    ativo      INTEGER NOT NULL DEFAULT 1,
+    criado_em  TEXT NOT NULL,
+    criado_por TEXT NOT NULL DEFAULT ''
 );
 """
 
@@ -532,6 +545,21 @@ def _migrar(conn: sqlite3.Connection) -> None:
 
     if not conn.execute("SELECT 1 FROM empresa WHERE id = 1").fetchone():
         conn.execute("INSERT INTO empresa (id, atualizado_em) VALUES (1, ?)", (agora(),))
+
+    # Primeiro usuario: converte as credenciais de variavel de ambiente em
+    # registro de banco. Roda UMA VEZ -- depois disso os usuarios sao geridos
+    # pela tela, e as variaveis servem so como fallback de emergencia.
+    if "usuarios" in {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'")}:
+        if not conn.execute("SELECT 1 FROM usuarios LIMIT 1").fetchone():
+            env_usuario = os.environ.get("MORUMBI_USUARIO", "")
+            env_senha = os.environ.get("MORUMBI_SENHA", "")
+            if env_usuario and env_senha:
+                conn.execute(
+                    "INSERT INTO usuarios (nome, login, senha_hash, perfil, ativo,"
+                    " criado_em, criado_por) VALUES (?, ?, ?, 'admin', 1, ?, 'migracao')",
+                    (env_usuario, env_usuario,
+                     generate_password_hash(env_senha), agora()))
 
     _semear_templates(conn)
     conn.commit()
@@ -1896,3 +1924,84 @@ def apagar_compra(id_: int) -> None:
         for tipo, alvo in tocados:
             _atualizar_preco(conn, tipo, alvo)
         conn.commit()
+
+
+# --------------------------------------------------------------- usuarios
+PERFIS = ("admin", "comercial", "operacao")
+ROTULOS_PERFIL = {
+    "admin": "Administrador",
+    "comercial": "Comercial",
+    "operacao": "Operação",
+}
+
+
+def usuarios(so_ativos: bool = True) -> list[dict]:
+    with conectar() as conn:
+        onde = "WHERE ativo = 1" if so_ativos else ""
+        return [dict(l) for l in conn.execute(
+            f"SELECT id, nome, login, perfil, ativo, criado_em, criado_por"
+            f" FROM usuarios {onde} ORDER BY nome")]
+
+
+def usuario(id_: int) -> dict | None:
+    with conectar() as conn:
+        linha = conn.execute(
+            "SELECT id, nome, login, perfil, ativo, criado_em, criado_por"
+            " FROM usuarios WHERE id = ?", (id_,)).fetchone()
+    return dict(linha) if linha else None
+
+
+def usuario_por_login(login: str) -> dict | None:
+    with conectar() as conn:
+        linha = conn.execute(
+            "SELECT * FROM usuarios WHERE login = ? AND ativo = 1",
+            (login,)).fetchone()
+    return dict(linha) if linha else None
+
+
+def campos_usuario(dados: dict) -> dict:
+    return dict(
+        nome=_limpo(dados.get("nome")),
+        login=_limpo(dados.get("login")),
+        perfil=_limpo(dados.get("perfil"), "operacao"),
+        ativo=1 if dados.get("ativo", "1") in (1, "1", True, "on") else 0,
+    )
+
+
+def salvar_usuario(dados: dict, autor: str, id_: int | None = None) -> int:
+    campos = campos_usuario(dados)
+    if not campos["nome"]:
+        raise ErroDeCampo("nome", "Dê um nome ao usuário.")
+    if not campos["login"]:
+        raise ErroDeCampo("login", "Defina um login para o usuário.")
+    if campos["perfil"] not in PERFIS:
+        raise ErroDeCampo("perfil", "Perfil inválido.")
+
+    senha = _limpo(dados.get("senha"))
+    if not id_ and not senha:
+        raise ErroDeCampo("senha", "Defina uma senha para o novo usuário.")
+
+    with conectar() as conn:
+        existente = conn.execute(
+            "SELECT id FROM usuarios WHERE login = ? AND id != ?",
+            (campos["login"], id_ or 0)).fetchone()
+        if existente:
+            raise ErroDeCampo("login", "Já existe um usuário com esse login.")
+
+        if id_:
+            conn.execute(
+                "UPDATE usuarios SET nome=:nome, login=:login, perfil=:perfil,"
+                " ativo=:ativo WHERE id=:id", {**campos, "id": id_})
+            if senha:
+                conn.execute("UPDATE usuarios SET senha_hash = ? WHERE id = ?",
+                             (generate_password_hash(senha), id_))
+            conn.commit()
+            return id_
+        cur = conn.execute(
+            "INSERT INTO usuarios (nome, login, senha_hash, perfil, ativo,"
+            " criado_em, criado_por) VALUES (:nome, :login, :senha_hash, :perfil,"
+            " :ativo, :criado_em, :criado_por)",
+            {**campos, "senha_hash": generate_password_hash(senha),
+             "criado_em": agora(), "criado_por": autor})
+        conn.commit()
+        return int(cur.lastrowid)

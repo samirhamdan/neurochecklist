@@ -83,6 +83,20 @@ def _grupo_de(endpoint: str | None) -> str:
     return MENU[0][1]
 
 
+ACESSO_GRUPO = {
+    "cadastros": ("admin", "comercial", "operacao"),
+    "operacao": ("admin", "comercial", "operacao"),
+    "personalizacao": ("admin",),
+}
+
+
+def _grupo_permitido(chave_grupo: str, perfil: str) -> bool:
+    if not perfil or perfil == "admin":
+        return True
+    permitidos = ACESSO_GRUPO.get(chave_grupo, ("admin",))
+    return perfil in permitidos
+
+
 def _fontes_do_gerador() -> tuple[str, ...]:
     """Le os nomes direto de web/fontes/fontes.js.
 
@@ -141,16 +155,22 @@ def criar_app() -> Flask:
 
     @app.context_processor
     def comuns():
+        perfil = auth.perfil_do_usuario()
+        menu_visivel = MENU
+        if perfil and perfil != "admin":
+            menu_visivel = tuple(
+                (t, c, itens) for t, c, itens in MENU
+                if _grupo_permitido(c, perfil)
+            )
         return {
             "url_com": url_com,
-            # Sempre definido: campo com erro so existe depois de um POST que
-            # falhou, e comparar com Undefined em vinte lugares e pedir susto.
             "campo_erro": "",
-            "com_senha": bool(auth.SENHA),
+            "com_senha": bool(auth.SENHA) or auth._tem_usuarios_no_banco(),
             "usuario": session.get("usuario", ""),
+            "perfil": perfil,
             "marca_simbolo": arquivo_da_marca("marca-simbolo"),
             "dashboard": DASHBOARD,
-            "menu": MENU,
+            "menu": menu_visivel,
             "grupo_aberto": _grupo_de(request.endpoint),
         }
 
@@ -194,9 +214,16 @@ def criar_app() -> Flask:
 
         usuario = request.form.get("usuario", "")
         senha = request.form.get("senha", "")
-        if auth.confere(usuario, senha):
+        resultado = auth.confere(usuario, senha)
+        if resultado:
             session.clear()
-            session["usuario"] = auth.USUARIO
+            if isinstance(resultado, dict):
+                session["usuario"] = resultado["nome"]
+                session["perfil"] = resultado["perfil"]
+                session["usuario_id"] = resultado["id"]
+            else:
+                session["usuario"] = auth.USUARIO
+                session["perfil"] = "admin"
             session.permanent = False
             auth.limpar_tentativas(ip)
             return redirect(destino)
@@ -217,7 +244,7 @@ def criar_app() -> Flask:
 
     # ------------------------------------------------------------- cadastros
     @app.route("/filamentos")
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def lista_filamentos():
         lista = dados.filamentos(False)
         # Ativos apenas: o painel conta o que esta em uso, e rolo desativado
@@ -229,7 +256,7 @@ def criar_app() -> Flask:
 
     @app.route("/filamentos/novo", methods=["GET", "POST"])
     @app.route("/filamentos/<int:id_>", methods=["GET", "POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def editar_filamento(id_=None):
         atual = dados.filamento(id_) if id_ else None
         if id_ and not atual:
@@ -246,13 +273,13 @@ def criar_app() -> Flask:
                                cores=dados.CORES)
 
     @app.route("/insumos")
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def lista_insumos():
         return render_template("insumos.html", aba="insumos", insumos=dados.insumos(False))
 
     @app.route("/insumos/novo", methods=["GET", "POST"])
     @app.route("/insumos/<int:id_>", methods=["GET", "POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def editar_insumo(id_=None):
         atual = dados.insumo(id_) if id_ else None
         if id_ and not atual:
@@ -268,7 +295,7 @@ def criar_app() -> Flask:
         return render_template("insumo.html", aba="insumos", atual=atual)
 
     @app.route("/produtos")
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def lista_produtos():
         param = dados.parametros()
         itens = dados.produtos(False)
@@ -287,7 +314,7 @@ def criar_app() -> Flask:
 
     @app.route("/produtos/novo", methods=["GET", "POST"])
     @app.route("/produtos/<int:id_>", methods=["GET", "POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def editar_produto(id_=None):
         atual = dados.produto(id_) if id_ else None
         if id_ and not atual:
@@ -311,7 +338,7 @@ def criar_app() -> Flask:
                                insumos=dados.insumos())
 
     @app.route("/produtos/medir", methods=["POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def medir_arquivo():
         """Le o STL e devolve peso, tempo e caixa para o formulario preencher.
 
@@ -338,14 +365,14 @@ def criar_app() -> Flask:
 
     # -------------------------------------------------------------- clientes
     @app.route("/clientes")
-    @auth.exige_login
+    @auth.exige_perfil("admin", "comercial")
     def lista_clientes():
         return render_template("clientes.html", aba="clientes",
                                clientes=dados.clientes(False))
 
     @app.route("/clientes/novo", methods=["GET", "POST"])
     @app.route("/clientes/<int:id_>", methods=["GET", "POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "comercial")
     def editar_cliente(id_=None):
         atual = dados.cliente(id_) if id_ else None
         if id_ and not atual:
@@ -386,7 +413,7 @@ def criar_app() -> Flask:
         return itens
 
     @app.route("/pedidos")
-    @auth.exige_login
+    @auth.exige_perfil("admin", "comercial")
     def lista_pedidos():
         # "entregues" e o mes CORRENTE, e nao tudo que ja foi entregue: e para
         # onde o numero "entregue em <mes>" do painel aponta, e o rodape desta
@@ -407,7 +434,7 @@ def criar_app() -> Flask:
 
     @app.route("/pedidos/novo", methods=["GET", "POST"])
     @app.route("/pedidos/<int:id_>", methods=["GET", "POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "comercial")
     def editar_pedido(id_=None):
         atual = dados.pedido(id_) if id_ else None
         if id_ and not atual:
@@ -427,7 +454,7 @@ def criar_app() -> Flask:
         return render_template("pedido.html", atual=atual, **contexto)
 
     @app.route("/pedidos/<int:id_>/situacao", methods=["POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "comercial")
     def mudar_situacao_pedido(id_):
         if not dados.pedido(id_):
             abort(404)
@@ -449,7 +476,7 @@ def criar_app() -> Flask:
         return url_for("ver_orcamento", token=token, _external=True)
 
     @app.route("/pedidos/<int:id_>/orcamento.pdf")
-    @auth.exige_login
+    @auth.exige_perfil("admin", "comercial")
     def pdf_do_orcamento(id_):
         alvo = dados.pedido(id_)
         if not alvo:
@@ -472,7 +499,7 @@ def criar_app() -> Flask:
         })
 
     @app.route("/pedidos/<int:id_>/link", methods=["POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "comercial")
     def renovar_link(id_):
         if not dados.pedido(id_):
             abort(404)
@@ -500,7 +527,7 @@ def criar_app() -> Flask:
         return redirect(url_for("ver_orcamento", token=token))
 
     @app.route("/empresa", methods=["GET", "POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def editar_empresa():
         if request.method == "POST":
             try:
@@ -512,7 +539,7 @@ def criar_app() -> Flask:
         return render_template("empresa.html", aba="pedidos", atual=dados.empresa())
 
     @app.route("/canais", methods=["GET", "POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def editar_canais():
         if request.method == "POST":
             for canal in dados.canais(False):
@@ -522,14 +549,40 @@ def criar_app() -> Flask:
             return redirect(url_for("editar_canais"))
         return render_template("canais.html", aba="pedidos", canais=dados.canais(False))
 
+    # -------------------------------------------------------------- usuarios
+    @app.route("/usuarios")
+    @auth.exige_perfil("admin")
+    def lista_usuarios():
+        return render_template("usuarios.html", aba="usuarios",
+                               usuarios=dados.usuarios(False))
+
+    @app.route("/usuarios/novo", methods=["GET", "POST"])
+    @app.route("/usuarios/<int:id_>", methods=["GET", "POST"])
+    @auth.exige_perfil("admin")
+    def editar_usuario(id_=None):
+        atual = dados.usuario(id_) if id_ else None
+        if id_ and not atual:
+            abort(404)
+        if request.method == "POST":
+            try:
+                dados.salvar_usuario(request.form, session.get("usuario", ""), id_)
+            except ValueError as erro:
+                return render_template(
+                    "usuario.html", aba="usuarios", **_erro(erro),
+                    perfis=dados.PERFIS, rotulos_perfil=dados.ROTULOS_PERFIL,
+                    atual=dados.campos_usuario(request.form)), 400
+            return redirect(url_for("lista_usuarios"))
+        return render_template("usuario.html", aba="usuarios", atual=atual,
+                               perfis=dados.PERFIS, rotulos_perfil=dados.ROTULOS_PERFIL)
+
     # -------------------------------------------------------------- producao
     @app.route("/producao")
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def producao():
         return render_template("producao.html", aba="producao", **dados.quadro())
 
     @app.route("/producao/mover", methods=["POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def mover_pecas():
         """Uma peca do quadro ou varias da lista -- a mesma rota.
 
@@ -551,7 +604,7 @@ def criar_app() -> Flask:
         return redirect(url_for("producao"))
 
     @app.route("/producao/refugo", methods=["POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def refugar_peca():
         try:
             dados.registrar_refugo(int(request.form["peca"]),
@@ -562,7 +615,7 @@ def criar_app() -> Flask:
         return redirect(url_for("producao"))
 
     @app.route("/producao/<int:peca_id>/historico")
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def historico_peca(peca_id):
         return {"historico": dados.historico_da_peca(peca_id)}, 200
 
@@ -581,13 +634,13 @@ def criar_app() -> Flask:
         return itens
 
     @app.route("/compras")
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def lista_compras():
         return render_template("compras.html", aba="compras", compras=dados.compras())
 
     @app.route("/compras/nova", methods=["GET", "POST"])
     @app.route("/compras/<int:id_>", methods=["GET", "POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def editar_compra(id_=None):
         atual = dados.compra(id_) if id_ else None
         if id_ and not atual:
@@ -608,7 +661,7 @@ def criar_app() -> Flask:
                                **contexto)
 
     @app.route("/compras/<int:id_>/apagar", methods=["POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin", "operacao")
     def apagar_compra_rota(id_):
         if not dados.compra(id_):
             abort(404)
@@ -622,7 +675,7 @@ def criar_app() -> Flask:
 
     # ------------------------------------------------------------------ criar
     @app.route("/criar")
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def tela_criar():
         return render_template("criar.html", aba="personalizar", modelos=criar.MODELOS,
                                categorias=criar.categorias(), cores=criar.cores_possiveis(),
@@ -643,7 +696,7 @@ def criar_app() -> Flask:
     # Flask redireciona /letreiros para ca sozinho, entao link antigo continua
     # valendo.
     @app.route("/letreiros/")
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def letreiros():
         return send_from_directory(os.path.join(RAIZ, "web"), "gerador-letreiros.html")
 
@@ -651,27 +704,27 @@ def criar_app() -> Flask:
     # pagina inteira dedicada ao topo de bolo; o chaveiro teria copiado as 400
     # linhas dela. Agora quem muda e o registro em web/nucleo/pecas.js.
     @app.route("/criar/<peca>/")
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def gerador(peca):
         if peca not in dados.tipos_de_peca():
             abort(404)
         return send_from_directory(os.path.join(RAIZ, "web"), "gerador.html")
 
     @app.route("/topo/")
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def topo_de_bolo():
         """O endereco antigo, para link salvo no navegador nao virar 404."""
         return redirect(url_for("gerador", peca="topo"))
 
     @app.route("/letreiros/<any(nucleo, fontes, libs):pasta>/<path:arquivo>")
     @app.route("/criar/<peca>/<any(nucleo, fontes, libs):pasta>/<path:arquivo>")
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def partilhado(pasta, arquivo, peca=None):
         return send_from_directory(os.path.join(RAIZ, "web", pasta), arquivo)
 
     # ------------------------------------------------------------- templates
     @app.route("/templates")
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def lista_templates():
         busca = request.args.get("q", "")
         # 200 e nao 15: a busca so serve se ela alcancar o historico. O rodape
@@ -687,7 +740,7 @@ def criar_app() -> Flask:
 
     @app.route("/templates/novo", methods=["GET", "POST"])
     @app.route("/templates/<sku>", methods=["GET", "POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def editar_template(sku=None):
         atual = dados.template(sku) if sku else None
         if sku and not atual:
@@ -712,7 +765,7 @@ def criar_app() -> Flask:
                                **contexto)
 
     @app.route("/templates/<sku>/publicar", methods=["POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def publicar_template_rota(sku):
         if not dados.template(sku):
             abort(404)
@@ -727,7 +780,7 @@ def criar_app() -> Flask:
         return redirect(url_for("editar_template", sku=sku))
 
     @app.route("/templates/<sku>/apagar", methods=["POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def apagar_template_rota(sku):
         if not dados.template(sku):
             abort(404)
@@ -746,7 +799,7 @@ def criar_app() -> Flask:
         return {"templates": lista, "painel": de_dentro}
 
     @app.route("/criar/<peca>/geracao", methods=["POST"])
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def registrar_geracao_rota(peca):
         try:
             id_ = dados.registrar_geracao(request.get_json(silent=True) or request.form,
@@ -756,7 +809,7 @@ def criar_app() -> Flask:
         return {"id": id_}, 201
 
     @app.route("/criar/<peca>/marca")
-    @auth.exige_login
+    @auth.exige_perfil("admin")
     def marca_no_nome(peca):
         """§18: termo de marca no nome do CLIENTE, e nao so no template.
 
