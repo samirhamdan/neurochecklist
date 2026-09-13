@@ -6,7 +6,9 @@ Uso:
 
 Regras de desduplicação:
     - CPF diferente = pessoas diferentes (nunca mescla)
+    - CPF com 1 dígito de diferença = erro de digitação (não conta como conflito)
     - Celular igual = mesma pessoa (mescla, se CPFs não contradizem)
+    - E-mail igual = mesma pessoa (mescla, se CPFs não contradizem)
     - Nome igual (case-insensitive) = mesma pessoa
 
 Campos mapeados:
@@ -41,6 +43,34 @@ def _so_digitos(texto: str | None) -> str:
     return re.sub(r"\D", "", texto or "")
 
 
+def _cpf_proximo(a: str, b: str) -> bool:
+    """Dois CPFs de mesmo comprimento que diferem em exatamente 1 dígito."""
+    if len(a) != len(b) or len(a) < 11:
+        return False
+    return sum(1 for x, y in zip(a, b) if x != y) == 1
+
+
+def _cpfs_conflitam(cpf: str, cpfs_grupo: set[str]) -> bool:
+    """True se o CPF realmente conflita com o grupo (não é erro de digitação)."""
+    if not cpf or not cpfs_grupo:
+        return False
+    if cpf in cpfs_grupo:
+        return False
+    return not any(_cpf_proximo(cpf, c) for c in cpfs_grupo)
+
+
+def _grupos_conflitam(cpfs_a: set[str], cpfs_b: set[str]) -> bool:
+    """True se dois conjuntos de CPFs são incompatíveis."""
+    if not cpfs_a or not cpfs_b:
+        return False
+    if cpfs_a & cpfs_b:
+        return False
+    return not all(
+        any(_cpf_proximo(a, b) for b in cpfs_b)
+        for a in cpfs_a
+    )
+
+
 def _cpfs_do_grupo(registros: list[dict]) -> set[str]:
     cpfs = set()
     for r in registros:
@@ -51,11 +81,11 @@ def _cpfs_do_grupo(registros: list[dict]) -> set[str]:
 
 
 def agrupar_clientes(linhas: list[dict]) -> list[list[dict]]:
-    """Agrupa linhas da mesma pessoa por nome, CPF ou celular.
+    """Agrupa linhas da mesma pessoa por nome, CPF, celular ou e-mail.
 
     CPF diferente = pessoas diferentes (nunca mescla, mesmo que o
-    celular bata). Celular igual = mesma pessoa, desde que os CPFs
-    não se contradizem.
+    celular ou e-mail bata). CPF com 1 dígito de diferença = erro de
+    digitação, não conta como conflito.
     """
     chave_para_grupo: dict[str, int] = {}
     grupos: dict[int, list[dict]] = {}
@@ -71,23 +101,26 @@ def agrupar_clientes(linhas: list[dict]) -> list[list[dict]]:
         cpf_valido = cpf if len(cpf) >= 11 else ""
         tel = _so_digitos(linha.get("TELEFONE C/ DDD"))
         tel_valido = tel if len(tel) >= 10 else ""
+        email = (linha.get("EMAIL") or "").strip().upper()
+        email_valido = email if "@" in email else ""
 
         chaves = [f"n:{nome.upper()}"]
         if cpf_valido:
             chaves.append(f"c:{cpf_valido}")
         if tel_valido:
             chaves.append(f"t:{tel_valido}")
+        if email_valido:
+            chaves.append(f"e:{email_valido}")
 
         candidatos = set()
         for ch in chaves:
             if ch in chave_para_grupo:
                 candidatos.add(chave_para_grupo[ch])
 
-        # Filtrar: não mesclar com grupo que tem CPF diferente
         compativeis = set()
         for gid in candidatos:
             cpfs_grupo = grupo_cpfs.get(gid, set())
-            if cpf_valido and cpfs_grupo and cpf_valido not in cpfs_grupo:
+            if _cpfs_conflitam(cpf_valido, cpfs_grupo):
                 continue
             compativeis.add(gid)
 
@@ -99,13 +132,12 @@ def agrupar_clientes(linhas: list[dict]) -> list[list[dict]]:
         elif len(compativeis) == 1:
             gid = compativeis.pop()
         else:
-            # Mesclar grupos compatíveis, mas verificar conflito entre eles
             lista = sorted(compativeis)
             gid = lista[0]
             for antigo in lista[1:]:
                 cpfs_antigo = grupo_cpfs.get(antigo, set())
                 cpfs_gid = grupo_cpfs.get(gid, set())
-                if cpfs_antigo and cpfs_gid and cpfs_antigo != cpfs_gid:
+                if _grupos_conflitam(cpfs_antigo, cpfs_gid):
                     continue
                 grupos[gid].extend(grupos.pop(antigo))
                 grupo_cpfs[gid].update(cpfs_antigo)
@@ -125,7 +157,7 @@ def agrupar_clientes(linhas: list[dict]) -> list[list[dict]]:
                 if outro in grupos:
                     cpfs_outro = grupo_cpfs.get(outro, set())
                     cpfs_gid = grupo_cpfs.get(gid, set())
-                    if not (cpfs_outro and cpfs_gid and cpfs_outro != cpfs_gid):
+                    if not _grupos_conflitam(cpfs_outro, cpfs_gid):
                         grupos[gid].extend(grupos.pop(outro))
                         grupo_cpfs[gid].update(cpfs_outro)
                         grupo_cpfs.pop(outro, None)
