@@ -734,6 +734,61 @@ dialog::backdrop{background:rgba(21,25,29,.45)}
   margin-top:auto;padding-top:4px;
 }
 
+/* ===================================== dashboard: visual moderno
+   Sobre os componentes base (.placar, .bloco, .atalho), so dentro de .dash.
+   Linear, Stripe: cartoes leves, tipografia limpa, espaco. */
+
+.dash{display:flex;flex-direction:column;gap:28px}
+.dash-secao{display:flex;flex-direction:column;gap:10px}
+.dash .avisos{margin-bottom:0}
+
+.dash .placar{gap:14px;margin-bottom:0}
+.dash .placar a{
+  border-left-width:1px;border-left-color:var(--linha);
+  border-radius:8px;padding:18px 20px 16px;
+  transition:border-color .15s,box-shadow .15s;
+}
+.dash .placar a:hover{
+  border-color:var(--linha-forte);
+  box-shadow:0 1px 3px rgba(0,0,0,.05);
+}
+.dash .placar .rotulo{
+  font-size:12px;font-weight:500;letter-spacing:.05em;
+  text-transform:uppercase;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+}
+.dash .placar .valor{margin:4px 0 2px}
+
+.dash h2.secao{font-size:11.5px;letter-spacing:.07em;margin:0}
+.dash .cabecalho-lista{margin:0}
+
+.dash .painel{gap:16px}
+
+.dash .bloco{border-radius:8px}
+.dash .bloco > header{padding:14px 20px}
+.dash .bloco .corpo{padding:8px 20px 18px}
+
+.dash .grafico{
+  padding:20px;border-radius:8px;
+  border:1px solid var(--linha);background:var(--mesa);
+}
+
+.dash .linha-h .trilho{height:12px}
+.dash .linha-h .trilho i{top:0;height:12px;border-radius:3px}
+
+.dash a.atalho{
+  border-left-width:1px;border-left-color:var(--linha);
+  border-radius:8px;
+  transition:border-color .15s,box-shadow .15s;
+}
+.dash a.atalho.empresa{border-left-color:var(--linha)}
+.dash a.atalho:hover{
+  border-color:var(--linha-forte);
+  box-shadow:0 1px 3px rgba(0,0,0,.05);
+}
+
+.dash-vazio{margin:0}
+
 /* ================================================== U3: a linha vira cartao
    Seis telas sao tabelas de cinco a sete colunas. No computador funcionam; no
    telefone a coluna que importa e sempre a que fica de fora -- foram 34
