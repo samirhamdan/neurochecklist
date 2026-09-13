@@ -4,8 +4,10 @@
 Uso:
     python3 ferramentas/importar_clientes_festas.py caminho/ficha_reserva.csv
 
-Desduplicação por NOME, CPF e CELULAR: se qualquer um bate, é a
-mesma pessoa. Idempotente: rodar duas vezes não duplica.
+Regras de desduplicação:
+    - CPF diferente = pessoas diferentes (nunca mescla)
+    - Celular igual = mesma pessoa (mescla, se CPFs não contradizem)
+    - Nome igual (case-insensitive) = mesma pessoa
 
 Campos mapeados:
     nome           -> nome
@@ -39,15 +41,25 @@ def _so_digitos(texto: str | None) -> str:
     return re.sub(r"\D", "", texto or "")
 
 
+def _cpfs_do_grupo(registros: list[dict]) -> set[str]:
+    cpfs = set()
+    for r in registros:
+        cpf = _so_digitos(r.get("CPF"))
+        if len(cpf) >= 11:
+            cpfs.add(cpf)
+    return cpfs
+
+
 def agrupar_clientes(linhas: list[dict]) -> list[list[dict]]:
     """Agrupa linhas da mesma pessoa por nome, CPF ou celular.
 
-    Se duas linhas compartilham qualquer um dos três identificadores
-    (não vazio), são tratadas como a mesma pessoa — mesmo que os nomes
-    sejam ligeiramente diferentes.
+    CPF diferente = pessoas diferentes (nunca mescla, mesmo que o
+    celular bata). Celular igual = mesma pessoa, desde que os CPFs
+    não se contradizem.
     """
     chave_para_grupo: dict[str, int] = {}
     grupos: dict[int, list[dict]] = {}
+    grupo_cpfs: dict[int, set[str]] = {}
     proximo = 0
 
     for linha in linhas:
@@ -55,43 +67,73 @@ def agrupar_clientes(linhas: list[dict]) -> list[list[dict]]:
         if not nome:
             continue
 
-        chaves = []
-        chave_nome = f"n:{nome.upper()}"
-        chaves.append(chave_nome)
-
         cpf = _so_digitos(linha.get("CPF"))
-        if len(cpf) >= 11:
-            chaves.append(f"c:{cpf}")
-
+        cpf_valido = cpf if len(cpf) >= 11 else ""
         tel = _so_digitos(linha.get("TELEFONE C/ DDD"))
-        if len(tel) >= 10:
-            chaves.append(f"t:{tel}")
+        tel_valido = tel if len(tel) >= 10 else ""
 
-        encontrados = set()
+        chaves = [f"n:{nome.upper()}"]
+        if cpf_valido:
+            chaves.append(f"c:{cpf_valido}")
+        if tel_valido:
+            chaves.append(f"t:{tel_valido}")
+
+        candidatos = set()
         for ch in chaves:
             if ch in chave_para_grupo:
-                encontrados.add(chave_para_grupo[ch])
+                candidatos.add(chave_para_grupo[ch])
 
-        if not encontrados:
+        # Filtrar: não mesclar com grupo que tem CPF diferente
+        compativeis = set()
+        for gid in candidatos:
+            cpfs_grupo = grupo_cpfs.get(gid, set())
+            if cpf_valido and cpfs_grupo and cpf_valido not in cpfs_grupo:
+                continue
+            compativeis.add(gid)
+
+        if not compativeis:
             gid = proximo
             proximo += 1
             grupos[gid] = []
-        elif len(encontrados) == 1:
-            gid = encontrados.pop()
+            grupo_cpfs[gid] = set()
+        elif len(compativeis) == 1:
+            gid = compativeis.pop()
         else:
-            gid = min(encontrados)
-            for antigo in encontrados:
-                if antigo != gid:
-                    grupos[gid].extend(grupos.pop(antigo))
-                    for k, v in list(chave_para_grupo.items()):
-                        if v == antigo:
-                            chave_para_grupo[k] = gid
+            # Mesclar grupos compatíveis, mas verificar conflito entre eles
+            lista = sorted(compativeis)
+            gid = lista[0]
+            for antigo in lista[1:]:
+                cpfs_antigo = grupo_cpfs.get(antigo, set())
+                cpfs_gid = grupo_cpfs.get(gid, set())
+                if cpfs_antigo and cpfs_gid and cpfs_antigo != cpfs_gid:
+                    continue
+                grupos[gid].extend(grupos.pop(antigo))
+                grupo_cpfs[gid].update(cpfs_antigo)
+                grupo_cpfs.pop(antigo, None)
+                for k, v in list(chave_para_grupo.items()):
+                    if v == antigo:
+                        chave_para_grupo[k] = gid
 
         grupos[gid].append(linha)
+        if cpf_valido:
+            grupo_cpfs[gid].add(cpf_valido)
         for ch in chaves:
-            chave_para_grupo[ch] = gid
+            if ch not in chave_para_grupo:
+                chave_para_grupo[ch] = gid
+            elif chave_para_grupo[ch] != gid:
+                outro = chave_para_grupo[ch]
+                if outro in grupos:
+                    cpfs_outro = grupo_cpfs.get(outro, set())
+                    cpfs_gid = grupo_cpfs.get(gid, set())
+                    if not (cpfs_outro and cpfs_gid and cpfs_outro != cpfs_gid):
+                        grupos[gid].extend(grupos.pop(outro))
+                        grupo_cpfs[gid].update(cpfs_outro)
+                        grupo_cpfs.pop(outro, None)
+                        for k2, v2 in list(chave_para_grupo.items()):
+                            if v2 == outro:
+                                chave_para_grupo[k2] = gid
 
-    return list(grupos.values())
+    return [g for g in grupos.values() if g]
 
 
 def mapear_canal(texto: str | None) -> str:
@@ -195,7 +237,7 @@ def importar(caminho_csv: str) -> None:
 
     print(f"Importados: {importados}")
     print(f"Históricos criados: {historicos}")
-    print(f"Linhas mescladas (mesmo CPF/celular): {mesclados}")
+    print(f"Linhas mescladas (mesmo nome/celular): {mesclados}")
     print(f"Já existiam (pulados): {pulados}")
     print(f"Total na base agora: {len(dados.clientes(False))}")
 
