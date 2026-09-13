@@ -91,22 +91,6 @@ body.palco::before{
 }
 .marca .lema .a{color:var(--azul-claro)}
 .marca .lema .b{color:var(--laranja-claro)}
-/* A chamada e o <h1> da pagina. Ela e menor que a marca de proposito: o
-   logotipo domina o olho, o titulo diz o que o sistema faz. Tamanho e
-   hierarquia semantica nao precisam andar juntos. */
-.marca .chamada{
-  font-size:clamp(23px,3.1vw,31px);font-weight:600;line-height:1.22;
-  letter-spacing:-.02em;margin:6px 0 0;max-width:19ch;
-  color:var(--palco-tinta);
-}
-.marca .diz{
-  font-size:19px;color:var(--palco-suave);max-width:34ch;margin:0;
-}
-.marca .rodape{
-  font-size:12px;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--palco-suave);border-top:1px solid var(--palco-linha);
-  padding-top:16px;display:flex;gap:18px;flex-wrap:wrap;
-}
 
 form.entrada{
   background:var(--palco-2);border:1px solid var(--palco-linha);
