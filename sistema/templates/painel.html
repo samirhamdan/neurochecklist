@@ -127,7 +127,7 @@
       <header>
         <h3>Fila de produção</h3>
         <span class="nota">{{ horas_fila|numero(1) }} h ·
-          {{ trocas_de_cor }} troca{{ 's' if trocas_de_cor != 1 }} · {{ purga_g }} g purga</span>
+          {{ trocas_de_cor }} troca{{ 's' if trocas_de_cor != 1 }} · {{ purga_g }} g de purga</span>
       </header>
       <div class="corpo">
         {% for cor, pecas in fila_por_cor.items() %}
