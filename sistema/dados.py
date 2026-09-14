@@ -1423,31 +1423,11 @@ def resumo_clientes() -> dict:
             " (SELECT DISTINCT cliente_id FROM cliente_historico"
             "  WHERE data > ?)", (limite_inativo,)).fetchone()[0]
 
-        por_canal = conn.execute(
-            "SELECT COALESCE(NULLIF(c.canal,''), '—') AS canal,"
-            " COUNT(*) AS qtd,"
-            " SUM(CASE WHEN COALESCE(h.total, 0) >= 2 THEN 1 ELSE 0 END)"
-            "   AS recorrentes"
-            " FROM clientes c"
-            " LEFT JOIN (SELECT cliente_id, COUNT(*) AS total"
-            "   FROM cliente_historico GROUP BY cliente_id) h"
-            " ON h.cliente_id = c.id"
-            " WHERE c.ativo = 1 GROUP BY c.canal"
-            " ORDER BY qtd DESC").fetchall()
-
-        por_bairro = conn.execute(
-            "SELECT bairro, COUNT(*) AS qtd"
-            " FROM clientes WHERE ativo = 1 AND bairro != ''"
-            " GROUP BY bairro ORDER BY qtd DESC"
-            " LIMIT 15").fetchall()
-
     return {
         "total_ativos": total_ativos,
         "novos_mes": novos_mes,
         "recorrentes": len(recorrentes),
         "sem_contato": sem_contato,
-        "por_canal": [dict(r) for r in por_canal],
-        "por_bairro": [dict(r) for r in por_bairro],
     }
 
 
