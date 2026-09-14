@@ -197,7 +197,8 @@ def criar_app() -> Flask:
                                    visao=visao, **dados.resumo_operacao())
 
         return render_template("painel_comercial.html", aba="dashboard",
-                               visao=visao, **dados.resumo_comercial())
+                               visao=visao, **dados.resumo_comercial(),
+                               **dados.resumo_vendas())
 
     @app.route("/entrar", methods=["GET", "POST"])
     def entrar():

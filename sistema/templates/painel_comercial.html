@@ -52,6 +52,120 @@
     </a>
   </div>
 
+  <div class="placar">
+    <a href="{{ url_for('lista_pedidos') }}">
+      <span class="rotulo">Ticket médio</span>
+      <b class="valor">{{ ticket_medio|dinheiro }}</b>
+      <span class="nota">por entrega</span>
+    </a>
+    <a href="{{ url_for('lista_pedidos') }}">
+      <span class="rotulo">Conversão</span>
+      <b class="valor">{{ taxa_aprovacao }}%</b>
+      <span class="nota">orçamento → pedido</span>
+    </a>
+    <a href="{{ url_for('lista_pedidos') }}">
+      <span class="rotulo">Entrega</span>
+      <b class="valor">{{ taxa_entrega }}%</b>
+      <span class="nota">pedido → entregue</span>
+    </a>
+    <a href="{{ url_for('lista_pedidos') }}">
+      <span class="rotulo">Ciclo médio</span>
+      <b class="valor">{{ ciclo_medio }} d</b>
+      <span class="nota">do orçamento à entrega</span>
+    </a>
+  </div>
+
+  {% if meses_anteriores %}
+  <section class="dash-secao">
+    <div class="cabecalho-lista">
+      <h2 class="secao">Receita mensal</h2>
+    </div>
+    <div class="cartao" style="padding:16px 20px">
+      {% set max_receita = ([receita_mes] + meses_anteriores|map(attribute='receita')|list)|max or 1 %}
+      <div style="display:flex;flex-direction:column;gap:6px">
+        {% for m in meses_anteriores %}
+        <div style="display:grid;grid-template-columns:minmax(0,7rem) 1fr auto;gap:10px;align-items:center">
+          <span style="font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.mes }}</span>
+          <span style="position:relative;display:block;height:14px">
+            <i style="position:absolute;top:0;height:14px;border-radius:3px;
+                      background:var(--azul);opacity:.6;min-width:2px;
+                      width:{{ (m.receita / max_receita * 100)|round(1) }}%"></i>
+          </span>
+          <span style="font-size:13px;font-variant-numeric:tabular-nums;
+                       font-family:'IBM Plex Mono',ui-monospace,monospace;
+                       color:var(--suave);white-space:nowrap">{{ m.receita|dinheiro }} <small>({{ m.qtd }})</small></span>
+        </div>
+        {% endfor %}
+        <div style="display:grid;grid-template-columns:minmax(0,7rem) 1fr auto;gap:10px;align-items:center">
+          <span style="font-size:13.5px;font-weight:600">{{ mes }}</span>
+          <span style="position:relative;display:block;height:14px">
+            <i style="position:absolute;top:0;height:14px;border-radius:3px;
+                      background:var(--azul);min-width:2px;
+                      width:{{ (receita_mes / max_receita * 100)|round(1) }}%"></i>
+          </span>
+          <span style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;
+                       font-family:'IBM Plex Mono',ui-monospace,monospace;
+                       white-space:nowrap">{{ receita_mes|dinheiro }} <small>({{ entregues_mes }})</small></span>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if por_canal_vendas|length > 1 %}
+  <section class="dash-secao">
+    <div class="cabecalho-lista">
+      <h2 class="secao">Receita por canal</h2>
+    </div>
+    <div class="cartao" style="padding:16px 20px">
+      {% set max_canal_v = por_canal_vendas[0].receita if por_canal_vendas else 1 %}
+      <div style="display:flex;flex-direction:column;gap:6px">
+        {% for c in por_canal_vendas %}
+        <div style="display:grid;grid-template-columns:minmax(0,7rem) 1fr auto;gap:10px;align-items:center">
+          <span style="font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.canal }}</span>
+          <span style="position:relative;display:block;height:14px">
+            <i style="position:absolute;top:0;height:14px;border-radius:3px;
+                      background:var(--verde);min-width:2px;
+                      width:{{ (c.receita / max_canal_v * 100)|round(1) }}%"></i>
+          </span>
+          <span style="font-size:13px;font-variant-numeric:tabular-nums;
+                       font-family:'IBM Plex Mono',ui-monospace,monospace;
+                       color:var(--suave);white-space:nowrap">{{ c.receita|dinheiro }} <small>({{ c.qtd }})</small></span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="dash-secao">
+    <div class="cabecalho-lista">
+      <h2 class="secao">Funil</h2>
+    </div>
+    <div class="placar">
+      <a href="{{ url_for('lista_pedidos') }}">
+        <span class="rotulo">Orçamentos</span>
+        <b class="valor">{{ funil_orcamentos }}</b>
+        <span class="nota">aguardando aprovação</span>
+      </a>
+      <a href="{{ url_for('lista_pedidos') }}">
+        <span class="rotulo">Em produção</span>
+        <b class="valor">{{ funil_aprovados }}</b>
+        <span class="nota">aprovados</span>
+      </a>
+      <a href="{{ url_for('lista_pedidos', ver='entregues') }}">
+        <span class="rotulo">Entregues</span>
+        <b class="valor">{{ funil_entregues }}</b>
+        <span class="nota">total geral</span>
+      </a>
+      <a href="{{ url_for('lista_pedidos') }}">
+        <span class="rotulo">Cancelados</span>
+        <b class="valor">{{ funil_cancelados }}</b>
+        <span class="nota">total geral</span>
+      </a>
+    </div>
+  </section>
+
   <section class="dash-secao">
     <div class="cabecalho-lista">
       <h2 class="secao">Pedidos abertos</h2>

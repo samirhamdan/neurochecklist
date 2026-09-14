@@ -925,6 +925,86 @@ def resumo_comercial() -> dict:
     }
 
 
+def resumo_vendas() -> dict:
+    """Funil comercial e indicadores de vendas para o dashboard."""
+    hoje = date.today()
+    inicio_mes, fim_mes = limites_do_mes()
+    with conectar() as conn:
+        todos = [dict(r) for r in conn.execute(
+            "SELECT * FROM pedidos ORDER BY id").fetchall()]
+
+        entregues_mes = [dict(r) for r in conn.execute(
+            "SELECT * FROM pedidos WHERE status = 'entregue'"
+            " AND entregue_em >= ? AND entregue_em < ?"
+            " ORDER BY entregue_em DESC", (inicio_mes, fim_mes)).fetchall()]
+
+        meses_anteriores = []
+        for delta in range(1, 7):
+            m = hoje.month - delta
+            a = hoje.year
+            while m <= 0:
+                m += 12
+                a -= 1
+            d = date(a, m, 1)
+            ini, fim = limites_do_mes(d)
+            total = conn.execute(
+                "SELECT COUNT(*) AS qtd, COALESCE(SUM(valor - COALESCE(desconto,0)),0) AS receita"
+                " FROM pedidos WHERE status = 'entregue'"
+                " AND entregue_em >= ? AND entregue_em < ?", (ini, fim)).fetchone()
+            meses_anteriores.append({
+                "mes": formato.mes_por_extenso(d),
+                "qtd": total["qtd"],
+                "receita": round(total["receita"], 2),
+            })
+        meses_anteriores.reverse()
+
+        por_canal_vendas = [dict(r) for r in conn.execute(
+            "SELECT COALESCE(NULLIF(canal,''), '—') AS canal,"
+            " COUNT(*) AS qtd,"
+            " COALESCE(SUM(valor - COALESCE(desconto,0)),0) AS receita"
+            " FROM pedidos WHERE status = 'entregue'"
+            " GROUP BY canal ORDER BY receita DESC").fetchall()]
+
+    total_criados = len(todos)
+    total_aprovados = sum(1 for p in todos if p["status"] in ("aprovado", "entregue"))
+    total_entregues = sum(1 for p in todos if p["status"] == "entregue")
+    total_cancelados = sum(1 for p in todos if p["status"] == "cancelado")
+
+    taxa_aprovacao = round(total_aprovados / total_criados * 100) if total_criados else 0
+    taxa_entrega = round(total_entregues / total_aprovados * 100) if total_aprovados else 0
+
+    valores_entregues = [total_do_pedido(p) for p in todos if p["status"] == "entregue"]
+    ticket_medio = round(sum(valores_entregues) / len(valores_entregues), 2) if valores_entregues else 0
+
+    ciclos = []
+    for p in todos:
+        if p["status"] == "entregue" and p.get("entregue_em") and p.get("criado_em"):
+            try:
+                dt_criado = datetime.fromisoformat(p["criado_em"][:19])
+                dt_entregue = datetime.fromisoformat(p["entregue_em"][:19])
+                ciclos.append((dt_entregue - dt_criado).days)
+            except (ValueError, TypeError):
+                pass
+    ciclo_medio = round(sum(ciclos) / len(ciclos)) if ciclos else 0
+
+    receita_mes = somar_valor(entregues_mes)
+
+    return {
+        "funil_orcamentos": total_criados - total_aprovados - total_cancelados,
+        "funil_aprovados": total_aprovados - total_entregues,
+        "funil_entregues": total_entregues,
+        "funil_cancelados": total_cancelados,
+        "taxa_aprovacao": taxa_aprovacao,
+        "taxa_entrega": taxa_entrega,
+        "ticket_medio": ticket_medio,
+        "ciclo_medio": ciclo_medio,
+        "receita_mes": receita_mes,
+        "entregues_mes": len(entregues_mes),
+        "meses_anteriores": meses_anteriores,
+        "por_canal_vendas": por_canal_vendas,
+    }
+
+
 def resumo_operacao() -> dict:
     """Dashboard operacao: pecas por etapa, filamento, insumos."""
     with conectar() as conn:
