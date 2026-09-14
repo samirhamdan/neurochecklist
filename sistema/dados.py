@@ -591,7 +591,7 @@ def _migrar(conn: sqlite3.Connection) -> None:
 
     colunas = {r[1] for r in conn.execute("PRAGMA table_info(clientes)")}
     for coluna in ("email", "cpf", "endereco", "complemento", "bairro",
-                    "cidade", "cep"):
+                    "cidade", "cep", "data_nascimento"):
         if coluna not in colunas:
             conn.execute(f"ALTER TABLE clientes ADD COLUMN {coluna}"
                          " TEXT NOT NULL DEFAULT ''")
@@ -1335,6 +1335,7 @@ def campos_cliente(dados: dict) -> dict:
         cep=_limpo(dados.get("cep")),
         canal=_limpo(dados.get("canal")),
         observacao=_limpo(dados.get("observacao")),
+        data_nascimento=_limpo(dados.get("data_nascimento")),
         ativo=1 if dados.get("ativo", "1") in (1, "1", True, "on") else 0,
     )
 
@@ -1349,16 +1350,17 @@ def salvar_cliente(dados: dict, autor: str, id_: int | None = None) -> int:
                 "UPDATE clientes SET nome=:nome, whatsapp=:whatsapp, email=:email,"
                 " cpf=:cpf, endereco=:endereco, complemento=:complemento,"
                 " bairro=:bairro, cidade=:cidade, cep=:cep, canal=:canal,"
-                " observacao=:observacao, ativo=:ativo WHERE id=:id", {**campos, "id": id_})
+                " observacao=:observacao, data_nascimento=:data_nascimento,"
+                " ativo=:ativo WHERE id=:id", {**campos, "id": id_})
             conn.commit()
             return id_
         cur = conn.execute(
             "INSERT INTO clientes (nome, whatsapp, email, cpf, endereco,"
             " complemento, bairro, cidade, cep, canal,"
-            " observacao, ativo, criado_em, criado_por)"
+            " observacao, data_nascimento, ativo, criado_em, criado_por)"
             " VALUES (:nome, :whatsapp, :email, :cpf, :endereco,"
             " :complemento, :bairro, :cidade, :cep, :canal,"
-            " :observacao, :ativo, :criado_em, :criado_por)",
+            " :observacao, :data_nascimento, :ativo, :criado_em, :criado_por)",
             {**campos, "criado_em": agora(), "criado_por": autor})
         conn.commit()
         return int(cur.lastrowid)
@@ -1423,11 +1425,18 @@ def resumo_clientes() -> dict:
             " (SELECT DISTINCT cliente_id FROM cliente_historico"
             "  WHERE data > ?)", (limite_inativo,)).fetchone()[0]
 
+        mes_atual = f"-{hoje.strftime('%m')}-"
+        aniversariantes = conn.execute(
+            "SELECT COUNT(*) FROM clientes WHERE ativo = 1"
+            " AND data_nascimento != '' AND data_nascimento LIKE ?",
+            (f"%{mes_atual}%",)).fetchone()[0]
+
     return {
         "total_ativos": total_ativos,
         "novos_mes": novos_mes,
         "recorrentes": len(recorrentes),
         "sem_contato": sem_contato,
+        "aniversariantes": aniversariantes,
     }
 
 

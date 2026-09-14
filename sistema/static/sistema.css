@@ -1052,6 +1052,10 @@ th a.ordenar.ativa .seta{visibility:visible;color:var(--azul)}
   display:block;margin-top:6px;font-size:13.5px;font-weight:500;
   color:var(--vermelho);line-height:1.4;
 }
+.dica-campo{
+  display:inline-block;margin-top:6px;font-size:12.5px;
+  color:var(--azul);
+}
 /* O link do topo leva até aqui. Sem a folga, o campo encosta no cabeçalho da
    página e o rótulo dele fica escondido atrás da barra do celular. */
 .campo[id]{scroll-margin-top:76px}

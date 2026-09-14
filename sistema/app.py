@@ -451,6 +451,38 @@ def criar_app() -> Flask:
                                ordens=listas.ORDENS_CLIENTES, ordem=ordem,
                                invertido=invertido, **resumo)
 
+    @app.route("/clientes/exportar")
+    @auth.exige_perfil("admin", "comercial")
+    def exportar_clientes():
+        import csv
+        from io import StringIO
+        ver = request.args.get("ver", "ativos")
+        if ver == "inativos":
+            lista = [c for c in dados.clientes_classificados(False)
+                     if not c["ativo"]]
+        elif ver == "todos":
+            lista = dados.clientes_classificados(False)
+        else:
+            lista = dados.clientes_classificados(True)
+        canal = request.args.get("canal", "")
+        if canal:
+            lista = [c for c in lista if c.get("canal") == canal]
+        segmento = request.args.get("segmento", "")
+        if segmento:
+            lista = [c for c in lista if c.get("segmento") == segmento]
+        busca = request.args.get("q", "")
+        lista = listas.filtrar(lista, busca, listas.BUSCA_CLIENTES)
+        colunas = ("nome", "whatsapp", "email", "canal", "segmento",
+                   "bairro", "cidade")
+        buf = StringIO()
+        w = csv.writer(buf)
+        w.writerow(colunas)
+        for c in lista:
+            w.writerow(c.get(col, "") for col in colunas)
+        return Response(buf.getvalue(), mimetype="text/csv",
+                        headers={"Content-Disposition":
+                                 "attachment; filename=clientes.csv"})
+
     @app.route("/clientes/novo", methods=["GET", "POST"])
     @app.route("/clientes/<int:id_>", methods=["GET", "POST"])
     @auth.exige_perfil("admin", "comercial")

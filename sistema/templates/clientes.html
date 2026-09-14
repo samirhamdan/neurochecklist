@@ -32,11 +32,18 @@
       <b class="valor">{{ recorrentes }}</b>
       <span class="nota">com 2+ reservas</span>
     </a>
-    <a href="{{ url_for('lista_clientes') }}">
+    <a href="{{ url_for('lista_clientes', segmento='inativo') }}">
       <span class="rotulo">Sem contato</span>
       <b class="valor">{{ sem_contato }}</b>
       <span class="nota">há 6+ meses</span>
     </a>
+    {% if aniversariantes %}
+    <a href="{{ url_for('lista_clientes') }}">
+      <span class="rotulo">Aniversariantes</span>
+      <b class="valor">{{ aniversariantes }}</b>
+      <span class="nota">este mês</span>
+    </a>
+    {% endif %}
   </div>
 
   <form class="peneira" method="get">
@@ -80,6 +87,8 @@
         {{ '↓ maior primeiro' if invertido else '↑ menor primeiro' }}</a>
     {% endif %}
     <button class="botao vazado" type="submit">Buscar</button>
+    <a class="botao vazado" href="{{ url_for('exportar_clientes', ver=ver, canal=canal_filtro,
+       segmento=segmento_filtro, q=busca) }}">Exportar</a>
   </form>
 
   {% if clientes %}
@@ -98,7 +107,7 @@
         <tr class="{{ 'inativo' if not c.ativo }}">
           <td data-rotulo="Nome" class="chave"><a href="{{ url_for('editar_cliente', id_=c.id) }}">{{ c.nome }}</a>
             {% if not c.ativo %}<span class="etiqueta cinza">inativo</span>{% endif %}</td>
-          <td data-rotulo="WhatsApp" class="mono">{{ c.whatsapp or '—' }}</td>
+          <td data-rotulo="WhatsApp" class="mono">{% if c.whatsapp %}<a href="https://wa.me/55{{ c.whatsapp|replace('(', '')|replace(')', '')|replace(' ', '')|replace('-', '') }}" target="_blank" rel="noopener">{{ c.whatsapp }}</a>{% else %}—{% endif %}</td>
           <td data-rotulo="E-mail">{{ c.email or '—' }}</td>
           <td data-rotulo="Canal">{{ c.canal or '—' }}</td>
           <td data-rotulo="Segmento" class="estado">

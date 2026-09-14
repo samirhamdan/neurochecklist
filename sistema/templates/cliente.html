@@ -21,6 +21,7 @@
                maxlength="24" placeholder="(67) 99999-0000"
                value="{{ (atual and atual.whatsapp) or '' }}">
         {% if campo_erro == 'whatsapp' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        {% if atual and atual.whatsapp %}<a class="dica-campo" href="https://wa.me/55{{ atual.whatsapp|replace('(', '')|replace(')', '')|replace(' ', '')|replace('-', '') }}" target="_blank" rel="noopener">Abrir conversa</a>{% endif %}
       </label>
     </div>
     <div class="linha">
@@ -70,6 +71,11 @@
         {% if campo_erro == 'cep' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
     </div>
+    <label class="campo{{ ' com-erro' if campo_erro == 'data_nascimento' }}" id="campo-data_nascimento"><span>Data de nascimento</span>
+        <input name="data_nascimento" type="date"
+               value="{{ (atual and atual.data_nascimento) or '' }}">
+        {% if campo_erro == 'data_nascimento' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+      </label>
     <label class="campo{{ ' com-erro' if campo_erro == 'canal' }}" id="campo-canal"><span>Canal de origem</span>
       <select name="canal">
         <option value="">Não informado</option>
