@@ -377,6 +377,13 @@ CORES = {
     "Dourado": "#C9A227", "Prata": "#B9BEC4",
 }
 
+SEGMENTOS = ("novo", "ativo", "recorrente", "vip", "inativo")
+
+ROTULOS_SEGMENTO = {
+    "novo": "Novo", "ativo": "Ativo", "recorrente": "Recorrente",
+    "vip": "VIP", "inativo": "Inativo",
+}
+
 
 class ErroDeCampo(ValueError):
     """Um erro que sabe DE QUAL campo ele e.
@@ -1264,11 +1271,49 @@ def produtos_catalogo() -> list[dict]:
 
 
 # ------------------------------------------------------------ clientes
+
+def _classificar_cliente(total_hist: int, ultima_data: str | None,
+                          limite: str) -> str:
+    if total_hist == 0:
+        return "novo"
+    if total_hist >= 3:
+        return "vip"
+    if total_hist >= 2:
+        return "recorrente"
+    if not ultima_data or ultima_data <= limite:
+        return "inativo"
+    return "ativo"
+
+
 def clientes(so_ativos: bool = True) -> list[dict]:
     with conectar() as conn:
         onde = "WHERE ativo = 1" if so_ativos else ""
         return [dict(l) for l in conn.execute(
             f"SELECT * FROM clientes {onde} ORDER BY nome")]
+
+
+def clientes_classificados(so_ativos: bool = True) -> list[dict]:
+    hoje = date.today()
+    limite = (hoje - timedelta(days=365)).isoformat()
+    with conectar() as conn:
+        onde = "WHERE c.ativo = 1" if so_ativos else ""
+        linhas = conn.execute(
+            "SELECT c.*, COALESCE(h.total, 0) AS total_hist,"
+            " h.ultima_data"
+            " FROM clientes c"
+            " LEFT JOIN (SELECT cliente_id, COUNT(*) AS total,"
+            "   MAX(CASE WHEN data != '' THEN data"
+            "       ELSE substr(criado_em, 1, 10) END) AS ultima_data"
+            "   FROM cliente_historico GROUP BY cliente_id) h"
+            " ON h.cliente_id = c.id"
+            f" {onde} ORDER BY c.nome").fetchall()
+    resultado = []
+    for l in linhas:
+        d = dict(l)
+        d["segmento"] = _classificar_cliente(
+            d["total_hist"], d["ultima_data"], limite)
+        resultado.append(d)
+    return resultado
 
 
 def cliente(id_: int) -> dict | None:
@@ -1379,9 +1424,22 @@ def resumo_clientes() -> dict:
             "  WHERE data > ?)", (limite_inativo,)).fetchone()[0]
 
         por_canal = conn.execute(
-            "SELECT COALESCE(NULLIF(canal,''), '—') AS canal, COUNT(*) AS qtd"
-            " FROM clientes WHERE ativo = 1 GROUP BY canal"
+            "SELECT COALESCE(NULLIF(c.canal,''), '—') AS canal,"
+            " COUNT(*) AS qtd,"
+            " SUM(CASE WHEN COALESCE(h.total, 0) >= 2 THEN 1 ELSE 0 END)"
+            "   AS recorrentes"
+            " FROM clientes c"
+            " LEFT JOIN (SELECT cliente_id, COUNT(*) AS total"
+            "   FROM cliente_historico GROUP BY cliente_id) h"
+            " ON h.cliente_id = c.id"
+            " WHERE c.ativo = 1 GROUP BY c.canal"
             " ORDER BY qtd DESC").fetchall()
+
+        por_bairro = conn.execute(
+            "SELECT bairro, COUNT(*) AS qtd"
+            " FROM clientes WHERE ativo = 1 AND bairro != ''"
+            " GROUP BY bairro ORDER BY qtd DESC"
+            " LIMIT 15").fetchall()
 
     return {
         "total_ativos": total_ativos,
@@ -1389,6 +1447,7 @@ def resumo_clientes() -> dict:
         "recorrentes": len(recorrentes),
         "sem_contato": sem_contato,
         "por_canal": [dict(r) for r in por_canal],
+        "por_bairro": [dict(r) for r in por_bairro],
     }
 
 

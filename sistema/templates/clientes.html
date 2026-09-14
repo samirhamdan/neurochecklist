@@ -56,7 +56,32 @@
         </span>
         <span style="font-size:13px;font-variant-numeric:tabular-nums;
                      font-family:'IBM Plex Mono',ui-monospace,monospace;
-                     color:var(--suave);white-space:nowrap">{{ c.qtd }}</span>
+                     color:var(--suave);white-space:nowrap">{{ c.qtd }}
+          {% if c.recorrentes %}<small style="color:var(--azul)"> · {{ ((c.recorrentes / c.qtd) * 100)|round|int }}% rec.</small>{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if por_bairro %}
+  <div class="cartao" style="padding:16px 20px">
+    <h3 style="font-size:11.5px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;
+               font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--suave);margin:0 0 10px">
+      Por bairro</h3>
+    {% set max_bairro = por_bairro[0].qtd if por_bairro else 1 %}
+    <div style="display:flex;flex-direction:column;gap:6px">
+      {% for b in por_bairro %}
+      <div style="display:grid;grid-template-columns:minmax(0,8rem) 1fr auto;gap:10px;align-items:center">
+        <span style="font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.bairro }}</span>
+        <span style="position:relative;display:block;height:14px">
+          <i style="position:absolute;top:0;height:14px;border-radius:3px;
+                    background:var(--verde);min-width:2px;
+                    width:{{ (b.qtd / max_bairro * 100)|round(1) }}%"></i>
+        </span>
+        <span style="font-size:13px;font-variant-numeric:tabular-nums;
+                     font-family:'IBM Plex Mono',ui-monospace,monospace;
+                     color:var(--suave);white-space:nowrap">{{ b.qtd }}</span>
       </div>
       {% endfor %}
     </div>
@@ -88,6 +113,15 @@
         {% endfor %}
       </select>
     </label>
+    <label>
+      <span class="sr">Segmento</span>
+      <select name="segmento" onchange="this.form.submit()">
+        <option value="">Todos os segmentos</option>
+        {% for s in segmentos %}
+          <option value="{{ s }}" {{ 'selected' if segmento_filtro == s }}>{{ rotulos_segmento[s] }}</option>
+        {% endfor %}
+      </select>
+    </label>
     {% if ordem %}
       <a class="botao vazado so-telefone virar"
          href="{{ url_com(dir='asc' if invertido else 'desc') }}"
@@ -105,6 +139,7 @@
         {{ ord.cabeca('whatsapp', 'WhatsApp') }}
         {{ ord.cabeca('email', 'E-mail') }}
         {{ ord.cabeca('canal', 'Canal') }}
+        {{ ord.cabeca('segmento', 'Segmento') }}
         <th></th>
       </tr></thead>
       <tbody>
@@ -115,17 +150,24 @@
           <td data-rotulo="WhatsApp" class="mono">{{ c.whatsapp or '—' }}</td>
           <td data-rotulo="E-mail">{{ c.email or '—' }}</td>
           <td data-rotulo="Canal">{{ c.canal or '—' }}</td>
+          <td data-rotulo="Segmento" class="estado">
+            {% if c.segmento == 'vip' %}<span class="etiqueta ambar">VIP</span>
+            {% elif c.segmento == 'recorrente' %}<span class="etiqueta azul">Recorrente</span>
+            {% elif c.segmento == 'ativo' %}<span class="etiqueta verde">Ativo</span>
+            {% elif c.segmento == 'inativo' %}<span class="etiqueta cinza">Inativo</span>
+            {% else %}Novo{% endif %}
+          </td>
           <td class="num acao"><a href="{{ url_for('editar_cliente', id_=c.id) }}">editar</a></td>
         </tr>
         {% endfor %}
       </tbody>
       <tfoot>
-        <tr><td colspan="5" class="num">{{ clientes|length }} cliente(s)</td></tr>
+        <tr><td colspan="6" class="num">{{ clientes|length }} cliente(s)</td></tr>
       </tfoot>
     </table>
   </div></div>
   {% elif busca %}
-  {{ ord.nada_encontrado(busca, 'nome, telefone, e-mail, CPF, bairro e cidade') }}
+  {{ ord.nada_encontrado(busca, 'nome, telefone, e-mail, CPF, bairro, cidade e segmento') }}
   {% else %}
   <div class="cartao cartao-vazio">
     {% if ver == 'inativos' %}

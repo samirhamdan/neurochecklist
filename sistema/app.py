@@ -423,14 +423,18 @@ def criar_app() -> Flask:
     def lista_clientes():
         ver = request.args.get("ver", "ativos")
         if ver == "inativos":
-            lista = [c for c in dados.clientes(False) if not c["ativo"]]
+            lista = [c for c in dados.clientes_classificados(False)
+                     if not c["ativo"]]
         elif ver == "todos":
-            lista = dados.clientes(False)
+            lista = dados.clientes_classificados(False)
         else:
-            lista = dados.clientes(True)
+            lista = dados.clientes_classificados(True)
         canal = request.args.get("canal", "")
         if canal:
             lista = [c for c in lista if c.get("canal") == canal]
+        segmento = request.args.get("segmento", "")
+        if segmento:
+            lista = [c for c in lista if c.get("segmento") == segmento]
         busca = request.args.get("q", "")
         lista = listas.filtrar(lista, busca, listas.BUSCA_CLIENTES)
         ordem, invertido = listas.pedido_da_url(
@@ -439,7 +443,11 @@ def criar_app() -> Flask:
         resumo = dados.resumo_clientes()
         return render_template("clientes.html", aba="clientes",
                                clientes=lista, ver=ver, canal_filtro=canal,
-                               canais=dados.CANAIS, busca=busca,
+                               segmento_filtro=segmento,
+                               canais=dados.CANAIS,
+                               segmentos=dados.SEGMENTOS,
+                               rotulos_segmento=dados.ROTULOS_SEGMENTO,
+                               busca=busca,
                                ordens=listas.ORDENS_CLIENTES, ordem=ordem,
                                invertido=invertido, **resumo)
 

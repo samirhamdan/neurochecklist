@@ -126,5 +126,7 @@ ORDENS_CLIENTES = (
     ("whatsapp", "WhatsApp", "whatsapp"),
     ("email", "E-mail", "email"),
     ("canal", "Canal", "canal"),
+    ("segmento", "Segmento", "segmento"),
 )
-BUSCA_CLIENTES = ("nome", "whatsapp", "email", "cpf", "bairro", "cidade")
+BUSCA_CLIENTES = ("nome", "whatsapp", "email", "cpf", "bairro", "cidade",
+                  "segmento")
