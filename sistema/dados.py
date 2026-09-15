@@ -336,6 +336,7 @@ PADROES = {
     "valor_hora_pessoa": 25.00,   # o que a hora do Samir vale
     "minutos_acabamento": 30.0,   # padrao por peca; o produto pode ter o seu
     "taxa_falha": 0.10,
+    "margem_minima": 0.30,
 }
 
 # As cinco etapas da peca, no vocabulario do Sistema3D -- que e o que o

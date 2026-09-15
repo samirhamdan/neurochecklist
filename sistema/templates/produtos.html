@@ -50,7 +50,8 @@
             {%- else %}<span class="fraco" title="Falta o preço por kg do filamento">—</span>{% endif -%}
           </td>
           <td data-rotulo="Preço" class="num mono forte">{{ p.conta.preco|dinheiro }}</td>
-          <td data-rotulo="Margem" class="num mono {{ 'alerta' if p.conta.completo and p.conta.margem_pct < 40 }}">
+          <td data-rotulo="Margem" class="num mono {% if p.conta.completo %}margem-{{ p.conta.nivel_margem() }}{% endif %}"
+              {% if p.conta.completo and param %}title="Custo {{ p.conta.custo|dinheiro }} · Mín. {{ p.conta.preco_minimo(param.margem_minima)|dinheiro }}"{% endif %}>
             {%- if p.conta.completo %}{{ p.conta.margem_pct|numero(1) }}%{% else %}<span class="fraco">—</span>{% endif -%}
           </td>
           <td data-rotulo="R$/h" class="num mono por-hora decide">

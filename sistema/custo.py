@@ -70,6 +70,22 @@ class Conta:
             return 0.0
         return round((self.preco - self.custo) / self.horas, 2)
 
+    def preco_minimo(self, margem_minima: float) -> float:
+        """Piso comercial: abaixo disto a peca nao cobre a margem desejada."""
+        if not self.completo or self.custo <= 0 or margem_minima >= 1:
+            return 0.0
+        return math.ceil(self.custo / (1.0 - margem_minima) / 5.0) * 5.0
+
+    def nivel_margem(self) -> str:
+        """saudavel / baixa / prejuizo — lido pela lista de produtos."""
+        if not self.completo:
+            return ""
+        if self.preco <= self.custo:
+            return "prejuizo"
+        if self.margem_pct < 30:
+            return "baixa"
+        return "saudavel"
+
     def com_preco(self, preco: float | None) -> "Conta":
         """A mesma conta, com o preco que o produto REALMENTE cobra.
 

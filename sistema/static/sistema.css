@@ -455,6 +455,11 @@ table.tabela .forte{font-weight:600}
 tr.inativo td{opacity:.55}
 .fraco{color:var(--suave);font-size:13px;margin-left:7px}
 .alerta{color:var(--laranja-escuro);font-weight:600}
+.margem-saudavel{color:var(--verde);font-weight:600}
+.margem-baixa{color:var(--ambar);font-weight:600}
+.margem-prejuizo{color:var(--vermelho);font-weight:600}
+.alerta-custo{background:var(--vermelho-fundo);color:var(--vermelho);padding:6px 10px;border-radius:6px;font-size:13px;margin-top:6px}
+.alerta-preco-minimo{background:var(--ambar-fundo);color:var(--ambar);padding:6px 10px;border-radius:6px;font-size:13px;margin-top:6px}
 .etiqueta.cinza{background:var(--bancada);color:var(--suave);border:1px solid var(--linha)}
 .etiqueta.vermelha{background:var(--vermelho-fundo);color:var(--vermelho)}
 

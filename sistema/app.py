@@ -345,7 +345,8 @@ def criar_app() -> Flask:
         itens = listas.ordenar(itens, ordem, invertido, listas.ORDENS_PRODUTOS)
         return render_template("produtos.html", aba="produtos", produtos=itens,
                                cores=dados.CORES, ordens=listas.ORDENS_PRODUTOS,
-                               ordem=ordem, invertido=invertido, busca=busca)
+                               ordem=ordem, invertido=invertido, busca=busca,
+                               param=param)
 
     @app.route("/produtos/novo", methods=["GET", "POST"])
     @app.route("/produtos/<int:id_>", methods=["GET", "POST"])
@@ -399,7 +400,10 @@ def criar_app() -> Flask:
         minutos = request.form.get("minutos")
         conta = custo.calcular(medida["gramas"], medida["horas"], preco_kg,
                                minutos=float(minutos) if minutos else None, param=param)
-        return {"medida": medida, "conta": conta.como_dict()}, 200
+        d = conta.como_dict()
+        d["preco_minimo"] = conta.preco_minimo(param["margem_minima"])
+        d["margem_minima"] = param["margem_minima"]
+        return {"medida": medida, "conta": d}, 200
 
     @app.route("/catalogo")
     @auth.exige_perfil("admin", "comercial", "operacao")
