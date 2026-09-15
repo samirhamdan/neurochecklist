@@ -271,6 +271,21 @@ CREATE TABLE IF NOT EXISTS semente_vista (
     visto_em TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS impressoras (
+    id         INTEGER PRIMARY KEY,
+    nome       TEXT NOT NULL,
+    modelo     TEXT NOT NULL DEFAULT '',
+    custo_hora REAL,
+    consumo_kw REAL,
+    volume_x   REAL,
+    volume_y   REAL,
+    volume_z   REAL,
+    observacao  TEXT NOT NULL DEFAULT '',
+    ativo      INTEGER NOT NULL DEFAULT 1,
+    criado_em  TEXT NOT NULL,
+    criado_por TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS parametros (
     chave  TEXT PRIMARY KEY,
     valor  REAL NOT NULL
@@ -579,6 +594,12 @@ def _migrar(conn: sqlite3.Connection) -> None:
     colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
     if "catalogo" not in colunas:
         conn.execute("ALTER TABLE produtos ADD COLUMN catalogo INTEGER NOT NULL DEFAULT 0")
+
+    # P1: produto pode apontar para uma impressora. NULL = usa parametro global.
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
+    if "impressora_id" not in colunas:
+        conn.execute("ALTER TABLE produtos ADD COLUMN impressora_id INTEGER"
+                     " REFERENCES impressoras (id)")
 
     if "produto_fotos" not in tabelas:
         conn.execute(
@@ -1075,6 +1096,57 @@ def _numero(valor, padrao=0.0):
         return padrao
 
 
+# --------------------------------------------------------- impressoras
+
+def impressoras(so_ativas: bool = True) -> list[dict]:
+    with conectar() as conn:
+        onde = "WHERE ativo = 1" if so_ativas else ""
+        return [dict(l) for l in conn.execute(
+            f"SELECT * FROM impressoras {onde} ORDER BY nome")]
+
+
+def impressora(id_: int) -> dict | None:
+    with conectar() as conn:
+        linha = conn.execute(
+            "SELECT * FROM impressoras WHERE id = ?", (id_,)).fetchone()
+    return dict(linha) if linha else None
+
+
+def campos_impressora(dados: dict) -> dict:
+    return dict(
+        nome=_limpo(dados.get("nome")),
+        modelo=_limpo(dados.get("modelo")),
+        custo_hora=_numero(dados.get("custo_hora")) or None,
+        consumo_kw=_numero(dados.get("consumo_kw")) or None,
+        volume_x=_numero(dados.get("volume_x")) or None,
+        volume_y=_numero(dados.get("volume_y")) or None,
+        volume_z=_numero(dados.get("volume_z")) or None,
+        observacao=_limpo(dados.get("observacao")),
+        ativo=1 if dados.get("ativo", "1") in (1, "1", True, "on") else 0,
+    )
+
+
+def salvar_impressora(dados: dict, autor: str, id_: int | None = None) -> int:
+    campos = campos_impressora(dados)
+    if not campos["nome"]:
+        raise ErroDeCampo("nome", "Dê um nome à impressora.")
+    with conectar() as conn:
+        if id_:
+            colunas = ", ".join(f"{c}=:{c}" for c in campos)
+            conn.execute(f"UPDATE impressoras SET {colunas} WHERE id=:id",
+                         {**campos, "id": id_})
+        else:
+            nomes = ", ".join(campos)
+            marcas = ", ".join(f":{c}" for c in campos)
+            cur = conn.execute(
+                f"INSERT INTO impressoras ({nomes}, criado_em, criado_por)"
+                f" VALUES ({marcas}, :criado_em, :criado_por)",
+                {**campos, "criado_em": agora(), "criado_por": autor})
+            id_ = int(cur.lastrowid)
+        conn.commit()
+    return id_
+
+
 def filamentos(so_ativos: bool = True) -> list[dict]:
     with conectar() as conn:
         onde = "WHERE ativo = 1" if so_ativos else ""
@@ -1220,8 +1292,10 @@ def produtos(so_ativos: bool = True) -> list[dict]:
     with conectar() as conn:
         linhas = conn.execute(
             "SELECT p.*, f.nome AS filamento_nome, f.cor AS filamento_cor,"
-            " f.preco_kg AS filamento_preco_kg"
+            " f.preco_kg AS filamento_preco_kg,"
+            " i.nome AS impressora_nome, i.custo_hora AS impressora_custo_hora"
             " FROM produtos p LEFT JOIN filamentos f ON f.id = p.filamento_id"
+            " LEFT JOIN impressoras i ON i.id = p.impressora_id"
             f" {onde} ORDER BY p.nome").fetchall()
     return [dict(l) for l in linhas]
 
@@ -1230,8 +1304,10 @@ def produto(id_: int) -> dict | None:
     with conectar() as conn:
         linha = conn.execute(
             "SELECT p.*, f.nome AS filamento_nome, f.cor AS filamento_cor,"
-            " f.preco_kg AS filamento_preco_kg"
+            " f.preco_kg AS filamento_preco_kg,"
+            " i.nome AS impressora_nome, i.custo_hora AS impressora_custo_hora"
             " FROM produtos p LEFT JOIN filamentos f ON f.id = p.filamento_id"
+            " LEFT JOIN impressoras i ON i.id = p.impressora_id"
             " WHERE p.id = ?", (id_,)).fetchone()
         if not linha:
             return None
@@ -1256,6 +1332,7 @@ def campos_produto(dados: dict) -> dict:
         caixa_z=_numero(dados.get("caixa_z")) or None,
         minutos=_numero(dados.get("minutos")) if _limpo(dados.get("minutos")) else None,
         filamento_id=int(dados["filamento_id"]) if _limpo(dados.get("filamento_id")) else None,
+        impressora_id=int(dados["impressora_id"]) if _limpo(dados.get("impressora_id")) else None,
         arquivo=_limpo(dados.get("arquivo")),
         malha_ok=int(dados["malha_ok"]) if dados.get("malha_ok") not in (None, "") else None,
         malha_nota=int(_numero(dados.get("malha_nota"))) if _limpo(dados.get("malha_nota")) else None,

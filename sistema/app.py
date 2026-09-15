@@ -61,6 +61,7 @@ MENU = (
     )),
     ("Operação", "operacao", (
         ("producao", "Produção", "producao"),
+        ("lista_impressoras", "Impressoras", "impressoras"),
         ("lista_filamentos", "Filamentos", "filamentos"),
         ("lista_insumos", "Insumos", "insumos"),
     )),
@@ -282,6 +283,30 @@ def criar_app() -> Flask:
         return render_template("filamento.html", aba="filamentos", atual=atual,
                                cores=dados.CORES)
 
+    @app.route("/impressoras")
+    @auth.exige_perfil("admin", "operacao")
+    def lista_impressoras():
+        return render_template("impressoras.html", aba="impressoras",
+                               impressoras=dados.impressoras(False))
+
+    @app.route("/impressoras/nova", methods=["GET", "POST"])
+    @app.route("/impressoras/<int:id_>", methods=["GET", "POST"])
+    @auth.exige_perfil("admin", "operacao")
+    def editar_impressora(id_=None):
+        atual = dados.impressora(id_) if id_ else None
+        if id_ and not atual:
+            abort(404)
+        if request.method == "POST":
+            try:
+                novo_id = dados.salvar_impressora(
+                    request.form, session.get("usuario", ""), id_)
+            except ValueError as erro:
+                return render_template(
+                    "impressora.html", aba="impressoras", **_erro(erro),
+                    atual=dados.campos_impressora(request.form)), 400
+            return redirect(url_for("lista_impressoras"))
+        return render_template("impressora.html", aba="impressoras", atual=atual)
+
     @app.route("/insumos")
     @auth.exige_perfil("admin", "operacao")
     def lista_insumos():
@@ -340,13 +365,15 @@ def criar_app() -> Flask:
                 return render_template(
                     "produto.html", aba="produtos", **_erro(erro), param=param,
                     atual=dados.campos_produto(request.form),
-                    filamentos=dados.filamentos(), insumos=dados.insumos()), 400
+                    filamentos=dados.filamentos(), insumos=dados.insumos(),
+                    impressoras_lista=dados.impressoras()), 400
             return redirect(url_for("editar_produto", id_=novo_id))
         conta = custo.conta_de_produto(atual, param) if atual else None
         fotos = dados.fotos_produto(id_) if id_ else []
         return render_template("produto.html", aba="produtos", atual=atual, conta=conta,
                                param=param, filamentos=dados.filamentos(),
-                               insumos=dados.insumos(), fotos=fotos)
+                               insumos=dados.insumos(), fotos=fotos,
+                               impressoras_lista=dados.impressoras())
 
     @app.route("/produtos/medir", methods=["POST"])
     @auth.exige_perfil("admin", "operacao")

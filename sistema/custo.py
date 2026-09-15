@@ -92,11 +92,16 @@ def conta_de_produto(prod: dict, param: dict[str, float]) -> Conta:
     painel nao facam a mesma conta de tres jeitos. A lista nao carrega os
     insumos de cada produto (seria uma consulta por linha); a ficha carrega.
     O `or []` cobre os dois sem que a chamada precise saber qual e qual.
+
+    Se o produto tem impressora vinculada com custo/h proprio, usa ele;
+    senao cai no parametro global.
     """
     insumos = sum(i["quantidade"] * i["valor_unit"] for i in prod.get("insumos") or [])
+    custo_hora_maquina = prod.get("impressora_custo_hora") or None
     return calcular(prod.get("gramas") or 0, prod.get("horas") or 0,
                     prod.get("filamento_preco_kg"), insumos,
-                    prod.get("minutos"), param=param)
+                    prod.get("minutos"), param=param,
+                    custo_hora_maquina=custo_hora_maquina)
 
 
 def retorno_por_hora(produtos: list[dict], param: dict[str, float]) -> dict:
@@ -224,18 +229,23 @@ def preco_por_volume(produto: dict, param: dict[str, float]) -> dict | None:
 
 def calcular(gramas: float, horas: float, preco_kg: float | None,
              insumos: float = 0.0, minutos: float | None = None, *,
-             param: dict[str, float]) -> Conta:
+             param: dict[str, float],
+             custo_hora_maquina: float | None = None) -> Conta:
     """Custo e preco de uma peca ja medida.
 
     `preco_kg` vem do filamento cadastrado. Sem ele nao da para custear, e o
     custo sai zero -- de proposito, para o cadastro poder avisar em vez de
     inventar um numero que parece certo.
+
+    `custo_hora_maquina` vem da impressora vinculada ao produto. Quando None,
+    usa o parametro global -- que e o comportamento de antes do P1.
     """
     gramas = max(float(gramas or 0), 0.0)
     horas = max(float(horas or 0), 0.0)
 
     custo_filamento = gramas / 1000.0 * float(preco_kg) if preco_kg else 0.0
-    custo_maquina = horas * float(param["custo_hora_maquina"])
+    hora_maq = float(custo_hora_maquina) if custo_hora_maquina else float(param["custo_hora_maquina"])
+    custo_maquina = horas * hora_maq
     if minutos is None:
         minutos = param["minutos_acabamento"]
     custo_pessoa = max(float(minutos), 0.0) / 60.0 * float(param["valor_hora_pessoa"])

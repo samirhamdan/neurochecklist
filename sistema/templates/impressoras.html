@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block titulo %}Impressoras — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main id="conteudo" class="pagina">
+  <div class="cabecalho-lista">
+    <h2 class="secao">Impressoras</h2>
+    <a class="botao" href="{{ url_for('editar_impressora') }}">Nova impressora</a>
+  </div>
+
+  {% if impressoras %}
+  <div class="cartao cartao-tabela"><div class="rolagem">
+    <table class="tabela">
+      <thead><tr>
+        <th>Impressora</th><th>Modelo</th><th class="num">Custo/h</th>
+        <th class="num">Consumo (kW)</th><th class="num">Volume (mm)</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for i in impressoras %}
+        <tr class="{{ 'inativo' if not i.ativo }}">
+          <td data-rotulo="Impressora" class="chave">
+            <a href="{{ url_for('editar_impressora', id_=i.id) }}">{{ i.nome }}</a>
+            {% if not i.ativo %}<span class="etiqueta cinza">inativa</span>{% endif %}
+          </td>
+          <td data-rotulo="Modelo">{{ i.modelo or '—' }}</td>
+          <td data-rotulo="Custo/h" class="num mono decide">{{ i.custo_hora|dinheiro if i.custo_hora else '—' }}</td>
+          <td data-rotulo="Consumo" class="num mono">{{ i.consumo_kw|numero(2) if i.consumo_kw else '—' }}</td>
+          <td data-rotulo="Volume" class="num mono">
+            {%- if i.volume_x and i.volume_y and i.volume_z -%}
+              {{ i.volume_x|numero(0) }}×{{ i.volume_y|numero(0) }}×{{ i.volume_z|numero(0) }}
+            {%- else %}—{% endif -%}
+          </td>
+          <td class="num acao"><a href="{{ url_for('editar_impressora', id_=i.id) }}">editar</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" class="num">{{ impressoras|length }} impressora(s)</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div></div>
+  <p class="nota">O <b>Custo/h</b> é o que alimenta o cálculo de custo do produto vinculado
+  a esta impressora. Sem ele, o produto usa o parâmetro global.</p>
+  {% else %}
+  <div class="cartao cartao-vazio">
+    <b>Nenhuma impressora cadastrada.</b>
+    <span>Cadastre suas impressoras para ter o custo por hora real de cada máquina.
+    Sem isso, todos os produtos usam o mesmo custo/h global.</span>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

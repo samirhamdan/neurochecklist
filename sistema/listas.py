@@ -102,6 +102,7 @@ BUSCA_PEDIDOS = ("cliente", "canal", "id_no_canal")
 ORDENS_PRODUTOS = (
     ("nome", "Produto", "nome"),
     ("filamento", "Filamento", "filamento_nome"),
+    ("impressora", "Impressora", "impressora_nome"),
     ("gramas", "Peso", "gramas"),
     ("horas", "Tempo", "horas"),
     ("custo", "Custo", lambda p: p["conta"].custo if p["conta"].completo else None),
@@ -109,7 +110,7 @@ ORDENS_PRODUTOS = (
     ("margem", "Margem", lambda p: p["conta"].margem_pct if p["conta"].completo else None),
     ("hora", "R$/h", lambda p: p["conta"].por_hora if p["conta"].completo else None),
 )
-BUSCA_PRODUTOS = ("nome", "sku", "filamento_nome", "categoria")
+BUSCA_PRODUTOS = ("nome", "sku", "filamento_nome", "impressora_nome", "categoria")
 
 ORDENS_GERACOES = (
     ("quando", "Quando", "criado_em"),
