@@ -20,6 +20,7 @@
       <thead><tr>
         {{ ord.cabeca('nome', 'Produto') }}
         {{ ord.cabeca('filamento', 'Filamento') }}
+        {{ ord.cabeca('impressora', 'Impressora') }}
         {{ ord.cabeca('gramas', 'Peso', num=true) }}
         {{ ord.cabeca('horas', 'Tempo', num=true) }}
         {{ ord.cabeca('custo', 'Custo', num=true) }}
@@ -41,6 +42,7 @@
               <span class="bolinha" style="background:{{ cores.get(p.filamento_cor, '#B9BEC4') }}"></span>{{ p.filamento_nome }}
             {% else %}<span class="fraco">sem filamento</span>{% endif %}
           </td>
+          <td data-rotulo="Impressora">{{ p.impressora_nome or '—' }}</td>
           <td data-rotulo="Peso" class="num mono">{{ p.gramas|numero(1) if p.gramas else '—' }} g</td>
           <td data-rotulo="Tempo" class="num mono">{{ p.horas|numero(1) if p.horas else '—' }} h</td>
           <td data-rotulo="Custo" class="num mono">
@@ -48,7 +50,8 @@
             {%- else %}<span class="fraco" title="Falta o preço por kg do filamento">—</span>{% endif -%}
           </td>
           <td data-rotulo="Preço" class="num mono forte">{{ p.conta.preco|dinheiro }}</td>
-          <td data-rotulo="Margem" class="num mono {{ 'alerta' if p.conta.completo and p.conta.margem_pct < 40 }}">
+          <td data-rotulo="Margem" class="num mono {% if p.conta.completo %}margem-{{ p.conta.nivel_margem() }}{% endif %}"
+              {% if p.conta.completo and param %}title="Custo {{ p.conta.custo|dinheiro }} · Mín. {{ p.conta.preco_minimo(param.margem_minima)|dinheiro }}"{% endif %}>
             {%- if p.conta.completo %}{{ p.conta.margem_pct|numero(1) }}%{% else %}<span class="fraco">—</span>{% endif -%}
           </td>
           <td data-rotulo="R$/h" class="num mono por-hora decide">
@@ -62,7 +65,7 @@
       {# A contagem existe para a busca nao poder esconder linha sem dizer. #}
       <tfoot>
         <tr>
-          <td colspan="8" class="num">{{ produtos|length }} produto(s)</td>
+          <td colspan="9" class="num">{{ produtos|length }} produto(s)</td>
           <td></td>
         </tr>
       </tfoot>

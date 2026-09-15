@@ -42,6 +42,19 @@
         {% if campo_erro == 'filamento_id' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
       </label>
       </div>
+      <div class="linha">
+        <label class="campo cresce{{ ' com-erro' if campo_erro == 'impressora_id' }}" id="campo-impressora_id"><span>Impressora</span>
+          <select name="impressora_id" id="impressora">
+            <option value="">Usar parâmetro global</option>
+            {% for imp in impressoras_lista %}
+            <option value="{{ imp.id }}" {{ 'selected' if atual and atual.impressora_id == imp.id }}>
+              {{ imp.nome }}{% if imp.custo_hora %} — {{ imp.custo_hora|dinheiro }}/h{% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        {% if campo_erro == 'impressora_id' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+      </div>
       <label class="campo{{ ' com-erro' if campo_erro == 'observacao' }}" id="campo-observacao"><span>Observação</span>
         <input name="observacao" maxlength="200"
                placeholder="Acabamento, montagem, o que lembrar na hora de imprimir"
@@ -113,13 +126,23 @@
           <div><dt>Reserva de falha</dt><dd class="mono">{{ (conta.custo_falha if conta else 0)|dinheiro }}</dd></div>
           <div class="somado"><dt>Custo</dt><dd class="mono" id="v-custo">{{ (conta.custo if conta else 0)|dinheiro }}</dd></div>
           <div class="destaque"><dt>Preço sugerido</dt><dd class="mono" id="v-preco">{{ (conta.preco if conta else 0)|dinheiro }}</dd></div>
-          <div><dt>Margem</dt><dd class="mono" id="v-margem">{{ (conta.margem_pct if conta else 0)|numero(1) }}%</dd></div>
+          <div><dt>Preço mínimo</dt><dd class="mono" id="v-preco-minimo">{{ (conta.preco_minimo(param.margem_minima) if conta else 0)|dinheiro }}</dd></div>
+          <div><dt>Margem</dt><dd class="mono {% if conta %}margem-{{ conta.nivel_margem() }}{% endif %}" id="v-margem">{{ (conta.margem_pct if conta else 0)|numero(1) }}%</dd></div>
           <div><dt>Por hora de mesa</dt><dd class="mono" id="v-hora">{{ (conta.por_hora if conta else 0)|dinheiro }}</dd></div>
         </dl>
+        {% if conta and conta.completo and conta.preco > 0 %}
+        {% set preco_efetivo = (atual.preco if atual and atual.preco else conta.preco) %}
+        {% if preco_efetivo <= conta.custo %}
+        <div class="alerta-custo" id="alerta-custo">Preço praticado abaixo do custo — esta peça dá prejuízo.</div>
+        {% elif preco_efetivo < conta.preco_minimo(param.margem_minima) %}
+        <div class="alerta-preco-minimo" id="alerta-preco-minimo">Preço abaixo do mínimo de {{ conta.preco_minimo(param.margem_minima)|dinheiro }} — margem inferior a {{ (param.margem_minima * 100)|round|int }}%.</div>
+        {% endif %}
+        {% endif %}
         <p class="nota">Sugerido = piso {{ param.piso|dinheiro }} + peso ×
         {{ param.por_grama|dinheiro }}/g, para cima de 5 em 5. É a mesma conta do
-        gerador de letreiros.<br>
-        Máquina a {{ param.custo_hora_maquina|dinheiro }}/h (a impressora sozinha) e
+        gerador de letreiros. Mínimo = custo ÷ (1 − {{ (param.margem_minima * 100)|round|int }}%), para cima de 5 em 5.<br>
+        Máquina a <span id="v-custo-maquina-h">{{ (atual.impressora_custo_hora if atual and atual.impressora_custo_hora else param.custo_hora_maquina)|dinheiro }}</span>/h
+        {% if atual and atual.impressora_nome %}({{ atual.impressora_nome }}){% else %}(parâmetro global){% endif %} e
         suas mãos a {{ param.valor_hora_pessoa|dinheiro }}/h.</p>
         <label class="campo{{ ' com-erro' if campo_erro == 'preco' }}" id="campo-preco"><span>Preço fixo (opcional)</span>
           <input name="preco" type="number" step="0.01" min="0" placeholder="deixe vazio para usar o sugerido"
@@ -259,6 +282,33 @@
   const money = n => "R$ " + Number(n).toLocaleString("pt-BR",
         {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
+  let ultimaConta = null;
+  const atualizarAlertas = (c) => {
+    if (c) ultimaConta = c;
+    c = ultimaConta;
+    let velho = document.getElementById("alerta-custo");
+    if (velho) velho.remove();
+    velho = document.getElementById("alerta-preco-minimo");
+    if (velho) velho.remove();
+    if (!c || !c.completo || c.custo <= 0) return;
+    const precoFixo = parseFloat(document.querySelector('input[name="preco"]').value);
+    const precoEfetivo = precoFixo > 0 ? precoFixo : c.preco;
+    const dl = document.getElementById("numeros");
+    if (precoEfetivo <= c.custo) {
+      const d = document.createElement("div");
+      d.className = "alerta-custo"; d.id = "alerta-custo";
+      d.textContent = "Preço praticado abaixo do custo — esta peça dá prejuízo.";
+      dl.after(d);
+    } else if (precoEfetivo < c.preco_minimo) {
+      const d = document.createElement("div");
+      d.className = "alerta-preco-minimo"; d.id = "alerta-preco-minimo";
+      d.textContent = "Preço abaixo do mínimo de " + money(c.preco_minimo) +
+        " — margem inferior a " + Math.round(c.margem_minima * 100) + "%.";
+      dl.after(d);
+    }
+  };
+  document.querySelector('input[name="preco"]').addEventListener("input", () => atualizarAlertas());
+
   document.getElementById("escolher").addEventListener("click", () => arq.click());
 
   arq.addEventListener("change", async () => {
@@ -306,9 +356,15 @@
     document.getElementById("v-pessoa").textContent = money(c.custo_pessoa);
     document.getElementById("v-custo").textContent = money(c.custo);
     document.getElementById("v-preco").textContent = money(c.preco);
-    document.getElementById("v-margem").textContent = c.margem_pct.toLocaleString("pt-BR", {minimumFractionDigits: 1,
+    document.getElementById("v-preco-minimo").textContent = money(c.preco_minimo);
+    const elMargem = document.getElementById("v-margem");
+    elMargem.textContent = c.margem_pct.toLocaleString("pt-BR", {minimumFractionDigits: 1,
       maximumFractionDigits: 1}) + "%";
+    elMargem.className = "mono " + (c.completo
+      ? (c.preco <= c.custo ? "margem-prejuizo" : c.margem_pct < 30 ? "margem-baixa" : "margem-saudavel")
+      : "");
     document.getElementById("v-hora").textContent = money(c.por_hora);
+    atualizarAlertas(c);
   });
 
   // Cálculo de preço por volume
