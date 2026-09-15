@@ -393,6 +393,14 @@ CORES = {
     "Dourado": "#C9A227", "Prata": "#B9BEC4",
 }
 
+SITUACOES_PRODUTO = ("rascunho", "pronto", "publicado")
+
+ROTULOS_SITUACAO = {
+    "rascunho": "Rascunho",
+    "pronto": "Pronto",
+    "publicado": "Publicado",
+}
+
 SEGMENTOS = ("novo", "ativo", "recorrente", "vip", "inativo")
 
 ROTULOS_SEGMENTO = {
@@ -601,6 +609,14 @@ def _migrar(conn: sqlite3.Connection) -> None:
     if "impressora_id" not in colunas:
         conn.execute("ALTER TABLE produtos ADD COLUMN impressora_id INTEGER"
                      " REFERENCES impressoras (id)")
+
+    # P3: ciclo de vida do produto — rascunho, pronto, publicado.
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
+    if "situacao" not in colunas:
+        conn.execute("ALTER TABLE produtos ADD COLUMN situacao"
+                     " TEXT NOT NULL DEFAULT 'rascunho'")
+        conn.execute("UPDATE produtos SET situacao = 'publicado'"
+                     " WHERE catalogo = 1")
 
     if "produto_fotos" not in tabelas:
         conn.execute(
@@ -1347,7 +1363,23 @@ def campos_produto(dados: dict) -> dict:
         taxa_setup=_numero(dados.get("taxa_setup")) or 5.0,
         preco_fixo=_numero(dados.get("preco_fixo")) or None,
         catalogo=1 if dados.get("catalogo", "") in (1, "1", "on") else 0,
+        situacao=dados.get("situacao", "rascunho") if dados.get("situacao") in SITUACOES_PRODUTO else "rascunho",
     )
+
+
+def validar_publicacao(campos: dict) -> None:
+    """Impede que um produto vá ao catálogo sem os dados essenciais."""
+    if not campos.get("sku"):
+        raise ErroDeCampo("sku", "Produto publicado precisa de SKU.")
+    if not campos.get("filamento_id"):
+        raise ErroDeCampo("filamento_id", "Defina o filamento antes de publicar.")
+    if not campos.get("gramas") or campos["gramas"] <= 0:
+        raise ErroDeCampo("gramas", "Preencha o peso antes de publicar.")
+    if not campos.get("horas") or campos["horas"] <= 0:
+        raise ErroDeCampo("horas", "Preencha o tempo de impressão antes de publicar.")
+    preco = campos.get("preco") or campos.get("preco_fixo")
+    if not preco or preco <= 0:
+        raise ErroDeCampo("preco", "Defina um preço antes de publicar.")
 
 
 def salvar_produto(dados: dict, autor: str, id_: int | None = None,
@@ -1355,6 +1387,9 @@ def salvar_produto(dados: dict, autor: str, id_: int | None = None,
     campos = campos_produto(dados)
     if not campos["nome"]:
         raise ErroDeCampo("nome", "Dê um nome ao produto.")
+    if campos["situacao"] == "publicado":
+        validar_publicacao(campos)
+        campos["catalogo"] = 1
     colunas = ", ".join(f"{c}=:{c}" for c in campos)
     with conectar() as conn:
         if id_:
@@ -1426,6 +1461,42 @@ def produtos_catalogo() -> list[dict]:
         d["fotos"] = fotos_produto(d["id"])
         resultado.append(d)
     return resultado
+
+
+def duplicar_produto(id_: int, autor: str) -> int:
+    """Cria uma cópia do produto, voltando ao rascunho."""
+    original = produto(id_)
+    if not original:
+        raise ValueError("Produto não encontrado.")
+    copia = {
+        "nome": original["nome"] + " (Cópia)",
+        "sku": "",
+        "categoria": original["categoria"] or "",
+        "gramas": str(original["gramas"]) if original["gramas"] else "",
+        "horas": str(original["horas"]) if original["horas"] else "",
+        "caixa_x": str(original["caixa_x"]) if original["caixa_x"] else "",
+        "caixa_y": str(original["caixa_y"]) if original["caixa_y"] else "",
+        "caixa_z": str(original["caixa_z"]) if original["caixa_z"] else "",
+        "minutos": str(original["minutos"]) if original["minutos"] else "",
+        "filamento_id": str(original["filamento_id"]) if original["filamento_id"] else "",
+        "impressora_id": str(original["impressora_id"]) if original["impressora_id"] else "",
+        "arquivo": original["arquivo"] or "",
+        "malha_ok": original["malha_ok"],
+        "malha_nota": str(original["malha_nota"]) if original["malha_nota"] else "",
+        "preco": str(original["preco"]) if original["preco"] else "",
+        "observacao": original["observacao"] or "",
+        "ativo": "1" if original["ativo"] else "0",
+        "dimensao_x": str(original["dimensao_x"]) if original["dimensao_x"] else "",
+        "dimensao_y": str(original["dimensao_y"]) if original["dimensao_y"] else "",
+        "usa_preco_volume": "1" if original["usa_preco_volume"] else "",
+        "margem_volume": str(original["margem_volume"]) if original["margem_volume"] else "",
+        "taxa_setup": str(original["taxa_setup"]) if original["taxa_setup"] else "",
+        "preco_fixo": str(original["preco_fixo"]) if original["preco_fixo"] else "",
+        "catalogo": "",
+        "situacao": "rascunho",
+    }
+    vinculos = [(v["id"], v["quantidade"]) for v in original.get("insumos", [])]
+    return salvar_produto(copia, autor, vinculos=vinculos)
 
 
 # ------------------------------------------------------------ clientes

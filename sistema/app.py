@@ -367,14 +367,18 @@ def criar_app() -> Flask:
                     "produto.html", aba="produtos", **_erro(erro), param=param,
                     atual=dados.campos_produto(request.form),
                     filamentos=dados.filamentos(), insumos=dados.insumos(),
-                    impressoras_lista=dados.impressoras()), 400
+                    impressoras_lista=dados.impressoras(),
+                    situacoes=dados.SITUACOES_PRODUTO,
+                    rotulos_situacao=dados.ROTULOS_SITUACAO), 400
             return redirect(url_for("editar_produto", id_=novo_id))
         conta = custo.conta_de_produto(atual, param) if atual else None
         fotos = dados.fotos_produto(id_) if id_ else []
         return render_template("produto.html", aba="produtos", atual=atual, conta=conta,
                                param=param, filamentos=dados.filamentos(),
                                insumos=dados.insumos(), fotos=fotos,
-                               impressoras_lista=dados.impressoras())
+                               impressoras_lista=dados.impressoras(),
+                               situacoes=dados.SITUACOES_PRODUTO,
+                               rotulos_situacao=dados.ROTULOS_SITUACAO)
 
     @app.route("/produtos/medir", methods=["POST"])
     @auth.exige_perfil("admin", "operacao")
@@ -443,6 +447,15 @@ def criar_app() -> Flask:
         if caminho.exists():
             caminho.unlink()
         return {"ok": True}, 200
+
+    @app.route("/produtos/<int:id_>/duplicar", methods=["POST"])
+    @auth.exige_perfil("admin", "operacao")
+    def duplicar_produto(id_):
+        try:
+            novo_id = dados.duplicar_produto(id_, session.get("usuario", ""))
+        except ValueError:
+            abort(404)
+        return redirect(url_for("editar_produto", id_=novo_id))
 
     @app.route("/fotos/<int:produto_id>/<path:arquivo>")
     @auth.exige_login

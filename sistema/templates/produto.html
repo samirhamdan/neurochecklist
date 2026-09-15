@@ -223,15 +223,25 @@
       </div>
 
       <div class="cartao">
-        <h3 class="titulo-cartao">Catálogo</h3>
-        <label class="marca-caixa" id="campo-catalogo">
-          <input type="checkbox" name="catalogo" id="catalogo" value="1"
-                 {{ 'checked' if atual and atual.catalogo }}>
-          Disponível no catálogo
-        </label>
-        <p class="nota">Produtos marcados aparecem na página de catálogo.</p>
+        <h3 class="titulo-cartao">Situação</h3>
+        {% set sit = (atual.situacao if atual and atual.situacao else 'rascunho') %}
+        <div class="campo" id="campo-situacao">
+          <span>Etapa do produto</span>
+          <select name="situacao" id="situacao">
+            {% for s in situacoes %}
+            <option value="{{ s }}" {{ 'selected' if s == sit }}>{{ rotulos_situacao[s] }}</option>
+            {% endfor %}
+          </select>
+          {% if campo_erro == 'situacao' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </div>
+        <p class="nota">
+          <b>Rascunho</b> — em preparação, faltam dados.<br>
+          <b>Pronto</b> — dados completos, pronto para vender.<br>
+          <b>Publicado</b> — no catálogo, visível para clientes.
+          Publicar exige SKU, filamento, peso, tempo e preço.
+        </p>
 
-        <div id="secao-fotos" {{ 'hidden' if not (atual and atual.catalogo) }}>
+        <div id="secao-fotos" {{ 'hidden' if sit != 'publicado' }}>
           <p style="margin-top:12px;font-weight:500;font-size:13.5px">Fotos do produto (até 3)</p>
           <div id="galeria-fotos" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
             {% if atual and atual.id %}
@@ -269,6 +279,11 @@
       <a class="botao vazado" href="{{ url_for('lista_produtos') }}">Voltar</a>
     </div>
   </form>
+  {% if atual and atual.id %}
+  <form method="post" action="{{ url_for('duplicar_produto', id_=atual.id) }}" class="acao-extra">
+    <button class="botao vazado" type="submit">Duplicar produto</button>
+  </form>
+  {% endif %}
 </main>
 
 <script>
@@ -430,12 +445,12 @@
   // Calcular ao carregar
   calcularVolume();
 
-  // Catálogo: mostrar/esconder seção de fotos
-  const chkCatalogo = document.getElementById("catalogo");
+  // Situação: mostrar fotos só quando publicado
+  const selSituacao = document.getElementById("situacao");
   const secaoFotos = document.getElementById("secao-fotos");
-  if (chkCatalogo && secaoFotos) {
-    chkCatalogo.addEventListener("change", () => {
-      secaoFotos.hidden = !chkCatalogo.checked;
+  if (selSituacao && secaoFotos) {
+    selSituacao.addEventListener("change", () => {
+      secaoFotos.hidden = selSituacao.value !== "publicado";
     });
   }
 

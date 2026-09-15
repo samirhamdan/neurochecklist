@@ -36,6 +36,9 @@
             <a href="{{ url_for('editar_produto', id_=p.id) }}">{{ p.nome }}</a>
             {% if p.sku %}<span class="fraco mono">{{ p.sku }}</span>{% endif %}
             {% if p.malha_ok == 0 %}<span class="etiqueta vermelha">malha aberta</span>{% endif %}
+            {% if p.situacao == 'publicado' %}<span class="etiqueta verde">Publicado</span>
+            {% elif p.situacao == 'pronto' %}<span class="etiqueta azul">Pronto</span>
+            {% else %}<span class="etiqueta cinza">Rascunho</span>{% endif %}
           </td>
           <td data-rotulo="Filamento">
             {% if p.filamento_nome %}

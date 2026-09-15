@@ -1025,6 +1025,7 @@ th a.ordenar.ativa .seta{visibility:visible;color:var(--azul)}
 }
 /* Filha de um grid de duas colunas: a barra atravessa as duas. */
 .duas-colunas > .acoes.principal{grid-column:1 / -1}
+.acao-extra{margin-top:8px;text-align:right}
 
 @media (max-width:900px){
   /* Sangra até a borda do cartão, para a linha de cima separar de verdade em
