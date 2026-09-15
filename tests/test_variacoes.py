@@ -337,10 +337,10 @@ class TesteSecaoNoTemplate(Base):
         padrao = r'<details\s+class="secao-produto"\s+id="sec-variacoes"'
         self.assertRegex(html, padrao)
 
-    def test_sete_secoes_no_produto(self):
+    def test_oito_secoes_no_produto(self):
         html = self._html_produto()
         secoes = re.findall(r'class="secao-produto"', html)
-        self.assertEqual(len(secoes), 7)
+        self.assertEqual(len(secoes), 8)
 
     def _html_produto(self, prod_id=None):
         url = f"/produtos/{prod_id}" if prod_id else "/produtos/novo"

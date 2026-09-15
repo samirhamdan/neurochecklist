@@ -27,6 +27,7 @@
         {{ ord.cabeca('preco', 'Preço', num=true) }}
         {{ ord.cabeca('margem', 'Margem', num=true) }}
         {{ ord.cabeca('hora', 'R$/h', num=true) }}
+        {{ ord.cabeca('estoque', 'Estoque', num=true) }}
         <th></th>
       </tr></thead>
       <tbody>
@@ -62,6 +63,8 @@
             {%- if p.conta.completo and p.conta.horas %}{{ p.conta.por_hora|dinheiro }}
             {%- else %}<span class="fraco">—</span>{% endif -%}
           </td>
+          <td data-rotulo="Estoque" class="num mono {{ 'alerta' if p.estoque_minimo and p.estoque <= p.estoque_minimo }}">
+            {{ p.estoque|round|int }} un</td>
           <td class="num acao"><a href="{{ url_for('editar_produto', id_=p.id) }}">editar</a></td>
         </tr>
         {% endfor %}
@@ -69,7 +72,7 @@
       {# A contagem existe para a busca nao poder esconder linha sem dizer. #}
       <tfoot>
         <tr>
-          <td colspan="9" class="num">{{ produtos|length }} produto(s)</td>
+          <td colspan="10" class="num">{{ produtos|length }} produto(s)</td>
           <td></td>
         </tr>
       </tfoot>

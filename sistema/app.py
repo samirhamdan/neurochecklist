@@ -61,6 +61,7 @@ MENU = (
     )),
     ("Operação", "operacao", (
         ("producao", "Produção", "producao"),
+        ("painel_estoque", "Estoque", "estoque"),
         ("lista_impressoras", "Impressoras", "impressoras"),
         ("lista_filamentos", "Filamentos", "filamentos"),
         ("lista_insumos", "Insumos", "insumos"),
@@ -252,6 +253,48 @@ def criar_app() -> Flask:
     def sair():
         session.clear()
         return redirect(url_for("entrar"))
+
+    # ------------------------------------------------------------- estoque
+    @app.route("/estoque")
+    @auth.exige_perfil("admin", "operacao")
+    def painel_estoque():
+        alertas = dados.alertas_estoque()
+        recentes = dados.movimentos_recentes(30)
+        return render_template("estoque.html", aba="estoque",
+                               alertas=alertas, recentes=recentes,
+                               rotulos_motivo=dados.ROTULOS_MOTIVO,
+                               cores=dados.CORES)
+
+    @app.route("/estoque/<tipo>/<int:id_>/movimentos")
+    @auth.exige_perfil("admin", "operacao")
+    def movimentos_item(tipo, id_):
+        if tipo not in ("filamento", "insumo", "produto"):
+            abort(404)
+        nome = dados.nome_do_item(tipo, id_)
+        if not nome:
+            abort(404)
+        movs = dados.movimentos_do_item(tipo, id_, 100)
+        saldo = dados.saldo_pelos_movimentos(tipo, id_)
+        return render_template("movimentos.html", aba="estoque",
+                               tipo=tipo, alvo_id=id_, nome=nome,
+                               movimentos=movs, saldo=saldo,
+                               rotulos_motivo=dados.ROTULOS_MOTIVO)
+
+    @app.route("/estoque/<tipo>/<int:id_>/ajustar", methods=["POST"])
+    @auth.exige_perfil("admin", "operacao")
+    def ajustar_estoque(tipo, id_):
+        if tipo not in ("filamento", "insumo", "produto"):
+            abort(404)
+        try:
+            qtd = float(request.form.get("quantidade", 0))
+        except (ValueError, TypeError):
+            qtd = 0
+        obs = request.form.get("observacao", "")
+        try:
+            dados.ajustar_estoque(tipo, id_, qtd, obs, session.get("usuario", ""))
+        except ValueError:
+            pass
+        return redirect(url_for("movimentos_item", tipo=tipo, id_=id_))
 
     # ------------------------------------------------------------- cadastros
     @app.route("/filamentos")

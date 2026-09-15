@@ -571,6 +571,21 @@ dl.numeros .destaque dd{font-size:20px;font-weight:600;color:var(--azul)}
   display:inline-block;width:14px;height:14px;border-radius:50%;
   border:1px solid var(--linha-forte);vertical-align:middle;flex-shrink:0;
 }
+
+/* ---------- estoque ---------- */
+.alerta-estoque{padding:16px}
+.subtitulo-estoque{font-size:15px;font-weight:600;margin:0 0 12px}
+.tipo-alerta{font-size:13px;font-weight:600;color:var(--suave);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.5px}
+.tipo-alerta:first-of-type{margin-top:0}
+.lista-alertas{display:flex;flex-direction:column;gap:2px}
+.item-alerta{
+  display:flex;align-items:center;gap:10px;padding:6px 8px;
+  border-radius:4px;text-decoration:none;color:inherit;font-size:14.5px;
+}
+.item-alerta:hover{background:var(--bancada)}
+.item-alerta .cresce{flex:1 1 auto}
+.entrada{color:var(--verde);font-weight:600}
+.saida{color:var(--vermelho);font-weight:600}
 .recado.erro{
   border-left:3px solid var(--vermelho);background:var(--vermelho-fundo);
   color:var(--vermelho);padding:11px 14px;border-radius:0 4px 4px 0;margin-bottom:14px;

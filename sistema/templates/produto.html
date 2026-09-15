@@ -15,6 +15,7 @@
   {% set erros_custo = campo_erro == 'preco' %}
   {% set erros_volume = campo_erro in ('dimensao_x', 'dimensao_y', 'margem_volume', 'taxa_setup', 'preco_fixo') %}
   {% set erros_variacoes = campo_erro in ('variacao_filamento_id', 'variacao_sku', 'variacao_nome') %}
+  {% set erros_estoque = campo_erro == 'estoque_minimo' %}
   {% set erros_publicacao = campo_erro == 'situacao' %}
 
   <form method="post" id="form-produto" data-avisar>
@@ -298,6 +299,31 @@
         {% else %}
           <p class="nota">Salve o produto primeiro para adicionar variações.</p>
         {% endif %}
+      </div>
+    </details>
+
+    <details class="secao-produto" id="sec-estoque" {{ 'open' if erros_estoque or (atual and atual.id and atual.estoque) }}>
+      <summary>Estoque</summary>
+      <div class="conteudo-secao">
+        {% if atual and atual.id %}
+        <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+          <div>
+            <span class="fraco">Em estoque</span>
+            <div class="mono {{ 'alerta' if atual.estoque_minimo and atual.estoque|default(0) <= atual.estoque_minimo }}"
+                 style="font-size:1.3em;font-weight:600">{{ atual.estoque|default(0)|round|int }} un</div>
+          </div>
+          <a class="botao vazado" href="{{ url_for('movimentos_item', tipo='produto', id_=atual.id) }}">Ver movimentações</a>
+        </div>
+        {% endif %}
+        <label class="campo{{ ' com-erro' if campo_erro == 'estoque_minimo' }}" id="campo-estoque_minimo" style="max-width:200px">
+          <span>Estoque mínimo</span>
+          <input name="estoque_minimo" type="number" step="1" min="0"
+                 value="{{ atual.estoque_minimo|round|int if atual and atual.estoque_minimo else '' }}"
+                 inputmode="numeric" placeholder="0">
+        {% if campo_erro == 'estoque_minimo' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+        <p class="nota">Abaixo do mínimo, o produto aparece em alerta na tela de Estoque.
+        {% if not atual or not atual.id %}O saldo é ajustado pela tela de movimentações, depois de salvar o produto.{% endif %}</p>
       </div>
     </details>
 

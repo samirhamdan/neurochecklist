@@ -63,6 +63,7 @@ SECOES = [
     ("sec-volume", "Preço por volume"),
     ("sec-insumos", "Insumos da peça"),
     ("sec-variacoes", "Variações"),
+    ("sec-estoque", "Estoque"),
     ("sec-publicacao", "Publicação"),
 ]
 

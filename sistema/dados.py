@@ -631,6 +631,23 @@ def _migrar(conn: sqlite3.Connection) -> None:
         conn.execute("UPDATE produtos SET situacao = 'publicado'"
                      " WHERE catalogo = 1")
 
+    # P6: estoque de produto acabado — quantas unidades prontas na prateleira.
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
+    for coluna, tipo in (("estoque", "REAL NOT NULL DEFAULT 0"),
+                         ("estoque_minimo", "REAL NOT NULL DEFAULT 0")):
+        if coluna not in colunas:
+            conn.execute(f"ALTER TABLE produtos ADD COLUMN {coluna} {tipo}")
+    # Movimento inicial do estoque de produto (mesmo padrao de filamentos/insumos).
+    sem_inicial_prod = conn.execute(
+        "SELECT id, criado_em, criado_por FROM produtos t"
+        " WHERE NOT EXISTS (SELECT 1 FROM movimentos m WHERE m.tipo = 'produto'"
+        " AND m.alvo_id = t.id AND m.motivo = 'inicial')").fetchall()
+    for linha in sem_inicial_prod:
+        conn.execute(
+            "INSERT INTO movimentos (tipo, alvo_id, quantidade, motivo, criado_em,"
+            " criado_por) VALUES ('produto', ?, 0, 'inicial', ?, ?)",
+            (linha["id"], linha["criado_em"] or agora(), linha["criado_por"] or "migracao"))
+
     if "produto_fotos" not in tabelas:
         conn.execute(
             "CREATE TABLE IF NOT EXISTS produto_fotos ("
@@ -1402,6 +1419,7 @@ def campos_produto(dados: dict) -> dict:
         preco_fixo=_numero(dados.get("preco_fixo")) or None,
         catalogo=1 if dados.get("catalogo", "") in (1, "1", "on") else 0,
         situacao=dados.get("situacao", "rascunho") if dados.get("situacao") in SITUACOES_PRODUTO else "rascunho",
+        estoque_minimo=_numero(dados.get("estoque_minimo")) or 0,
     )
 
 
@@ -2105,7 +2123,8 @@ def mudar_situacao(id_: int, situacao: str, autor: str) -> None:
 # devolve o material sem precisar adivinhar quanto foi tirado, e o relatorio
 # de filamento gasto (sprint 7) sai de graca.
 
-CAMPO_SALDO = {"filamento": ("filamentos", "gramas"), "insumo": ("insumos", "quantidade")}
+CAMPO_SALDO = {"filamento": ("filamentos", "gramas"), "insumo": ("insumos", "quantidade"),
+                "produto": ("produtos", "estoque")}
 
 
 def _lancar(conn, tipo: str, alvo_id: int, quantidade: float, motivo: str,
@@ -2129,6 +2148,92 @@ def saldo_pelos_movimentos(tipo: str, alvo_id: int) -> float:
             "SELECT COALESCE(SUM(quantidade), 0) AS s FROM movimentos"
             " WHERE tipo = ? AND alvo_id = ?", (tipo, alvo_id)).fetchone()
     return round(float(linha["s"]), 4)
+
+
+ROTULOS_MOTIVO = {
+    "inicial": "Saldo inicial",
+    "compra": "Compra",
+    "producao": "Produção",
+    "refugo": "Refugo",
+    "ajuste": "Ajuste manual",
+}
+
+
+def movimentos_do_item(tipo: str, alvo_id: int, limite: int = 50) -> list[dict]:
+    with conectar() as conn:
+        linhas = conn.execute(
+            "SELECT * FROM movimentos WHERE tipo = ? AND alvo_id = ?"
+            " ORDER BY id DESC LIMIT ?", (tipo, alvo_id, limite)).fetchall()
+    return [dict(l) for l in linhas]
+
+
+def movimentos_recentes(limite: int = 30) -> list[dict]:
+    with conectar() as conn:
+        linhas = conn.execute(
+            "SELECT m.*,"
+            " CASE m.tipo WHEN 'filamento' THEN f.nome"
+            " WHEN 'insumo' THEN s.nome WHEN 'produto' THEN p.nome END AS nome_item"
+            " FROM movimentos m"
+            " LEFT JOIN filamentos f ON m.tipo = 'filamento' AND f.id = m.alvo_id"
+            " LEFT JOIN insumos s ON m.tipo = 'insumo' AND s.id = m.alvo_id"
+            " LEFT JOIN produtos p ON m.tipo = 'produto' AND p.id = m.alvo_id"
+            " WHERE m.motivo <> 'inicial'"
+            " ORDER BY m.id DESC LIMIT ?", (limite,)).fetchall()
+    return [dict(l) for l in linhas]
+
+
+def alertas_estoque() -> dict:
+    """Tudo que esta abaixo do minimo, separado por tipo."""
+    with conectar() as conn:
+        fils = conn.execute(
+            "SELECT id, nome, cor, gramas AS saldo, minimo"
+            " FROM filamentos WHERE ativo = 1 AND minimo > 0 AND gramas <= minimo"
+            " ORDER BY gramas / minimo").fetchall()
+        ins = conn.execute(
+            "SELECT id, nome, unidade, quantidade AS saldo, minimo"
+            " FROM insumos WHERE ativo = 1 AND minimo > 0 AND quantidade <= minimo"
+            " ORDER BY quantidade / minimo").fetchall()
+        prods = conn.execute(
+            "SELECT id, nome, estoque AS saldo, estoque_minimo AS minimo"
+            " FROM produtos WHERE ativo = 1 AND estoque_minimo > 0"
+            " AND estoque <= estoque_minimo ORDER BY estoque / estoque_minimo"
+        ).fetchall()
+    return {
+        "filamentos": [dict(f) for f in fils],
+        "insumos": [dict(i) for i in ins],
+        "produtos": [dict(p) for p in prods],
+        "total": len(fils) + len(ins) + len(prods),
+    }
+
+
+def ajustar_estoque(tipo: str, alvo_id: int, quantidade: float,
+                    observacao: str, autor: str) -> None:
+    if tipo not in CAMPO_SALDO:
+        raise ValueError(f"tipo desconhecido: {tipo}")
+    if quantidade == 0:
+        raise ErroDeCampo("quantidade", "Quantidade não pode ser zero.")
+    with conectar() as conn:
+        tabela, coluna = CAMPO_SALDO[tipo]
+        existe = conn.execute(f"SELECT 1 FROM {tabela} WHERE id = ?",
+                              (alvo_id,)).fetchone()
+        if not existe:
+            raise ValueError("item nao encontrado")
+        _lancar(conn, tipo, alvo_id, quantidade, "ajuste", autor,
+                observacao=observacao)
+        conn.commit()
+
+
+def nome_do_item(tipo: str, alvo_id: int) -> str | None:
+    campo = {"filamento": ("filamentos", "nome"),
+             "insumo": ("insumos", "nome"),
+             "produto": ("produtos", "nome")}
+    if tipo not in campo:
+        return None
+    tabela, col = campo[tipo]
+    with conectar() as conn:
+        linha = conn.execute(f"SELECT {col} FROM {tabela} WHERE id = ?",
+                             (alvo_id,)).fetchone()
+    return linha[col] if linha else None
 
 
 def _filamento_da_peca(conn, peca) -> int | None:
