@@ -378,18 +378,37 @@ def criar_app() -> Flask:
         param = dados.parametros()
         itens = dados.produtos(False)
         for p in itens:
-            # com_preco: quando o produto tem preco digitado, e ele que manda na
-            # margem e no retorno por hora. Sem isto a coluna Preco mostrava um
-            # numero e a coluna Margem era calculada sobre outro.
             p["conta"] = custo.conta_de_produto(p, param).com_preco(p.get("preco"))
+        ind = {
+            "total": len(itens),
+            "publicados": sum(1 for p in itens if p.get("situacao") == "publicado"),
+            "atencao": sum(1 for p in itens if p["conta"].completo
+                          and p["conta"].nivel_margem() in ("prejuizo", "baixa")),
+            "estoque_baixo": sum(1 for p in itens
+                                if p.get("estoque_minimo")
+                                and (p.get("estoque") or 0) <= p["estoque_minimo"]),
+        }
         busca = request.args.get("q", "")
+        filtro_sit = request.args.get("situacao", "")
+        filtro_fin = request.args.get("financeiro", "")
+        filtro_est = request.args.get("est", "")
+        if filtro_sit:
+            itens = [p for p in itens if p.get("situacao") == filtro_sit]
+        if filtro_fin == "atencao":
+            itens = [p for p in itens if p["conta"].completo
+                     and p["conta"].nivel_margem() in ("prejuizo", "baixa")]
+        if filtro_est == "baixo":
+            itens = [p for p in itens if p.get("estoque_minimo")
+                     and (p.get("estoque") or 0) <= p["estoque_minimo"]]
         itens = listas.filtrar(itens, busca, listas.BUSCA_PRODUTOS)
         ordem, invertido = listas.pedido_da_url(request.args, listas.ORDENS_PRODUTOS)
         itens = listas.ordenar(itens, ordem, invertido, listas.ORDENS_PRODUTOS)
         return render_template("produtos.html", aba="produtos", produtos=itens,
-                               cores=dados.CORES, ordens=listas.ORDENS_PRODUTOS,
+                               ordens=listas.ORDENS_PRODUTOS,
                                ordem=ordem, invertido=invertido, busca=busca,
-                               param=param)
+                               param=param, ind=ind,
+                               filtro_sit=filtro_sit, filtro_fin=filtro_fin,
+                               filtro_est=filtro_est)
 
     @app.route("/produtos/novo", methods=["GET", "POST"])
     @app.route("/produtos/<int:id_>", methods=["GET", "POST"])
@@ -535,6 +554,21 @@ def criar_app() -> Flask:
         except ValueError:
             abort(404)
         return redirect(url_for("editar_produto", id_=novo_id))
+
+    @app.route("/produtos/<int:id_>/publicar", methods=["POST"])
+    @auth.exige_perfil("admin", "operacao")
+    def alternar_publicacao(id_):
+        prod = dados.produto(id_)
+        if not prod:
+            abort(404)
+        if prod["situacao"] == "publicado":
+            dados.alterar_situacao_produto(id_, "pronto")
+        else:
+            try:
+                dados.alterar_situacao_produto(id_, "publicado")
+            except ValueError:
+                return redirect(url_for("editar_produto", id_=id_))
+        return redirect(url_for("lista_produtos"))
 
     @app.route("/fotos/<int:produto_id>/<path:arquivo>")
     @auth.exige_login

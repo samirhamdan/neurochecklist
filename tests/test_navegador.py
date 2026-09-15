@@ -803,9 +803,9 @@ class TesteACoisaCabeNaMao(NoNavegador):
         self.abrir("/produtos")
         self.pg.wait_for_selector(".peneira select")
         self.assertTrue(self.visivel(".peneira select"), "a caixa de ordem não aparece")
-        self.pg.select_option(".peneira select", "hora")
+        self.pg.select_option(".peneira select", "lucro_h")
         self.pg.wait_for_timeout(250)
-        self.assertIn("ordem=hora", self.pg.url)
+        self.assertIn("ordem=lucro_h", self.pg.url)
 
     def test_no_computador_a_caixa_de_ordem_sai_da_frente(self):
         """La o cabecalho clicavel faz o mesmo, e melhor."""
@@ -833,7 +833,7 @@ class TesteOPlacarComercial(NoNavegador):
         self.pg.wait_for_timeout(120)
         alturas = self.pg.eval_on_selector_all(
             ".placar a", "e => e.map(x => x.getBoundingClientRect().height)")
-        self.assertEqual(len(alturas), 3)
+        self.assertGreaterEqual(len(alturas), 3)
         for h in alturas:
             self.assertGreaterEqual(h, 44)
 

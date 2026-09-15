@@ -101,17 +101,15 @@ BUSCA_PEDIDOS = ("cliente", "canal", "id_no_canal")
 
 ORDENS_PRODUTOS = (
     ("nome", "Produto", "nome"),
-    ("filamento", "Filamento", "filamento_nome"),
-    ("impressora", "Impressora", "impressora_nome"),
-    ("gramas", "Peso", "gramas"),
-    ("horas", "Tempo", "horas"),
     ("custo", "Custo", lambda p: p["conta"].custo if p["conta"].completo else None),
     ("preco", "Preço", lambda p: p["conta"].preco),
+    ("lucro", "Lucro", lambda p: p["conta"].margem if p["conta"].completo else None),
     ("margem", "Margem", lambda p: p["conta"].margem_pct if p["conta"].completo else None),
-    ("hora", "R$/h", lambda p: p["conta"].por_hora if p["conta"].completo else None),
+    ("lucro_h", "Lucro/h", lambda p: p["conta"].por_hora if p["conta"].completo else None),
     ("estoque", "Estoque", "estoque"),
+    ("situacao", "Status", "situacao"),
 )
-BUSCA_PRODUTOS = ("nome", "sku", "filamento_nome", "impressora_nome", "categoria")
+BUSCA_PRODUTOS = ("nome", "sku", "categoria")
 
 ORDENS_GERACOES = (
     ("quando", "Quando", "criado_em"),

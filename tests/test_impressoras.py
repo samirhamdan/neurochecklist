@@ -170,12 +170,12 @@ class TesteProdutoComImpressora(Base):
         corpo = self.cliente.get(f"/produtos/{prod_id}").get_data(as_text=True)
         self.assertIn("A1 Mini", corpo)
 
-    def test_lista_produtos_com_impressora(self):
+    def test_editar_produto_mostra_impressora(self):
         imp_id = self.dados.salvar_impressora(
             {"nome": "A1 Mini", "custo_hora": "3.50"}, "samir")
-        self.dados.salvar_produto(
+        prod_id = self.dados.salvar_produto(
             {"nome": "Cubo", "impressora_id": str(imp_id)}, "samir")
-        corpo = self.cliente.get("/produtos").get_data(as_text=True)
+        corpo = self.cliente.get(f"/produtos/{prod_id}").get_data(as_text=True)
         self.assertIn("A1 Mini", corpo)
 
     def test_salvar_produto_com_impressora(self):

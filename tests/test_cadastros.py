@@ -369,7 +369,8 @@ class TesteTelas(unittest.TestCase):
         """
         self.dados.salvar_produto({"nome": "Chaveiro", "gramas": 9, "horas": 0.4}, "samir")
         corpo = self.cliente.get("/produtos").get_data(as_text=True)
-        self.assertTrue("sem filamento" in corpo, "a tela precisa dizer o que falta")
+        self.assertIn("Falta o preço por kg do filamento", corpo,
+                      "a tela precisa dizer o que falta (tooltip do custo)")
         self.assertTrue("93,8" not in corpo, "margem inventada sobre custo incompleto")
         self.assertTrue("R$ 1,54" not in corpo,
                         "custo sem material nao pode aparecer como custo")
@@ -483,3 +484,141 @@ class TesteDoisTempos(unittest.TestCase):
             {"nome": "Chaveiro", "gramas": 9, "horas": 0.4, "minutos": 5,
              "filamento_id": fil}, "samir")
         self.assertEqual(self.dados.produto(pid)["minutos"], 5.0)
+
+
+class TesteListaProdutosP8(unittest.TestCase):
+    """P8 — lista de produtos como central de decisao.
+
+    Indicadores, filtros por URL, menu contextual e publicar/despublicar.
+    """
+
+    def setUp(self):
+        os.environ["MORUMBI_DADOS"] = tempfile.mkdtemp(prefix="morumbi-p8-")
+        os.environ["MORUMBI_USUARIO"] = "samir"
+        os.environ["MORUMBI_SENHA"] = "segredo"
+        os.environ["MORUMBI_BIND"] = "127.0.0.1:5000"
+        os.environ["MORUMBI_HTTPS"] = "0"
+        from sistema import auth, dados
+        importlib.reload(dados)
+        importlib.reload(auth)
+        from sistema import app as modulo
+        importlib.reload(modulo)
+        self.dados = dados
+        self.app = modulo.criar_app()
+        self.app.config["TESTING"] = True
+        self.cliente = self.app.test_client()
+        self.cliente.post("/entrar", data={"usuario": "samir", "senha": "segredo"})
+
+    def _produto_completo(self, nome="Topo", preco="70"):
+        fil = self.dados.salvar_filamento(
+            {"nome": "PLA Preto", "cor": "Preto", "preco_kg": "120"}, "samir")
+        return self.dados.salvar_produto(
+            {"nome": nome, "sku": "TOP-001", "gramas": "85", "horas": "3.4",
+             "filamento_id": str(fil), "preco": preco}, "samir")
+
+    def test_indicadores_aparecem_na_pagina(self):
+        self._produto_completo()
+        corpo = self.cliente.get("/produtos").get_data(as_text=True)
+        self.assertIn('id="ind-total"', corpo)
+        self.assertIn('id="ind-publicados"', corpo)
+        self.assertIn('id="ind-atencao"', corpo)
+        self.assertIn('id="ind-estoque"', corpo)
+
+    def test_indicador_conta_publicados(self):
+        pid = self._produto_completo()
+        self.dados.alterar_situacao_produto(pid, "publicado")
+        corpo = self.cliente.get("/produtos").get_data(as_text=True)
+        self.assertIn('id="ind-publicados"', corpo)
+        self.assertIn('>1<', corpo)
+
+    def test_indicador_atencao_financeira(self):
+        self._produto_completo(preco="5")
+        corpo = self.cliente.get("/produtos").get_data(as_text=True)
+        self.assertIn("atencao-financeira", corpo)
+
+    def test_filtro_situacao_mostra_so_publicados(self):
+        pid = self._produto_completo(nome="Pub")
+        self.dados.alterar_situacao_produto(pid, "publicado")
+        self.dados.salvar_produto({"nome": "Rasc"}, "samir")
+        corpo = self.cliente.get("/produtos?situacao=publicado").get_data(as_text=True)
+        self.assertIn("Pub", corpo)
+        self.assertNotIn("Rasc", corpo)
+
+    def test_filtro_financeiro_mostra_so_em_atencao(self):
+        fil = self.dados.salvar_filamento(
+            {"nome": "PLA Preto", "cor": "Preto", "preco_kg": "120"}, "samir")
+        self.dados.salvar_produto(
+            {"nome": "Barato", "gramas": "85", "horas": "3.4",
+             "filamento_id": str(fil), "preco": "5"}, "samir")
+        self.dados.salvar_produto(
+            {"nome": "Caro", "gramas": "85", "horas": "3.4",
+             "filamento_id": str(fil), "preco": "200"}, "samir")
+        corpo = self.cliente.get("/produtos?financeiro=atencao").get_data(as_text=True)
+        self.assertIn("Barato", corpo)
+        self.assertNotIn("Caro", corpo)
+
+    def test_filtros_ativos_mostra_limpar(self):
+        self._produto_completo()
+        corpo = self.cliente.get("/produtos?situacao=publicado").get_data(as_text=True)
+        self.assertIn("Limpar filtros", corpo)
+
+    def test_sem_filtro_nao_mostra_limpar(self):
+        self._produto_completo()
+        corpo = self.cliente.get("/produtos").get_data(as_text=True)
+        self.assertNotIn("Limpar filtros", corpo)
+
+    def test_menu_contextual_presente(self):
+        self._produto_completo()
+        corpo = self.cliente.get("/produtos").get_data(as_text=True)
+        self.assertIn("menu-ctx", corpo)
+        self.assertIn("Editar", corpo)
+        self.assertIn("Duplicar", corpo)
+        self.assertIn("Publicar", corpo)
+
+    def test_linha_clicavel_tem_data_href(self):
+        pid = self._produto_completo()
+        corpo = self.cliente.get("/produtos").get_data(as_text=True)
+        self.assertIn(f'data-href="/produtos/{pid}"', corpo)
+
+    def test_alternar_publicacao_publica(self):
+        pid = self._produto_completo()
+        self.dados.alterar_situacao_produto(pid, "pronto")
+        r = self.cliente.post(f"/produtos/{pid}/publicar", follow_redirects=True)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self.dados.produto(pid)["situacao"], "publicado")
+
+    def test_alternar_publicacao_despublica(self):
+        pid = self._produto_completo()
+        self.dados.alterar_situacao_produto(pid, "publicado")
+        r = self.cliente.post(f"/produtos/{pid}/publicar", follow_redirects=True)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self.dados.produto(pid)["situacao"], "pronto")
+
+    def test_publicar_sem_sku_redireciona_para_edicao(self):
+        pid = self.dados.salvar_produto({"nome": "Sem SKU"}, "samir")
+        r = self.cliente.post(f"/produtos/{pid}/publicar")
+        self.assertEqual(r.status_code, 302)
+        self.assertIn(f"/produtos/{pid}", r.headers["Location"])
+
+    def test_alerta_prejuizo_aparece_na_lista(self):
+        self._produto_completo(preco="5")
+        corpo = self.cliente.get("/produtos").get_data(as_text=True)
+        self.assertIn("alerta-inline", corpo)
+
+    def test_coluna_lucro_aparece(self):
+        self._produto_completo()
+        corpo = self.cliente.get("/produtos").get_data(as_text=True)
+        self.assertIn('data-rotulo="Lucro"', corpo)
+
+    def test_coluna_status_aparece(self):
+        self._produto_completo()
+        corpo = self.cliente.get("/produtos").get_data(as_text=True)
+        self.assertIn('data-rotulo="Status"', corpo)
+
+    def test_colunas_removidas_nao_aparecem(self):
+        self._produto_completo()
+        corpo = self.cliente.get("/produtos").get_data(as_text=True)
+        self.assertNotIn('data-rotulo="Filamento"', corpo)
+        self.assertNotIn('data-rotulo="Impressora"', corpo)
+        self.assertNotIn('data-rotulo="Peso"', corpo)
+        self.assertNotIn('data-rotulo="Tempo"', corpo)

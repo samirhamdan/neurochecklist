@@ -1487,6 +1487,22 @@ def produtos_catalogo() -> list[dict]:
     return resultado
 
 
+def alterar_situacao_produto(id_: int, nova_situacao: str) -> None:
+    if nova_situacao not in SITUACOES_PRODUTO:
+        raise ValueError(f"Situação inválida: {nova_situacao}")
+    if nova_situacao == "publicado":
+        prod = produto(id_)
+        if not prod:
+            raise ValueError("Produto não encontrado.")
+        validar_publicacao(campos_produto(prod))
+        _validar_variacoes_publicacao(id_)
+    with conectar() as conn:
+        catalogo = 1 if nova_situacao == "publicado" else 0
+        conn.execute("UPDATE produtos SET situacao = ?, catalogo = ? WHERE id = ?",
+                     (nova_situacao, catalogo, id_))
+        conn.commit()
+
+
 def duplicar_produto(id_: int, autor: str) -> int:
     """Cria uma cópia do produto, voltando ao rascunho."""
     original = produto(id_)

@@ -200,7 +200,7 @@ class TesteOrdenarNaTela(Base):
 
     def test_ordenar_por_retorno_por_hora(self):
         """O numero do U2, agora ordenavel: qual peca paga melhor a hora."""
-        valores = self.valores("/produtos?ordem=hora&dir=desc", "R$/h")
+        valores = self.valores("/produtos?ordem=lucro_h&dir=desc", "Lucro/h")
         self.assertEqual(valores[0], "R$ 51,23")
 
     def test_os_dois_jeitos_de_ordenar_oferecem_as_mesmas_ordens(self):

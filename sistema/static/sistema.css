@@ -463,6 +463,32 @@ tr.inativo td{opacity:.55}
 .etiqueta.cinza{background:var(--bancada);color:var(--suave);border:1px solid var(--linha)}
 .etiqueta.vermelha{background:var(--vermelho-fundo);color:var(--vermelho)}
 
+/* ---------- P8: lista de produtos como central de decisao ---------- */
+.placar-produtos{margin-bottom:12px}
+.placar-produtos a.atencao-financeira{border-left-color:var(--ambar)}
+.placar-produtos a.estoque-critico{border-left-color:var(--laranja-escuro)}
+.filtros-ativos{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.limpar-filtros{font-size:13px}
+.linha-produto:hover{background:var(--bancada)}
+.nome-produto{font-weight:600}
+.sku-produto{display:block;font-size:12px;margin-left:0;margin-top:2px}
+.alerta-inline{color:var(--vermelho);font-weight:700;font-size:11px;cursor:help}
+.atencao-inline{color:var(--ambar);font-weight:700;font-size:11px;cursor:help;
+  display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;
+  border-radius:50%;background:var(--ambar-fundo)}
+.tabela-produtos td.acao{width:40px;text-align:center;position:relative}
+.botao-menu{background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;
+  color:var(--suave);border-radius:4px;min-height:44px;min-width:44px}
+.botao-menu:hover{background:var(--bancada);color:var(--tinta)}
+.menu-ctx{position:absolute;right:8px;top:100%;background:var(--mesa);
+  border:1px solid var(--linha);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15);
+  z-index:10;min-width:160px;padding:4px 0}
+.menu-ctx a,.menu-ctx button{display:block;width:100%;text-align:left;padding:8px 14px;
+  background:none;border:none;font:inherit;color:var(--tinta);cursor:pointer;
+  text-decoration:none;font-size:14px}
+.menu-ctx a:hover,.menu-ctx button:hover{background:var(--bancada)}
+form.inline{margin:0;padding:0}
+
 /* ---------- formularios ---------- */
 .formulario{display:flex;flex-direction:column;gap:14px}
 .linha{display:flex;gap:14px;flex-wrap:wrap}
