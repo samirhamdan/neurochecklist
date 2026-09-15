@@ -39,6 +39,7 @@
             {% if p.situacao == 'publicado' %}<span class="etiqueta verde">Publicado</span>
             {% elif p.situacao == 'pronto' %}<span class="etiqueta azul">Pronto</span>
             {% else %}<span class="etiqueta cinza">Rascunho</span>{% endif %}
+            {% if p.num_variacoes %}<span class="etiqueta">{{ p.num_variacoes }} var.</span>{% endif %}
           </td>
           <td data-rotulo="Filamento">
             {% if p.filamento_nome %}

@@ -363,10 +363,17 @@ def criar_app() -> Flask:
                 novo_id = dados.salvar_produto(request.form, session.get("usuario", ""),
                                                id_, vinculos)
             except ValueError as erro:
+                form_data = dados.campos_produto(request.form)
+                if id_:
+                    form_data["id"] = id_
+                    form_data["variacoes"] = dados.variacoes_do_produto(id_)
+                    prod_orig = dados.produto(id_)
+                    form_data["insumos"] = prod_orig.get("insumos", []) if prod_orig else []
+                fotos_err = dados.fotos_produto(id_) if id_ else []
                 return render_template(
                     "produto.html", aba="produtos", **_erro(erro), param=param,
-                    atual=dados.campos_produto(request.form),
-                    filamentos=dados.filamentos(), insumos=dados.insumos(),
+                    atual=form_data, filamentos=dados.filamentos(),
+                    insumos=dados.insumos(), fotos=fotos_err,
                     impressoras_lista=dados.impressoras(),
                     situacoes=dados.SITUACOES_PRODUTO,
                     rotulos_situacao=dados.ROTULOS_SITUACAO), 400
@@ -447,6 +454,35 @@ def criar_app() -> Flask:
         if caminho.exists():
             caminho.unlink()
         return {"ok": True}, 200
+
+    @app.route("/produtos/<int:id_>/variacoes", methods=["POST"])
+    @auth.exige_perfil("admin", "operacao")
+    def adicionar_variacao(id_):
+        prod = dados.produto(id_)
+        if not prod:
+            abort(404)
+        try:
+            dados.salvar_variacao(id_, request.form, session.get("usuario", ""))
+        except ValueError as erro:
+            param = dados.parametros()
+            conta = custo.conta_de_produto(prod, param)
+            fotos = dados.fotos_produto(id_)
+            return render_template(
+                "produto.html", aba="produtos", **_erro(erro), param=param,
+                atual=prod, conta=conta, filamentos=dados.filamentos(),
+                insumos=dados.insumos(), fotos=fotos,
+                impressoras_lista=dados.impressoras(),
+                situacoes=dados.SITUACOES_PRODUTO,
+                rotulos_situacao=dados.ROTULOS_SITUACAO), 400
+        return redirect(url_for("editar_produto", id_=id_))
+
+    @app.route("/produtos/<int:id_>/variacoes/<int:var_id>/excluir", methods=["POST"])
+    @auth.exige_perfil("admin", "operacao")
+    def excluir_variacao(id_, var_id):
+        if not dados.produto(id_):
+            abort(404)
+        dados.excluir_variacao(var_id, id_)
+        return redirect(url_for("editar_produto", id_=id_))
 
     @app.route("/produtos/<int:id_>/duplicar", methods=["POST"])
     @auth.exige_perfil("admin", "operacao")

@@ -127,6 +127,19 @@ CREATE TABLE IF NOT EXISTS produto_insumos (
     PRIMARY KEY (produto_id, insumo_id)
 );
 
+CREATE TABLE IF NOT EXISTS variacoes (
+    id          INTEGER PRIMARY KEY,
+    produto_id  INTEGER NOT NULL REFERENCES produtos (id) ON DELETE CASCADE,
+    filamento_id INTEGER REFERENCES filamentos (id),
+    nome        TEXT NOT NULL DEFAULT '',
+    sku         TEXT,
+    preco_ajuste REAL,
+    ativo       INTEGER NOT NULL DEFAULT 1,
+    criado_em   TEXT NOT NULL,
+    criado_por  TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS ix_variacoes_produto ON variacoes (produto_id);
+
 CREATE TABLE IF NOT EXISTS compras (
     id         INTEGER PRIMARY KEY,
     data       TEXT NOT NULL,
@@ -645,6 +658,22 @@ def _migrar(conn: sqlite3.Connection) -> None:
             " criado_por TEXT NOT NULL DEFAULT '')")
         conn.execute("CREATE INDEX IF NOT EXISTS ix_cliente_hist"
                      " ON cliente_historico (cliente_id)")
+
+    # P5: variações de produto.
+    if "variacoes" not in tabelas:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS variacoes ("
+            " id INTEGER PRIMARY KEY,"
+            " produto_id INTEGER NOT NULL REFERENCES produtos (id) ON DELETE CASCADE,"
+            " filamento_id INTEGER REFERENCES filamentos (id),"
+            " nome TEXT NOT NULL DEFAULT '',"
+            " sku TEXT,"
+            " preco_ajuste REAL,"
+            " ativo INTEGER NOT NULL DEFAULT 1,"
+            " criado_em TEXT NOT NULL,"
+            " criado_por TEXT NOT NULL DEFAULT '')")
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_variacoes_produto"
+                     " ON variacoes (produto_id)")
 
     if not conn.execute("SELECT 1 FROM empresa WHERE id = 1").fetchone():
         conn.execute("INSERT INTO empresa (id, atualizado_em) VALUES (1, ?)", (agora(),))
@@ -1310,7 +1339,9 @@ def produtos(so_ativos: bool = True) -> list[dict]:
         linhas = conn.execute(
             "SELECT p.*, f.nome AS filamento_nome, f.cor AS filamento_cor,"
             " f.preco_kg AS filamento_preco_kg,"
-            " i.nome AS impressora_nome, i.custo_hora AS impressora_custo_hora"
+            " i.nome AS impressora_nome, i.custo_hora AS impressora_custo_hora,"
+            " (SELECT COUNT(*) FROM variacoes v"
+            "  WHERE v.produto_id = p.id AND v.ativo = 1) AS num_variacoes"
             " FROM produtos p LEFT JOIN filamentos f ON f.id = p.filamento_id"
             " LEFT JOIN impressoras i ON i.id = p.impressora_id"
             f" {onde} ORDER BY p.nome").fetchall()
@@ -1332,8 +1363,15 @@ def produto(id_: int) -> dict | None:
             "SELECT i.id, i.nome, i.unidade, i.valor_unit, pi.quantidade"
             " FROM produto_insumos pi JOIN insumos i ON i.id = pi.insumo_id"
             " WHERE pi.produto_id = ? ORDER BY i.nome", (id_,)).fetchall()
+        variacoes = conn.execute(
+            "SELECT v.*, f.nome AS filamento_nome, f.cor AS filamento_cor,"
+            " f.preco_kg AS filamento_preco_kg"
+            " FROM variacoes v LEFT JOIN filamentos f ON f.id = v.filamento_id"
+            " WHERE v.produto_id = ? ORDER BY v.nome, v.id",
+            (id_,)).fetchall()
     dados = dict(linha)
     dados["insumos"] = [dict(v) for v in vinculos]
+    dados["variacoes"] = [dict(v) for v in variacoes]
     return dados
 
 
@@ -1390,6 +1428,8 @@ def salvar_produto(dados: dict, autor: str, id_: int | None = None,
     if campos["situacao"] == "publicado":
         validar_publicacao(campos)
         campos["catalogo"] = 1
+        if id_:
+            _validar_variacoes_publicacao(id_)
     colunas = ", ".join(f"{c}=:{c}" for c in campos)
     with conectar() as conn:
         if id_:
@@ -1452,14 +1492,38 @@ def produtos_catalogo() -> list[dict]:
     with conectar() as conn:
         linhas = conn.execute(
             "SELECT p.id, p.nome, p.sku, p.categoria, p.preco, p.gramas, p.horas,"
-            " p.observacao, f.cor AS filamento_cor"
+            " p.observacao, f.cor AS filamento_cor, f.nome AS filamento_nome"
             " FROM produtos p LEFT JOIN filamentos f ON f.id = p.filamento_id"
             " WHERE p.catalogo = 1 AND p.ativo = 1 ORDER BY p.nome").fetchall()
+        ids_catalogo = [l["id"] for l in linhas]
+        variacoes_map: dict[int, list[dict]] = {}
+        if ids_catalogo:
+            marcadores = ",".join("?" for _ in ids_catalogo)
+            vars_all = conn.execute(
+                "SELECT v.*, f.nome AS filamento_nome, f.cor AS filamento_cor"
+                " FROM variacoes v LEFT JOIN filamentos f ON f.id = v.filamento_id"
+                " WHERE v.produto_id IN ({}) AND v.ativo = 1"
+                " ORDER BY v.nome, v.id".format(marcadores),
+                ids_catalogo).fetchall()
+            for v in vars_all:
+                variacoes_map.setdefault(v["produto_id"], []).append(dict(v))
     resultado = []
     for l in linhas:
         d = dict(l)
         d["fotos"] = fotos_produto(d["id"])
-        resultado.append(d)
+        vars_produto = variacoes_map.get(d["id"], [])
+        if vars_produto:
+            for v in vars_produto:
+                item = dict(d)
+                item["variacao_id"] = v["id"]
+                item["nome"] = d["nome"] + " — " + (v["nome"] or v["filamento_nome"] or "")
+                item["sku"] = v["sku"] or d["sku"]
+                item["filamento_cor"] = v["filamento_cor"]
+                if v["preco_ajuste"]:
+                    item["preco"] = v["preco_ajuste"]
+                resultado.append(item)
+        else:
+            resultado.append(d)
     return resultado
 
 
@@ -1496,7 +1560,82 @@ def duplicar_produto(id_: int, autor: str) -> int:
         "situacao": "rascunho",
     }
     vinculos = [(v["id"], v["quantidade"]) for v in original.get("insumos", [])]
-    return salvar_produto(copia, autor, vinculos=vinculos)
+    novo_id = salvar_produto(copia, autor, vinculos=vinculos)
+    with conectar() as conn:
+        vars_orig = conn.execute(
+            "SELECT * FROM variacoes WHERE produto_id = ?", (id_,)).fetchall()
+        for v in vars_orig:
+            conn.execute(
+                "INSERT INTO variacoes (produto_id, filamento_id, nome, sku,"
+                " preco_ajuste, ativo, criado_em, criado_por)"
+                " VALUES (?, ?, ?, NULL, ?, ?, ?, ?)",
+                (novo_id, v["filamento_id"], v["nome"],
+                 v["preco_ajuste"], v["ativo"], agora(), autor))
+        conn.commit()
+    return novo_id
+
+
+# --------------------------------------------------------- variações
+
+def variacoes_do_produto(produto_id: int) -> list[dict]:
+    with conectar() as conn:
+        linhas = conn.execute(
+            "SELECT v.*, f.nome AS filamento_nome, f.cor AS filamento_cor,"
+            " f.preco_kg AS filamento_preco_kg"
+            " FROM variacoes v LEFT JOIN filamentos f ON f.id = v.filamento_id"
+            " WHERE v.produto_id = ? ORDER BY v.nome, v.id",
+            (produto_id,)).fetchall()
+    return [dict(l) for l in linhas]
+
+
+def salvar_variacao(produto_id: int, dados_form: dict, autor: str) -> int:
+    nome = _limpo(dados_form.get("variacao_nome"))
+    filamento_id = (int(dados_form["variacao_filamento_id"])
+                    if _limpo(dados_form.get("variacao_filamento_id")) else None)
+    sku = _limpo(dados_form.get("variacao_sku")) or None
+    preco_ajuste = _numero(dados_form.get("variacao_preco")) or None
+    if not filamento_id:
+        raise ErroDeCampo("variacao_filamento_id",
+                          "Escolha o filamento da variação.")
+    with conectar() as conn:
+        if not conn.execute("SELECT 1 FROM produtos WHERE id = ?",
+                            (produto_id,)).fetchone():
+            raise ValueError("Produto não encontrado.")
+        cur = conn.execute(
+            "INSERT INTO variacoes (produto_id, filamento_id, nome, sku,"
+            " preco_ajuste, ativo, criado_em, criado_por)"
+            " VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
+            (produto_id, filamento_id, nome, sku, preco_ajuste,
+             agora(), autor))
+        conn.commit()
+    return int(cur.lastrowid)
+
+
+def excluir_variacao(variacao_id: int, produto_id: int) -> None:
+    with conectar() as conn:
+        conn.execute("DELETE FROM variacoes WHERE id = ? AND produto_id = ?",
+                     (variacao_id, produto_id))
+        conn.commit()
+
+
+def _validar_variacoes_publicacao(produto_id: int) -> None:
+    with conectar() as conn:
+        variacoes = conn.execute(
+            "SELECT * FROM variacoes WHERE produto_id = ? AND ativo = 1",
+            (produto_id,)).fetchall()
+    for v in variacoes:
+        if not v["filamento_id"]:
+            raise ErroDeCampo("variacao_filamento_id",
+                              "Variação \"{}\" precisa de filamento.".format(
+                                  v["nome"] or "(sem nome)"))
+        if not v["sku"]:
+            raise ErroDeCampo("variacao_sku",
+                              "Variação \"{}\" precisa de SKU para publicar.".format(
+                                  v["nome"] or "(sem nome)"))
+    skus = [v["sku"] for v in variacoes if v["sku"]]
+    if len(skus) != len(set(skus)):
+        raise ErroDeCampo("variacao_sku",
+                          "As variações têm SKUs duplicados.")
 
 
 # ------------------------------------------------------------ clientes

@@ -62,6 +62,7 @@ SECOES = [
     ("sec-custo", "Custo e preço"),
     ("sec-volume", "Preço por volume"),
     ("sec-insumos", "Insumos da peça"),
+    ("sec-variacoes", "Variações"),
     ("sec-publicacao", "Publicação"),
 ]
 
@@ -69,14 +70,14 @@ SECOES = [
 class TesteSecoesPresentes(Base):
     """Cada seção tem um <details> com id e um <summary> com o título."""
 
-    def test_produto_novo_tem_seis_secoes(self):
+    def test_produto_novo_tem_todas_as_secoes(self):
         html = self._html_produto()
         for sec_id, titulo in SECOES:
             with self.subTest(secao=sec_id):
                 self.assertIn(f'id="{sec_id}"', html)
                 self.assertIn(titulo, html)
 
-    def test_produto_existente_tem_seis_secoes(self):
+    def test_produto_existente_tem_todas_as_secoes(self):
         fil_id = self._criar_filamento()
         prod_id = self._produto_completo(fil_id)
         html = self._html_produto(prod_id)

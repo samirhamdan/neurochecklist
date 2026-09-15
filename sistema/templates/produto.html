@@ -14,6 +14,7 @@
   {% set erros_medidas = campo_erro in ('minutos', 'gramas', 'horas', 'caixa_x', 'caixa_y', 'caixa_z') %}
   {% set erros_custo = campo_erro == 'preco' %}
   {% set erros_volume = campo_erro in ('dimensao_x', 'dimensao_y', 'margem_volume', 'taxa_setup', 'preco_fixo') %}
+  {% set erros_variacoes = campo_erro in ('variacao_filamento_id', 'variacao_sku', 'variacao_nome') %}
   {% set erros_publicacao = campo_erro == 'situacao' %}
 
   <form method="post" id="form-produto" data-avisar>
@@ -237,6 +238,65 @@
         {% else %}
           <p class="nota">Nenhum insumo cadastrado ainda.
           <a href="{{ url_for('editar_insumo') }}">Cadastrar um</a>.</p>
+        {% endif %}
+      </div>
+    </details>
+
+    <details class="secao-produto" id="sec-variacoes" {{ 'open' if erros_variacoes or (atual and atual.id and atual.variacoes) }}>
+      <summary>Variações</summary>
+      <div class="conteudo-secao">
+        {% if atual and atual.id %}
+          {% if atual.variacoes %}
+          <div class="lista-variacoes">
+            {% for v in atual.variacoes %}
+            <div class="linha-variacao">
+              <span class="cresce">
+                {% if v.filamento_cor %}<span class="cor-amostra" style="background:{{ v.filamento_cor }}"></span>{% endif %}
+                {{ v.nome or v.filamento_nome or '(sem nome)' }}
+                {% if v.sku %}<span class="fraco">· {{ v.sku }}</span>{% endif %}
+                {% if v.preco_ajuste %}<span class="fraco">· {{ v.preco_ajuste|dinheiro }}</span>{% endif %}
+              </span>
+              <form method="post" action="{{ url_for('excluir_variacao', id_=atual.id, var_id=v.id) }}" style="display:inline">
+                <button type="submit" class="botao vazado perigoso" title="Excluir variação">Excluir</button>
+              </form>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <div style="margin-top:12px;padding:12px;background:var(--bancada);border-radius:4px">
+            <p style="margin:0 0 8px;font-weight:500;font-size:13.5px">Adicionar variação</p>
+            <form method="post" action="{{ url_for('adicionar_variacao', id_=atual.id) }}">
+              <div class="linha">
+                <label class="campo cresce{{ ' com-erro' if campo_erro == 'variacao_filamento_id' }}" id="campo-variacao_filamento_id"><span>Filamento</span>
+                  <select name="variacao_filamento_id">
+                    <option value="">Escolha o filamento</option>
+                    {% for f in filamentos %}
+                    <option value="{{ f.id }}">{{ f.nome }}{% if f.preco_kg %} — {{ f.preco_kg|dinheiro }}/kg{% endif %}</option>
+                    {% endfor %}
+                  </select>
+                {% if campo_erro == 'variacao_filamento_id' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+                </label>
+                <label class="campo{{ ' com-erro' if campo_erro == 'variacao_nome' }}" id="campo-variacao_nome"><span>Nome (opcional)</span>
+                  <input name="variacao_nome" maxlength="60" placeholder="Ex: Rosa, Azul turquesa">
+                {% if campo_erro == 'variacao_nome' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+                </label>
+              </div>
+              <div class="linha">
+                <label class="campo{{ ' com-erro' if campo_erro == 'variacao_sku' }}" id="campo-variacao_sku"><span>SKU</span>
+                  <input name="variacao_sku" maxlength="30" placeholder="M3D-TB-001-RS">
+                {% if campo_erro == 'variacao_sku' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+                </label>
+                <label class="campo" id="campo-variacao_preco"><span>Preço ajustado (opcional)</span>
+                  <input name="variacao_preco" type="number" step="0.01" min="0" placeholder="deixe vazio para usar o preço do produto" inputmode="decimal">
+                </label>
+              </div>
+              <button class="botao vazado" type="submit" style="margin-top:8px">Adicionar</button>
+            </form>
+          </div>
+          <p class="nota" style="margin-top:8px">Cada variação é uma cor de filamento diferente do mesmo produto.
+          Para publicar, todas precisam de filamento e SKU.</p>
+        {% else %}
+          <p class="nota">Salve o produto primeiro para adicionar variações.</p>
         {% endif %}
       </div>
     </details>
