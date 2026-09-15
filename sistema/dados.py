@@ -29,27 +29,42 @@ ESQUEMA = """
 CREATE TABLE IF NOT EXISTS pedidos (
     id          INTEGER PRIMARY KEY,
     cliente     TEXT NOT NULL,
+    cliente_id  INTEGER,
     canal       TEXT NOT NULL DEFAULT '',
+    id_no_canal TEXT,
     prazo       TEXT,
     valor       REAL,
-    status      TEXT NOT NULL DEFAULT 'novo',
+    desconto    REAL NOT NULL DEFAULT 0,
+    comissao    REAL,
+    valor_liquido REAL,
+    status      TEXT NOT NULL DEFAULT 'orcamento',
     observacao  TEXT DEFAULT '',
-    criado_em   TEXT NOT NULL
+    token       TEXT,
+    token_expira TEXT,
+    aceito_em   TEXT,
+    aceito_por  TEXT,
+    entregue_em TEXT,
+    criado_em   TEXT NOT NULL,
+    criado_por  TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_pedidos_status ON pedidos (status, prazo);
 
 CREATE TABLE IF NOT EXISTS pecas (
     id           INTEGER PRIMARY KEY,
     pedido_id    INTEGER REFERENCES pedidos (id) ON DELETE CASCADE,
+    produto_id   INTEGER,
     descricao    TEXT NOT NULL,
     produto      TEXT DEFAULT '',
     cor          TEXT DEFAULT '',
+    quantidade   REAL NOT NULL DEFAULT 1,
+    valor_unit   REAL,
     gramas_est   REAL,
     horas_est    REAL,
     gramas_real  REAL,
     horas_real   REAL,
-    status       TEXT NOT NULL DEFAULT 'na fila',
-    criado_em    TEXT NOT NULL
+    status       TEXT NOT NULL DEFAULT 'aguardando',
+    criado_em    TEXT NOT NULL,
+    criado_por   TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_pecas_status ON pecas (status);
 
@@ -95,12 +110,14 @@ CREATE TABLE IF NOT EXISTS produtos (
     caixa_z      REAL,
     minutos      REAL,
     filamento_id INTEGER REFERENCES filamentos (id),
+    impressora_id INTEGER REFERENCES impressoras (id),
     arquivo      TEXT NOT NULL DEFAULT '',
     malha_ok     INTEGER,
     malha_nota   INTEGER,
     preco        REAL,
     observacao   TEXT NOT NULL DEFAULT '',
     ativo        INTEGER NOT NULL DEFAULT 1,
+    situacao     TEXT NOT NULL DEFAULT 'rascunho',
     dimensao_x   REAL,
     dimensao_y   REAL,
     usa_preco_volume INTEGER NOT NULL DEFAULT 0,
@@ -108,6 +125,8 @@ CREATE TABLE IF NOT EXISTS produtos (
     taxa_setup   REAL NOT NULL DEFAULT 5.0,
     preco_fixo   REAL,
     catalogo     INTEGER NOT NULL DEFAULT 0,
+    estoque      REAL NOT NULL DEFAULT 0,
+    estoque_minimo REAL NOT NULL DEFAULT 0,
     criado_em    TEXT NOT NULL,
     criado_por   TEXT NOT NULL DEFAULT ''
 );
@@ -205,6 +224,7 @@ CREATE TABLE IF NOT EXISTS clientes (
     bairro        TEXT NOT NULL DEFAULT '',
     cidade        TEXT NOT NULL DEFAULT '',
     cep           TEXT NOT NULL DEFAULT '',
+    data_nascimento TEXT NOT NULL DEFAULT '',
     canal      TEXT NOT NULL DEFAULT '',
     observacao TEXT NOT NULL DEFAULT '',
     ativo      INTEGER NOT NULL DEFAULT 1,
@@ -471,67 +491,27 @@ def _migrar(conn: sqlite3.Connection) -> None:
             (agora(),))
         conn.execute("DROP TABLE filamento")
 
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
-    if "minutos" not in colunas:
-        conn.execute("ALTER TABLE produtos ADD COLUMN minutos REAL")
+    # Renomeia status antigos que existam em bancos pre-P3.
+    for antigo, novo in (("na fila", "aguardando"), ("acabamento", "montagem")):
+        conn.execute("UPDATE pecas SET status = ? WHERE status = ?", (novo, antigo))
+    conn.execute("UPDATE pedidos SET status = 'orcamento' WHERE status = 'novo'")
+    conn.execute(
+        "UPDATE pedidos SET status = 'aprovado' WHERE status IN"
+        " ('na fila', 'imprimindo', 'acabamento', 'aguardando', 'montagem')")
 
-    # O pedido nasce sem saber de onde veio. Quatro colunas que um pedido
-    # antigo nunca mais teria de onde tirar -- e sem valor_liquido o
-    # relatorio de vendas mente, porque a comissao do marketplace sai do
-    # bolso do Samir e nao do cliente.
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(pedidos)")}
-    for coluna, tipo in (("cliente_id", "INTEGER"), ("id_no_canal", "TEXT"),
-                         ("comissao", "REAL"), ("valor_liquido", "REAL"),
-                         ("criado_por", "TEXT")):
-        if coluna not in colunas:
-            conn.execute(f"ALTER TABLE pedidos ADD COLUMN {coluna} {tipo}")
-
-    # QUANDO o pedido foi entregue. `criado_em` diz quando ele ENTROU, que num
-    # pedido de festa e ate dois meses antes -- e sem esta coluna o painel nao
-    # tem como responder "quanto entregamos neste mes".
-    if "entregue_em" not in colunas:
-        conn.execute("ALTER TABLE pedidos ADD COLUMN entregue_em TEXT")
-        # Pedido ja entregue antes desta coluna: a melhor data disponivel e a
-        # do historico, quando a ultima peca dele chegou em "entregue". Quem
-        # foi marcado entregue direto na tela do pedido nao tem historico e
-        # fica sem data -- e fica FORA do mes, que e melhor do que entrar num
-        # mes inventado.
-        conn.execute(
-            "UPDATE pedidos SET entregue_em = (SELECT MAX(h.criado_em) FROM historico h"
-            " JOIN pecas p ON p.id = h.peca_id"
-            " WHERE p.pedido_id = pedidos.id AND h.para = 'entregue')"
-            " WHERE status = 'entregue'")
+    # Preenche entregue_em para pedidos entregues antes da coluna existir.
+    conn.execute(
+        "UPDATE pedidos SET entregue_em = (SELECT MAX(h.criado_em) FROM historico h"
+        " JOIN pecas p ON p.id = h.peca_id"
+        " WHERE p.pedido_id = pedidos.id AND h.para = 'entregue')"
+        " WHERE status = 'entregue' AND entregue_em IS NULL")
 
     for tabela, coluna in (("filamentos", "preco_manual"), ("insumos", "valor_manual")):
         colunas = {r[1] for r in conn.execute(f"PRAGMA table_info({tabela})")}
         if colunas and coluna not in colunas:
             conn.execute(f"ALTER TABLE {tabela} ADD COLUMN {coluna} REAL")
-            # O que ja estava la foi digitado a mao: e esse o valor de reserva.
             origem = "preco_kg" if tabela == "filamentos" else "valor_unit"
             conn.execute(f"UPDATE {tabela} SET {coluna} = {origem}")
-
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(movimentos)")}
-    if colunas and "compra_id" not in colunas:
-        conn.execute("ALTER TABLE movimentos ADD COLUMN compra_id INTEGER")
-
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(pecas)")}
-    for coluna, tipo in (("produto_id", "INTEGER"), ("quantidade", "REAL"),
-                         ("valor_unit", "REAL"), ("criado_por", "TEXT")):
-        if coluna not in colunas:
-            conn.execute(f"ALTER TABLE pecas ADD COLUMN {coluna} {tipo}")
-    conn.execute("UPDATE pecas SET quantidade = 1 WHERE quantidade IS NULL")
-
-    # Situacao de pedido que na verdade era etapa de peca. "novo" virou
-    # orcamento; "na fila"/"imprimindo"/"acabamento" eram producao, e
-    # producao so acontece em pedido aprovado.
-    # Etapas renomeadas para o vocabulario do Samir (o do Sistema3D).
-    for antigo, novo in (("na fila", "aguardando"), ("acabamento", "montagem")):
-        conn.execute("UPDATE pecas SET status = ? WHERE status = ?", (novo, antigo))
-
-    conn.execute("UPDATE pedidos SET status = 'orcamento' WHERE status = 'novo'")
-    conn.execute(
-        "UPDATE pedidos SET status = 'aprovado' WHERE status IN"
-        " ('na fila', 'imprimindo', 'acabamento', 'aguardando', 'montagem')")
 
     # O estoque inicial vira o primeiro movimento. Assim o saldo e a soma dos
     # movimentos, sempre -- e da para provar que a coluna `gramas` nao
@@ -590,54 +570,15 @@ def _migrar(conn: sqlite3.Connection) -> None:
         # Ate o C4 so havia topo de bolo, entao todo template existente e topo.
         conn.execute("ALTER TABLE templates ADD COLUMN tipo TEXT NOT NULL DEFAULT 'topo'")
 
-    # Desconto em REAIS, e nao em porcentagem: e assim que o desconto e dado
-    # no balcao ("faco por 600"), e porcentagem obrigaria a arredondar duas
-    # vezes -- uma para achar o valor, outra para escrever no papel.
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(pedidos)")}
-    for coluna, tipo in (("desconto", "REAL NOT NULL DEFAULT 0"),
-                         ("token", "TEXT"), ("token_expira", "TEXT"),
-                         ("aceito_em", "TEXT"), ("aceito_por", "TEXT")):
-        if coluna not in colunas:
-            conn.execute(f"ALTER TABLE pedidos ADD COLUMN {coluna} {tipo}")
-    # Um token vale para UM orcamento. O indice unico e quem garante isso, e
-    # nao a funcao que sorteia -- sorteio repetido acontece.
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_pedidos_token"
                  " ON pedidos (token) WHERE token IS NOT NULL")
 
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
-    for coluna, tipo in (("dimensao_x", "REAL"), ("dimensao_y", "REAL"),
-                         ("usa_preco_volume", "INTEGER NOT NULL DEFAULT 0"),
-                         ("margem_volume", "REAL NOT NULL DEFAULT 150"),
-                         ("taxa_setup", "REAL NOT NULL DEFAULT 5.0"),
-                         ("preco_fixo", "REAL")):
-        if coluna not in colunas:
-            conn.execute(f"ALTER TABLE produtos ADD COLUMN {coluna} {tipo}")
+    # P3: produtos antigos que tinham catalogo=1 viram publicados.
+    conn.execute("UPDATE produtos SET situacao = 'publicado'"
+                 " WHERE catalogo = 1 AND situacao = 'rascunho'"
+                 " AND catalogo IS NOT NULL")
 
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
-    if "catalogo" not in colunas:
-        conn.execute("ALTER TABLE produtos ADD COLUMN catalogo INTEGER NOT NULL DEFAULT 0")
-
-    # P1: produto pode apontar para uma impressora. NULL = usa parametro global.
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
-    if "impressora_id" not in colunas:
-        conn.execute("ALTER TABLE produtos ADD COLUMN impressora_id INTEGER"
-                     " REFERENCES impressoras (id)")
-
-    # P3: ciclo de vida do produto — rascunho, pronto, publicado.
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
-    if "situacao" not in colunas:
-        conn.execute("ALTER TABLE produtos ADD COLUMN situacao"
-                     " TEXT NOT NULL DEFAULT 'rascunho'")
-        conn.execute("UPDATE produtos SET situacao = 'publicado'"
-                     " WHERE catalogo = 1")
-
-    # P6: estoque de produto acabado — quantas unidades prontas na prateleira.
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
-    for coluna, tipo in (("estoque", "REAL NOT NULL DEFAULT 0"),
-                         ("estoque_minimo", "REAL NOT NULL DEFAULT 0")):
-        if coluna not in colunas:
-            conn.execute(f"ALTER TABLE produtos ADD COLUMN {coluna} {tipo}")
-    # Movimento inicial do estoque de produto (mesmo padrao de filamentos/insumos).
+    # P6: movimento inicial do estoque de produto (mesmo padrao de filamentos/insumos).
     sem_inicial_prod = conn.execute(
         "SELECT id, criado_em, criado_por FROM produtos t"
         " WHERE NOT EXISTS (SELECT 1 FROM movimentos m WHERE m.tipo = 'produto'"
@@ -648,49 +589,50 @@ def _migrar(conn: sqlite3.Connection) -> None:
             " criado_por) VALUES ('produto', ?, 0, 'inicial', ?, ?)",
             (linha["id"], linha["criado_em"] or agora(), linha["criado_por"] or "migracao"))
 
-    if "produto_fotos" not in tabelas:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS produto_fotos ("
-            " id INTEGER PRIMARY KEY,"
-            " produto_id INTEGER NOT NULL REFERENCES produtos (id) ON DELETE CASCADE,"
-            " ordem INTEGER NOT NULL DEFAULT 1,"
-            " arquivo TEXT NOT NULL,"
-            " criado_em TEXT NOT NULL)")
+    # -- P7: colunas que passaram do _migrar() para o CREATE TABLE. ---------
+    # Bancos criados antes do P7 ainda nao as tem; o ALTER so roda se faltarem.
+    colunas_pedidos = {r[1] for r in conn.execute("PRAGMA table_info(pedidos)")}
+    for coluna, tipo in (("cliente_id", "INTEGER"), ("id_no_canal", "TEXT"),
+                         ("comissao", "REAL"), ("valor_liquido", "REAL"),
+                         ("criado_por", "TEXT"), ("entregue_em", "TEXT"),
+                         ("desconto", "REAL NOT NULL DEFAULT 0"),
+                         ("token", "TEXT"), ("token_expira", "TEXT"),
+                         ("aceito_em", "TEXT"), ("aceito_por", "TEXT")):
+        if coluna not in colunas_pedidos:
+            conn.execute(f"ALTER TABLE pedidos ADD COLUMN {coluna} {tipo}")
 
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(clientes)")}
+    colunas_pecas = {r[1] for r in conn.execute("PRAGMA table_info(pecas)")}
+    for coluna, tipo in (("produto_id", "INTEGER"), ("quantidade", "REAL"),
+                         ("valor_unit", "REAL"), ("criado_por", "TEXT")):
+        if coluna not in colunas_pecas:
+            conn.execute(f"ALTER TABLE pecas ADD COLUMN {coluna} {tipo}")
+    conn.execute("UPDATE pecas SET quantidade = 1 WHERE quantidade IS NULL")
+
+    colunas_produtos = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
+    for coluna, tipo in (("minutos", "REAL"),
+                         ("dimensao_x", "REAL"), ("dimensao_y", "REAL"),
+                         ("usa_preco_volume", "INTEGER NOT NULL DEFAULT 0"),
+                         ("margem_volume", "REAL NOT NULL DEFAULT 150"),
+                         ("taxa_setup", "REAL NOT NULL DEFAULT 5.0"),
+                         ("preco_fixo", "REAL"),
+                         ("catalogo", "INTEGER NOT NULL DEFAULT 0"),
+                         ("impressora_id", "INTEGER"),
+                         ("situacao", "TEXT NOT NULL DEFAULT 'rascunho'"),
+                         ("estoque", "REAL NOT NULL DEFAULT 0"),
+                         ("estoque_minimo", "REAL NOT NULL DEFAULT 0")):
+        if coluna not in colunas_produtos:
+            conn.execute(f"ALTER TABLE produtos ADD COLUMN {coluna} {tipo}")
+
+    colunas_movimentos = {r[1] for r in conn.execute("PRAGMA table_info(movimentos)")}
+    if "compra_id" not in colunas_movimentos:
+        conn.execute("ALTER TABLE movimentos ADD COLUMN compra_id INTEGER")
+
+    colunas_clientes = {r[1] for r in conn.execute("PRAGMA table_info(clientes)")}
     for coluna in ("email", "cpf", "endereco", "complemento", "bairro",
                     "cidade", "cep", "data_nascimento"):
-        if coluna not in colunas:
+        if coluna not in colunas_clientes:
             conn.execute(f"ALTER TABLE clientes ADD COLUMN {coluna}"
                          " TEXT NOT NULL DEFAULT ''")
-
-    if "cliente_historico" not in tabelas:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS cliente_historico ("
-            " id INTEGER PRIMARY KEY,"
-            " cliente_id INTEGER NOT NULL REFERENCES clientes (id) ON DELETE CASCADE,"
-            " data TEXT NOT NULL DEFAULT '',"
-            " descricao TEXT NOT NULL,"
-            " criado_em TEXT NOT NULL,"
-            " criado_por TEXT NOT NULL DEFAULT '')")
-        conn.execute("CREATE INDEX IF NOT EXISTS ix_cliente_hist"
-                     " ON cliente_historico (cliente_id)")
-
-    # P5: variações de produto.
-    if "variacoes" not in tabelas:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS variacoes ("
-            " id INTEGER PRIMARY KEY,"
-            " produto_id INTEGER NOT NULL REFERENCES produtos (id) ON DELETE CASCADE,"
-            " filamento_id INTEGER REFERENCES filamentos (id),"
-            " nome TEXT NOT NULL DEFAULT '',"
-            " sku TEXT,"
-            " preco_ajuste REAL,"
-            " ativo INTEGER NOT NULL DEFAULT 1,"
-            " criado_em TEXT NOT NULL,"
-            " criado_por TEXT NOT NULL DEFAULT '')")
-        conn.execute("CREATE INDEX IF NOT EXISTS ix_variacoes_produto"
-                     " ON variacoes (produto_id)")
 
     if not conn.execute("SELECT 1 FROM empresa WHERE id = 1").fetchone():
         conn.execute("INSERT INTO empresa (id, atualizado_em) VALUES (1, ?)", (agora(),))
