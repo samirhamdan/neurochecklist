@@ -1027,6 +1027,29 @@ th a.ordenar.ativa .seta{visibility:visible;color:var(--azul)}
 .duas-colunas > .acoes.principal{grid-column:1 / -1}
 .acao-extra{margin-top:8px;text-align:right}
 
+/* ---------- P4: seções colapsáveis do cadastro de produto ---------- */
+.secao-produto{
+  background:var(--mesa);border:1px solid var(--linha);border-radius:6px;
+  margin-bottom:4px;
+}
+.secao-produto > summary{
+  display:flex;align-items:center;gap:8px;
+  list-style:none;cursor:pointer;user-select:none;
+  font-size:14px;font-weight:600;letter-spacing:.01em;
+  color:var(--tinta);padding:14px 18px;border-radius:6px;
+  min-height:44px;
+}
+.secao-produto > summary::-webkit-details-marker{display:none}
+.secao-produto > summary::after{
+  content:"▸";margin-left:auto;font-size:11px;color:var(--suave);
+  transition:transform .15s ease;
+}
+.secao-produto[open] > summary::after{transform:rotate(90deg)}
+.secao-produto > summary:hover{background:var(--bancada)}
+.secao-produto .conteudo-secao{
+  padding:0 18px 18px;display:flex;flex-direction:column;gap:14px;
+}
+
 @media (max-width:900px){
   /* Sangra até a borda do cartão, para a linha de cima separar de verdade em
      vez de flutuar com um vão dos lados. */
