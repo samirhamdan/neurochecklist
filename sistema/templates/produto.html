@@ -9,115 +9,131 @@
   <h2 class="secao">{{ 'Editar produto' if atual and atual.id else 'Novo produto' }}</h2>
   {{ av.aviso() }}
 
-  <form class="duas-colunas" method="post" id="form-produto" data-avisar>
-    <div class="cartao formulario">
-      <h3 class="titulo-cartao">Identificação</h3>
-      <div class="linha">
-        <label class="campo cresce{{ ' com-erro' if campo_erro == 'nome' }}" id="campo-nome"><span>Nome</span>
-          <input name="nome" required maxlength="90" placeholder="Ex: Topo de bolo ANA 18 cm"
-                 value="{{ (atual and atual.nome) or '' }}">
-        {% if campo_erro == 'nome' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
-        <label class="campo{{ ' com-erro' if campo_erro == 'sku' }}" id="campo-sku"><span>SKU</span>
-          <input name="sku" maxlength="30" placeholder="M3D-TB-001"
-                 value="{{ (atual and atual.sku) or '' }}">
-        {% if campo_erro == 'sku' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
-      </div>
-      <div class="linha">
-        <label class="campo{{ ' com-erro' if campo_erro == 'categoria' }}" id="campo-categoria"><span>Categoria</span>
-          <input name="categoria" maxlength="40" placeholder="Topo de bolo"
-                 value="{{ (atual and atual.categoria) or '' }}">
-        {% if campo_erro == 'categoria' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
-        <label class="campo cresce{{ ' com-erro' if campo_erro == 'filamento_id' }}" id="campo-filamento_id"><span>Filamento</span>
-          <select name="filamento_id" id="filamento">
-            <option value="">Sem filamento definido</option>
-            {% for f in filamentos %}
-            <option value="{{ f.id }}" {{ 'selected' if atual and atual.filamento_id == f.id }}>
-              {{ f.nome }}{% if f.preco_kg %} — {{ f.preco_kg|dinheiro }}/kg{% endif %}
-            </option>
-            {% endfor %}
-          </select>
-        {% if campo_erro == 'filamento_id' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
-      </div>
-      <div class="linha">
-        <label class="campo cresce{{ ' com-erro' if campo_erro == 'impressora_id' }}" id="campo-impressora_id"><span>Impressora</span>
-          <select name="impressora_id" id="impressora">
-            <option value="">Usar parâmetro global</option>
-            {% for imp in impressoras_lista %}
-            <option value="{{ imp.id }}" {{ 'selected' if atual and atual.impressora_id == imp.id }}>
-              {{ imp.nome }}{% if imp.custo_hora %} — {{ imp.custo_hora|dinheiro }}/h{% endif %}
-            </option>
-            {% endfor %}
-          </select>
-        {% if campo_erro == 'impressora_id' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+  {# Campos com erro: o script no fim da pagina abre a secao certa. #}
+  {% set erros_identificacao = campo_erro in ('nome', 'sku', 'categoria', 'filamento_id', 'impressora_id', 'observacao') %}
+  {% set erros_medidas = campo_erro in ('minutos', 'gramas', 'horas', 'caixa_x', 'caixa_y', 'caixa_z') %}
+  {% set erros_custo = campo_erro == 'preco' %}
+  {% set erros_volume = campo_erro in ('dimensao_x', 'dimensao_y', 'margem_volume', 'taxa_setup', 'preco_fixo') %}
+  {% set erros_variacoes = campo_erro in ('variacao_filamento_id', 'variacao_sku', 'variacao_nome') %}
+  {% set erros_estoque = campo_erro == 'estoque_minimo' %}
+  {% set erros_publicacao = campo_erro == 'situacao' %}
+
+  <form method="post" id="form-produto" data-avisar>
+
+    <details class="secao-produto" id="sec-identificacao" {{ 'open' if not atual or erros_identificacao }}>
+      <summary>Identificação</summary>
+      <div class="conteudo-secao">
+        <div class="linha">
+          <label class="campo cresce{{ ' com-erro' if campo_erro == 'nome' }}" id="campo-nome"><span>Nome</span>
+            <input name="nome" required maxlength="90" placeholder="Ex: Topo de bolo ANA 18 cm"
+                   value="{{ (atual and atual.nome) or '' }}">
+          {% if campo_erro == 'nome' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+          <label class="campo{{ ' com-erro' if campo_erro == 'sku' }}" id="campo-sku"><span>SKU</span>
+            <input name="sku" maxlength="30" placeholder="M3D-TB-001"
+                   value="{{ (atual and atual.sku) or '' }}">
+          {% if campo_erro == 'sku' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+        </div>
+        <div class="linha">
+          <label class="campo{{ ' com-erro' if campo_erro == 'categoria' }}" id="campo-categoria"><span>Categoria</span>
+            <input name="categoria" maxlength="40" placeholder="Topo de bolo"
+                   value="{{ (atual and atual.categoria) or '' }}">
+          {% if campo_erro == 'categoria' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+          <label class="campo cresce{{ ' com-erro' if campo_erro == 'filamento_id' }}" id="campo-filamento_id"><span>Filamento</span>
+            <select name="filamento_id" id="filamento">
+              <option value="">Sem filamento definido</option>
+              {% for f in filamentos %}
+              <option value="{{ f.id }}" {{ 'selected' if atual and atual.filamento_id == f.id }}>
+                {{ f.nome }}{% if f.preco_kg %} — {{ f.preco_kg|dinheiro }}/kg{% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          {% if campo_erro == 'filamento_id' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+        </div>
+        <div class="linha">
+          <label class="campo cresce{{ ' com-erro' if campo_erro == 'impressora_id' }}" id="campo-impressora_id"><span>Impressora</span>
+            <select name="impressora_id" id="impressora">
+              <option value="">Usar parâmetro global</option>
+              {% for imp in impressoras_lista %}
+              <option value="{{ imp.id }}" {{ 'selected' if atual and atual.impressora_id == imp.id }}>
+                {{ imp.nome }}{% if imp.custo_hora %} — {{ imp.custo_hora|dinheiro }}/h{% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          {% if campo_erro == 'impressora_id' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+          </label>
+        </div>
+        <label class="campo{{ ' com-erro' if campo_erro == 'observacao' }}" id="campo-observacao"><span>Observação</span>
+          <input name="observacao" maxlength="200"
+                 placeholder="Acabamento, montagem, o que lembrar na hora de imprimir"
+                 value="{{ (atual and atual.observacao) or '' }}">
+          {% if campo_erro == 'observacao' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
         </label>
       </div>
-      <label class="campo{{ ' com-erro' if campo_erro == 'observacao' }}" id="campo-observacao"><span>Observação</span>
-        <input name="observacao" maxlength="200"
-               placeholder="Acabamento, montagem, o que lembrar na hora de imprimir"
-               value="{{ (atual and atual.observacao) or '' }}">
-        {% if campo_erro == 'observacao' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
+    </details>
 
-      <h3 class="titulo-cartao">Medidas</h3>
-      <div class="solte" id="solte">
-        <input type="file" id="modelo" accept=".stl,.3mf,.obj" hidden>
-        <button type="button" class="botao vazado" id="escolher">Escolher arquivo 3D</button>
-        <span class="fraco">STL, 3MF ou OBJ — o peso, o tempo e a caixa vêm dele</span>
-        <div id="veredito" class="veredito" hidden></div>
+    <details class="secao-produto" id="sec-medidas" {{ 'open' if not atual or erros_medidas }}>
+      <summary>Medidas e arquivo</summary>
+      <div class="conteudo-secao">
+        <div class="solte" id="solte">
+          <input type="file" id="modelo" accept=".stl,.3mf,.obj" hidden>
+          <button type="button" class="botao vazado" id="escolher">Escolher arquivo 3D</button>
+          <span class="fraco">STL, 3MF ou OBJ — o peso, o tempo e a caixa vêm dele</span>
+          <div id="veredito" class="veredito" hidden></div>
+        </div>
+        <input type="hidden" name="arquivo" id="arquivo" value="{{ (atual and atual.arquivo) or '' }}">
+        <input type="hidden" name="malha_ok" id="malha_ok" value="{{ atual.malha_ok if atual and atual.malha_ok is not none else '' }}">
+        <input type="hidden" name="malha_nota" id="malha_nota" value="{{ atual.malha_nota if atual and atual.malha_nota else '' }}">
+        <div class="linha">
+          <label class="campo{{ ' com-erro' if campo_erro == 'minutos' }}" id="campo-minutos"><span>Acabamento (min)</span>
+            <input name="minutos" id="minutos" type="number" step="1" min="0"
+                   placeholder="{{ param.minutos_acabamento|round|int }}"
+                   value="{{ atual.minutos|round|int if atual and atual.minutos else '' }}" inputmode="numeric">
+          {% if campo_erro == 'minutos' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+          <label class="campo{{ ' com-erro' if campo_erro == 'gramas' }}" id="campo-gramas"><span>Peso (g)</span>
+            <input name="gramas" id="gramas" type="number" step="0.1" min="0"
+                   value="{{ atual.gramas|round(1) if atual and atual.gramas else '' }}" inputmode="decimal">
+          {% if campo_erro == 'gramas' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+          <label class="campo{{ ' com-erro' if campo_erro == 'horas' }}" id="campo-horas"><span>Tempo (h)</span>
+            <input name="horas" id="horas" type="number" step="0.01" min="0"
+                   value="{{ atual.horas|round(2) if atual and atual.horas else '' }}" inputmode="decimal">
+          {% if campo_erro == 'horas' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+        </div>
+        <div class="linha">
+          <label class="campo{{ ' com-erro' if campo_erro == 'caixa_x' }}" id="campo-caixa_x"><span>Caixa X (mm)</span>
+            <input name="caixa_x" id="caixa_x" type="number" step="0.1" min="0"
+                   value="{{ atual.caixa_x|round(1) if atual and atual.caixa_x else '' }}" inputmode="decimal">
+          {% if campo_erro == 'caixa_x' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+          <label class="campo{{ ' com-erro' if campo_erro == 'caixa_y' }}" id="campo-caixa_y"><span>Caixa Y</span>
+            <input name="caixa_y" id="caixa_y" type="number" step="0.1" min="0"
+                   value="{{ atual.caixa_y|round(1) if atual and atual.caixa_y else '' }}" inputmode="decimal">
+          {% if campo_erro == 'caixa_y' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+          <label class="campo{{ ' com-erro' if campo_erro == 'caixa_z' }}" id="campo-caixa_z"><span>Caixa Z</span>
+            <input name="caixa_z" id="caixa_z" type="number" step="0.1" min="0"
+                   value="{{ atual.caixa_z|round(1) if atual and atual.caixa_z else '' }}" inputmode="decimal">
+          {% if campo_erro == 'caixa_z' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </label>
+        </div>
+        <p class="nota">A caixa é o que o Melhor Envio vai pedir para cotar o frete. Some a
+        folga da embalagem depois — esta é a peça nua.</p>
+        <p class="nota"><b>Acabamento</b> são os minutos das <i>suas mãos</i>: preparar a mesa,
+        tirar a peça, tirar suporte, colar, embalar. Não são as horas de impressão — nelas a
+        máquina trabalha sozinha. Vazio usa o padrão de
+        {{ param.minutos_acabamento|round|int }} min.</p>
       </div>
-      <input type="hidden" name="arquivo" id="arquivo" value="{{ (atual and atual.arquivo) or '' }}">
-      <input type="hidden" name="malha_ok" id="malha_ok" value="{{ atual.malha_ok if atual and atual.malha_ok is not none else '' }}">
-      <input type="hidden" name="malha_nota" id="malha_nota" value="{{ atual.malha_nota if atual and atual.malha_nota else '' }}">
-      <div class="linha">
-        <label class="campo{{ ' com-erro' if campo_erro == 'minutos' }}" id="campo-minutos"><span>Acabamento (min)</span>
-          <input name="minutos" id="minutos" type="number" step="1" min="0"
-                 placeholder="{{ param.minutos_acabamento|round|int }}"
-                 value="{{ atual.minutos|round|int if atual and atual.minutos else '' }}" inputmode="numeric">
-        {% if campo_erro == 'minutos' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
-        <label class="campo{{ ' com-erro' if campo_erro == 'gramas' }}" id="campo-gramas"><span>Peso (g)</span>
-          <input name="gramas" id="gramas" type="number" step="0.1" min="0"
-                 value="{{ atual.gramas|round(1) if atual and atual.gramas else '' }}" inputmode="decimal">
-        {% if campo_erro == 'gramas' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
-        <label class="campo{{ ' com-erro' if campo_erro == 'horas' }}" id="campo-horas"><span>Tempo (h)</span>
-          <input name="horas" id="horas" type="number" step="0.01" min="0"
-                 value="{{ atual.horas|round(2) if atual and atual.horas else '' }}" inputmode="decimal">
-        {% if campo_erro == 'horas' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
-      </div>
-      <div class="linha">
-        <label class="campo{{ ' com-erro' if campo_erro == 'caixa_x' }}" id="campo-caixa_x"><span>Caixa X (mm)</span>
-          <input name="caixa_x" id="caixa_x" type="number" step="0.1" min="0"
-                 value="{{ atual.caixa_x|round(1) if atual and atual.caixa_x else '' }}" inputmode="decimal">
-        {% if campo_erro == 'caixa_x' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
-        <label class="campo{{ ' com-erro' if campo_erro == 'caixa_y' }}" id="campo-caixa_y"><span>Caixa Y</span>
-          <input name="caixa_y" id="caixa_y" type="number" step="0.1" min="0"
-                 value="{{ atual.caixa_y|round(1) if atual and atual.caixa_y else '' }}" inputmode="decimal">
-        {% if campo_erro == 'caixa_y' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
-        <label class="campo{{ ' com-erro' if campo_erro == 'caixa_z' }}" id="campo-caixa_z"><span>Caixa Z</span>
-          <input name="caixa_z" id="caixa_z" type="number" step="0.1" min="0"
-                 value="{{ atual.caixa_z|round(1) if atual and atual.caixa_z else '' }}" inputmode="decimal">
-        {% if campo_erro == 'caixa_z' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
-      </div>
-      <p class="nota">A caixa é o que o Melhor Envio vai pedir para cotar o frete. Some a
-      folga da embalagem depois — esta é a peça nua.</p>
-      <p class="nota"><b>Acabamento</b> são os minutos das <i>suas mãos</i>: preparar a mesa,
-      tirar a peça, tirar suporte, colar, embalar. Não são as horas de impressão — nelas a
-      máquina trabalha sozinha. Vazio usa o padrão de
-      {{ param.minutos_acabamento|round|int }} min.</p>
-    </div>
+    </details>
 
-    <div class="coluna-lado">
-      <div class="cartao">
-        <h3 class="titulo-cartao">Custo e preço</h3>
+    <details class="secao-produto" id="sec-custo" {{ 'open' if atual or erros_custo }}>
+      <summary>Custo e preço</summary>
+      <div class="conteudo-secao">
         <dl class="numeros" id="numeros">
           <div><dt>Filamento</dt><dd class="mono">{{ (conta.custo_filamento if conta else 0)|dinheiro }}</dd></div>
           <div><dt>Máquina <span class="fraco">sozinha</span></dt><dd class="mono">{{ (conta.custo_maquina if conta else 0)|dinheiro }}</dd></div>
@@ -148,11 +164,13 @@
           <input name="preco" type="number" step="0.01" min="0" placeholder="deixe vazio para usar o sugerido"
                  value="{{ '%.2f'|format(atual.preco) if atual and atual.preco else '' }}" inputmode="decimal">
         {% if campo_erro == 'preco' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
-      </label>
+        </label>
       </div>
+    </details>
 
-      <div class="cartao">
-        <h3 class="titulo-cartao">Preço por volume</h3>
+    <details class="secao-produto" id="sec-volume" {{ 'open' if (atual and atual.usa_preco_volume) or erros_volume }}>
+      <summary>Preço por volume</summary>
+      <div class="conteudo-secao">
         <label class="marca-caixa">
           <input type="checkbox" name="usa_preco_volume" id="usa_preco_volume" value="1" {{ 'checked' if atual and atual.usa_preco_volume }}>
           Usar tabela de preços por volume
@@ -199,9 +217,11 @@
         {% if campo_erro == 'preco_fixo' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
         </label>
       </div>
+    </details>
 
-      <div class="cartao">
-        <h3 class="titulo-cartao">Insumos da peça</h3>
+    <details class="secao-produto" id="sec-insumos" {{ 'open' if atual and atual.insumos }}>
+      <summary>Insumos da peça</summary>
+      <div class="conteudo-secao">
         {% if insumos %}
           <div class="lista-insumos">
           {% for i in insumos %}
@@ -221,17 +241,113 @@
           <a href="{{ url_for('editar_insumo') }}">Cadastrar um</a>.</p>
         {% endif %}
       </div>
+    </details>
 
-      <div class="cartao">
-        <h3 class="titulo-cartao">Catálogo</h3>
-        <label class="marca-caixa" id="campo-catalogo">
-          <input type="checkbox" name="catalogo" id="catalogo" value="1"
-                 {{ 'checked' if atual and atual.catalogo }}>
-          Disponível no catálogo
+    <details class="secao-produto" id="sec-variacoes" {{ 'open' if erros_variacoes or (atual and atual.id and atual.variacoes) }}>
+      <summary>Variações</summary>
+      <div class="conteudo-secao">
+        {% if atual and atual.id %}
+          {% if atual.variacoes %}
+          <div class="lista-variacoes">
+            {% for v in atual.variacoes %}
+            <div class="linha-variacao">
+              <span class="cresce">
+                {% if v.filamento_cor %}<span class="cor-amostra" style="background:{{ v.filamento_cor }}"></span>{% endif %}
+                {{ v.nome or v.filamento_nome or '(sem nome)' }}
+                {% if v.sku %}<span class="fraco">· {{ v.sku }}</span>{% endif %}
+                {% if v.preco_ajuste %}<span class="fraco">· {{ v.preco_ajuste|dinheiro }}</span>{% endif %}
+              </span>
+              <form method="post" action="{{ url_for('excluir_variacao', id_=atual.id, var_id=v.id) }}" style="display:inline">
+                <button type="submit" class="botao vazado perigoso" title="Excluir variação">Excluir</button>
+              </form>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <div style="margin-top:12px;padding:12px;background:var(--bancada);border-radius:4px">
+            <p style="margin:0 0 8px;font-weight:500;font-size:13.5px">Adicionar variação</p>
+            <form method="post" action="{{ url_for('adicionar_variacao', id_=atual.id) }}">
+              <div class="linha">
+                <label class="campo cresce{{ ' com-erro' if campo_erro == 'variacao_filamento_id' }}" id="campo-variacao_filamento_id"><span>Filamento</span>
+                  <select name="variacao_filamento_id">
+                    <option value="">Escolha o filamento</option>
+                    {% for f in filamentos %}
+                    <option value="{{ f.id }}">{{ f.nome }}{% if f.preco_kg %} — {{ f.preco_kg|dinheiro }}/kg{% endif %}</option>
+                    {% endfor %}
+                  </select>
+                {% if campo_erro == 'variacao_filamento_id' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+                </label>
+                <label class="campo{{ ' com-erro' if campo_erro == 'variacao_nome' }}" id="campo-variacao_nome"><span>Nome (opcional)</span>
+                  <input name="variacao_nome" maxlength="60" placeholder="Ex: Rosa, Azul turquesa">
+                {% if campo_erro == 'variacao_nome' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+                </label>
+              </div>
+              <div class="linha">
+                <label class="campo{{ ' com-erro' if campo_erro == 'variacao_sku' }}" id="campo-variacao_sku"><span>SKU</span>
+                  <input name="variacao_sku" maxlength="30" placeholder="M3D-TB-001-RS">
+                {% if campo_erro == 'variacao_sku' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+                </label>
+                <label class="campo" id="campo-variacao_preco"><span>Preço ajustado (opcional)</span>
+                  <input name="variacao_preco" type="number" step="0.01" min="0" placeholder="deixe vazio para usar o preço do produto" inputmode="decimal">
+                </label>
+              </div>
+              <button class="botao vazado" type="submit" style="margin-top:8px">Adicionar</button>
+            </form>
+          </div>
+          <p class="nota" style="margin-top:8px">Cada variação é uma cor de filamento diferente do mesmo produto.
+          Para publicar, todas precisam de filamento e SKU.</p>
+        {% else %}
+          <p class="nota">Salve o produto primeiro para adicionar variações.</p>
+        {% endif %}
+      </div>
+    </details>
+
+    <details class="secao-produto" id="sec-estoque" {{ 'open' if erros_estoque or (atual and atual.id and atual.estoque) }}>
+      <summary>Estoque</summary>
+      <div class="conteudo-secao">
+        {% if atual and atual.id %}
+        <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+          <div>
+            <span class="fraco">Em estoque</span>
+            <div class="mono {{ 'alerta' if atual.estoque_minimo and atual.estoque|default(0) <= atual.estoque_minimo }}"
+                 style="font-size:1.3em;font-weight:600">{{ atual.estoque|default(0)|round|int }} un</div>
+          </div>
+          <a class="botao vazado" href="{{ url_for('movimentos_item', tipo='produto', id_=atual.id) }}">Ver movimentações</a>
+        </div>
+        {% endif %}
+        <label class="campo{{ ' com-erro' if campo_erro == 'estoque_minimo' }}" id="campo-estoque_minimo" style="max-width:200px">
+          <span>Estoque mínimo</span>
+          <input name="estoque_minimo" type="number" step="1" min="0"
+                 value="{{ atual.estoque_minimo|round|int if atual and atual.estoque_minimo else '' }}"
+                 inputmode="numeric" placeholder="0">
+        {% if campo_erro == 'estoque_minimo' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
         </label>
-        <p class="nota">Produtos marcados aparecem na página de catálogo.</p>
+        <p class="nota">Abaixo do mínimo, o produto aparece em alerta na tela de Estoque.
+        {% if not atual or not atual.id %}O saldo é ajustado pela tela de movimentações, depois de salvar o produto.{% endif %}</p>
+      </div>
+    </details>
 
-        <div id="secao-fotos" {{ 'hidden' if not (atual and atual.catalogo) }}>
+    <details class="secao-produto" id="sec-publicacao" {{ 'open' if atual or erros_publicacao }}>
+      <summary>Publicação</summary>
+      <div class="conteudo-secao">
+        {% set sit = (atual.situacao if atual and atual.situacao else 'rascunho') %}
+        <div class="campo" id="campo-situacao">
+          <span>Etapa do produto</span>
+          <select name="situacao" id="situacao">
+            {% for s in situacoes %}
+            <option value="{{ s }}" {{ 'selected' if s == sit }}>{{ rotulos_situacao[s] }}</option>
+            {% endfor %}
+          </select>
+          {% if campo_erro == 'situacao' %}<b class="recado-campo">{{ erro }}</b>{% endif %}
+        </div>
+        <p class="nota">
+          <b>Rascunho</b> — em preparação, faltam dados.<br>
+          <b>Pronto</b> — dados completos, pronto para vender.<br>
+          <b>Publicado</b> — no catálogo, visível para clientes.
+          Publicar exige SKU, filamento, peso, tempo e preço.
+        </p>
+
+        <div id="secao-fotos" {{ 'hidden' if sit != 'publicado' }}>
           <p style="margin-top:12px;font-weight:500;font-size:13.5px">Fotos do produto (até 3)</p>
           <div id="galeria-fotos" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
             {% if atual and atual.id %}
@@ -253,28 +369,27 @@
           <p class="nota">Salve o produto primeiro para adicionar fotos.</p>
           {% endif %}
         </div>
+
+        <label class="marca-caixa" style="margin-top:12px">
+          <input type="checkbox" name="ativo" value="1" {{ 'checked' if not atual or atual.ativo }}>
+          Ativo
+        </label>
       </div>
+    </details>
 
-      <label class="marca-caixa">
-        <input type="checkbox" name="ativo" value="1" {{ 'checked' if not atual or atual.ativo }}>
-        Ativo
-      </label>
-    </div>
-
-    {# Filha do <form>, e nao do cartao da lateral: `position:sticky` so gruda
-       dentro do proprio pai, e num cartao de 200 px ela nao teria para onde.
-       Salvar tambem e do formulario inteiro, nao daquele cartao. #}
     <div class="acoes principal">
       <button class="botao" type="submit">Salvar</button>
       <a class="botao vazado" href="{{ url_for('lista_produtos') }}">Voltar</a>
     </div>
   </form>
+  {% if atual and atual.id %}
+  <form method="post" action="{{ url_for('duplicar_produto', id_=atual.id) }}" class="acao-extra">
+    <button class="botao vazado" type="submit">Duplicar produto</button>
+  </form>
+  {% endif %}
 </main>
 
 <script>
-// O arquivo vai para o servidor, o analisador de malha mede, e os campos se
-// preenchem. Nada de geometria aqui: esta pagina so mostra o que o analisador
-// respondeu -- inclusive quando ele reprova a malha.
 (function () {
   const arq = document.getElementById("modelo");
   const veredito = document.getElementById("veredito");
@@ -364,6 +479,9 @@
       ? (c.preco <= c.custo ? "margem-prejuizo" : c.margem_pct < 30 ? "margem-baixa" : "margem-saudavel")
       : "");
     document.getElementById("v-hora").textContent = money(c.por_hora);
+
+    // Abre a seção de custo ao medir um arquivo
+    document.getElementById("sec-custo").open = true;
     atualizarAlertas(c);
   });
 
@@ -379,10 +497,9 @@
     const custo = parseFloat(custoNum) || 0;
     const horas = parseFloat(document.getElementById("horas").value) || 1;
 
-    // Calcular quantas cabem na bandeja
     const porLinha = Math.max(1, Math.floor(bandeja.x / dimX));
     const porColuna = Math.max(1, Math.floor(bandeja.y / dimY));
-    const qtdBandeja = Math.max(1, Math.floor(porLinha * porColuna * 0.8)); // 80% ocupação
+    const qtdBandeja = Math.max(1, Math.floor(porLinha * porColuna * 0.8));
 
     document.getElementById("cabe-bandeja").textContent = `Cabe na bandeja: ${qtdBandeja} unidades`;
     document.getElementById("volume-section").style.display = usaVolume ? "block" : "none";
@@ -427,15 +544,14 @@
   document.getElementById("margem_volume").addEventListener("change", calcularVolume);
   document.getElementById("taxa_setup").addEventListener("change", calcularVolume);
 
-  // Calcular ao carregar
   calcularVolume();
 
-  // Catálogo: mostrar/esconder seção de fotos
-  const chkCatalogo = document.getElementById("catalogo");
+  // Situação: mostrar fotos só quando publicado
+  const selSituacao = document.getElementById("situacao");
   const secaoFotos = document.getElementById("secao-fotos");
-  if (chkCatalogo && secaoFotos) {
-    chkCatalogo.addEventListener("change", () => {
-      secaoFotos.hidden = !chkCatalogo.checked;
+  if (selSituacao && secaoFotos) {
+    selSituacao.addEventListener("change", () => {
+      secaoFotos.hidden = selSituacao.value !== "publicado";
     });
   }
 
@@ -489,6 +605,13 @@
         if (r.ok) { thumb.remove(); atualizarBotaoFoto(); }
       } catch(e) { alert("Erro ao remover."); }
     });
+  }
+
+  // Seção com campo-erro abre automaticamente
+  const campoErro = document.querySelector(".com-erro");
+  if (campoErro) {
+    const secao = campoErro.closest("details.secao-produto");
+    if (secao) secao.open = true;
   }
 })();
 </script>

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block titulo %}Estoque — Morumbi 3D{% endblock %}
+{% block corpo %}bancada{% endblock %}
+{% block conteudo %}
+{% include "_topo.html" %}
+<main id="conteudo" class="pagina">
+  <h2 class="secao">Estoque</h2>
+
+  {% if alertas.total %}
+  <div class="cartao alerta-estoque">
+    <h3 class="subtitulo-estoque">Abaixo do mínimo ({{ alertas.total }})</h3>
+
+    {% if alertas.filamentos %}
+    <p class="tipo-alerta">Filamentos</p>
+    <div class="lista-alertas">
+      {% for f in alertas.filamentos %}
+      <a class="item-alerta" href="{{ url_for('movimentos_item', tipo='filamento', id_=f.id) }}">
+        <span class="bolinha" style="background:{{ cores.get(f.cor, '#B9BEC4') }}"></span>
+        <span class="cresce">{{ f.nome }}</span>
+        <span class="mono alerta">{{ f.saldo|round|int }} g</span>
+        <span class="fraco">mín. {{ f.minimo|round|int }} g</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if alertas.insumos %}
+    <p class="tipo-alerta">Insumos</p>
+    <div class="lista-alertas">
+      {% for i in alertas.insumos %}
+      <a class="item-alerta" href="{{ url_for('movimentos_item', tipo='insumo', id_=i.id) }}">
+        <span class="cresce">{{ i.nome }}</span>
+        <span class="mono alerta">{{ i.saldo|round(2) }} {{ i.unidade }}</span>
+        <span class="fraco">mín. {{ i.minimo|round(2) }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if alertas.produtos %}
+    <p class="tipo-alerta">Produtos</p>
+    <div class="lista-alertas">
+      {% for p in alertas.produtos %}
+      <a class="item-alerta" href="{{ url_for('movimentos_item', tipo='produto', id_=p.id) }}">
+        <span class="cresce">{{ p.nome }}</span>
+        <span class="mono alerta">{{ p.saldo|round|int }} un</span>
+        <span class="fraco">mín. {{ p.minimo|round|int }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="cartao" style="padding:16px">
+    <b style="color:var(--verde)">Tudo acima do mínimo.</b>
+    <span class="fraco">Nenhum filamento, insumo ou produto está abaixo do estoque mínimo.</span>
+  </div>
+  {% endif %}
+
+  <h3 class="subtitulo-estoque" style="margin-top:24px">Movimentações recentes</h3>
+  {% if recentes %}
+  <div class="cartao cartao-tabela"><div class="rolagem">
+    <table class="tabela">
+      <thead><tr>
+        <th>Item</th><th>Tipo</th><th class="num">Quantidade</th>
+        <th>Motivo</th><th>Data</th>
+      </tr></thead>
+      <tbody>
+        {% for m in recentes %}
+        <tr>
+          <td data-rotulo="Item" class="chave">
+            <a href="{{ url_for('movimentos_item', tipo=m.tipo, id_=m.alvo_id) }}">{{ m.nome_item or '—' }}</a>
+          </td>
+          <td data-rotulo="Tipo">
+            {% if m.tipo == 'filamento' %}Filamento
+            {% elif m.tipo == 'insumo' %}Insumo
+            {% else %}Produto{% endif %}
+          </td>
+          <td data-rotulo="Quantidade" class="num mono {{ 'entrada' if m.quantidade > 0 else 'saida' }}">
+            {{ '+' if m.quantidade > 0 else '' }}{{ m.quantidade|numero(2) }}
+          </td>
+          <td data-rotulo="Motivo">{{ rotulos_motivo.get(m.motivo, m.motivo) }}
+            {% if m.observacao %}<span class="fraco">· {{ m.observacao }}</span>{% endif %}
+          </td>
+          <td data-rotulo="Data" class="fraco">{{ m.criado_em|datahora }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  {% else %}
+  <div class="cartao cartao-vazio">
+    <b>Nenhuma movimentação registrada.</b>
+    <span>Compras, produção e ajustes manuais aparecem aqui.</span>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

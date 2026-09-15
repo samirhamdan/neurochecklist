@@ -109,6 +109,7 @@ ORDENS_PRODUTOS = (
     ("preco", "Preço", lambda p: p["conta"].preco),
     ("margem", "Margem", lambda p: p["conta"].margem_pct if p["conta"].completo else None),
     ("hora", "R$/h", lambda p: p["conta"].por_hora if p["conta"].completo else None),
+    ("estoque", "Estoque", "estoque"),
 )
 BUSCA_PRODUTOS = ("nome", "sku", "filamento_nome", "impressora_nome", "categoria")
 

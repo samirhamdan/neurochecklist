@@ -29,27 +29,42 @@ ESQUEMA = """
 CREATE TABLE IF NOT EXISTS pedidos (
     id          INTEGER PRIMARY KEY,
     cliente     TEXT NOT NULL,
+    cliente_id  INTEGER,
     canal       TEXT NOT NULL DEFAULT '',
+    id_no_canal TEXT,
     prazo       TEXT,
     valor       REAL,
-    status      TEXT NOT NULL DEFAULT 'novo',
+    desconto    REAL NOT NULL DEFAULT 0,
+    comissao    REAL,
+    valor_liquido REAL,
+    status      TEXT NOT NULL DEFAULT 'orcamento',
     observacao  TEXT DEFAULT '',
-    criado_em   TEXT NOT NULL
+    token       TEXT,
+    token_expira TEXT,
+    aceito_em   TEXT,
+    aceito_por  TEXT,
+    entregue_em TEXT,
+    criado_em   TEXT NOT NULL,
+    criado_por  TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_pedidos_status ON pedidos (status, prazo);
 
 CREATE TABLE IF NOT EXISTS pecas (
     id           INTEGER PRIMARY KEY,
     pedido_id    INTEGER REFERENCES pedidos (id) ON DELETE CASCADE,
+    produto_id   INTEGER,
     descricao    TEXT NOT NULL,
     produto      TEXT DEFAULT '',
     cor          TEXT DEFAULT '',
+    quantidade   REAL NOT NULL DEFAULT 1,
+    valor_unit   REAL,
     gramas_est   REAL,
     horas_est    REAL,
     gramas_real  REAL,
     horas_real   REAL,
-    status       TEXT NOT NULL DEFAULT 'na fila',
-    criado_em    TEXT NOT NULL
+    status       TEXT NOT NULL DEFAULT 'aguardando',
+    criado_em    TEXT NOT NULL,
+    criado_por   TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_pecas_status ON pecas (status);
 
@@ -95,12 +110,14 @@ CREATE TABLE IF NOT EXISTS produtos (
     caixa_z      REAL,
     minutos      REAL,
     filamento_id INTEGER REFERENCES filamentos (id),
+    impressora_id INTEGER REFERENCES impressoras (id),
     arquivo      TEXT NOT NULL DEFAULT '',
     malha_ok     INTEGER,
     malha_nota   INTEGER,
     preco        REAL,
     observacao   TEXT NOT NULL DEFAULT '',
     ativo        INTEGER NOT NULL DEFAULT 1,
+    situacao     TEXT NOT NULL DEFAULT 'rascunho',
     dimensao_x   REAL,
     dimensao_y   REAL,
     usa_preco_volume INTEGER NOT NULL DEFAULT 0,
@@ -108,6 +125,8 @@ CREATE TABLE IF NOT EXISTS produtos (
     taxa_setup   REAL NOT NULL DEFAULT 5.0,
     preco_fixo   REAL,
     catalogo     INTEGER NOT NULL DEFAULT 0,
+    estoque      REAL NOT NULL DEFAULT 0,
+    estoque_minimo REAL NOT NULL DEFAULT 0,
     criado_em    TEXT NOT NULL,
     criado_por   TEXT NOT NULL DEFAULT ''
 );
@@ -126,6 +145,19 @@ CREATE TABLE IF NOT EXISTS produto_insumos (
     quantidade REAL NOT NULL DEFAULT 1,
     PRIMARY KEY (produto_id, insumo_id)
 );
+
+CREATE TABLE IF NOT EXISTS variacoes (
+    id          INTEGER PRIMARY KEY,
+    produto_id  INTEGER NOT NULL REFERENCES produtos (id) ON DELETE CASCADE,
+    filamento_id INTEGER REFERENCES filamentos (id),
+    nome        TEXT NOT NULL DEFAULT '',
+    sku         TEXT,
+    preco_ajuste REAL,
+    ativo       INTEGER NOT NULL DEFAULT 1,
+    criado_em   TEXT NOT NULL,
+    criado_por  TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS ix_variacoes_produto ON variacoes (produto_id);
 
 CREATE TABLE IF NOT EXISTS compras (
     id         INTEGER PRIMARY KEY,
@@ -192,6 +224,7 @@ CREATE TABLE IF NOT EXISTS clientes (
     bairro        TEXT NOT NULL DEFAULT '',
     cidade        TEXT NOT NULL DEFAULT '',
     cep           TEXT NOT NULL DEFAULT '',
+    data_nascimento TEXT NOT NULL DEFAULT '',
     canal      TEXT NOT NULL DEFAULT '',
     observacao TEXT NOT NULL DEFAULT '',
     ativo      INTEGER NOT NULL DEFAULT 1,
@@ -393,6 +426,14 @@ CORES = {
     "Dourado": "#C9A227", "Prata": "#B9BEC4",
 }
 
+SITUACOES_PRODUTO = ("rascunho", "pronto", "publicado")
+
+ROTULOS_SITUACAO = {
+    "rascunho": "Rascunho",
+    "pronto": "Pronto",
+    "publicado": "Publicado",
+}
+
 SEGMENTOS = ("novo", "ativo", "recorrente", "vip", "inativo")
 
 ROTULOS_SEGMENTO = {
@@ -450,67 +491,27 @@ def _migrar(conn: sqlite3.Connection) -> None:
             (agora(),))
         conn.execute("DROP TABLE filamento")
 
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
-    if "minutos" not in colunas:
-        conn.execute("ALTER TABLE produtos ADD COLUMN minutos REAL")
+    # Renomeia status antigos que existam em bancos pre-P3.
+    for antigo, novo in (("na fila", "aguardando"), ("acabamento", "montagem")):
+        conn.execute("UPDATE pecas SET status = ? WHERE status = ?", (novo, antigo))
+    conn.execute("UPDATE pedidos SET status = 'orcamento' WHERE status = 'novo'")
+    conn.execute(
+        "UPDATE pedidos SET status = 'aprovado' WHERE status IN"
+        " ('na fila', 'imprimindo', 'acabamento', 'aguardando', 'montagem')")
 
-    # O pedido nasce sem saber de onde veio. Quatro colunas que um pedido
-    # antigo nunca mais teria de onde tirar -- e sem valor_liquido o
-    # relatorio de vendas mente, porque a comissao do marketplace sai do
-    # bolso do Samir e nao do cliente.
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(pedidos)")}
-    for coluna, tipo in (("cliente_id", "INTEGER"), ("id_no_canal", "TEXT"),
-                         ("comissao", "REAL"), ("valor_liquido", "REAL"),
-                         ("criado_por", "TEXT")):
-        if coluna not in colunas:
-            conn.execute(f"ALTER TABLE pedidos ADD COLUMN {coluna} {tipo}")
-
-    # QUANDO o pedido foi entregue. `criado_em` diz quando ele ENTROU, que num
-    # pedido de festa e ate dois meses antes -- e sem esta coluna o painel nao
-    # tem como responder "quanto entregamos neste mes".
-    if "entregue_em" not in colunas:
-        conn.execute("ALTER TABLE pedidos ADD COLUMN entregue_em TEXT")
-        # Pedido ja entregue antes desta coluna: a melhor data disponivel e a
-        # do historico, quando a ultima peca dele chegou em "entregue". Quem
-        # foi marcado entregue direto na tela do pedido nao tem historico e
-        # fica sem data -- e fica FORA do mes, que e melhor do que entrar num
-        # mes inventado.
-        conn.execute(
-            "UPDATE pedidos SET entregue_em = (SELECT MAX(h.criado_em) FROM historico h"
-            " JOIN pecas p ON p.id = h.peca_id"
-            " WHERE p.pedido_id = pedidos.id AND h.para = 'entregue')"
-            " WHERE status = 'entregue'")
+    # Preenche entregue_em para pedidos entregues antes da coluna existir.
+    conn.execute(
+        "UPDATE pedidos SET entregue_em = (SELECT MAX(h.criado_em) FROM historico h"
+        " JOIN pecas p ON p.id = h.peca_id"
+        " WHERE p.pedido_id = pedidos.id AND h.para = 'entregue')"
+        " WHERE status = 'entregue' AND entregue_em IS NULL")
 
     for tabela, coluna in (("filamentos", "preco_manual"), ("insumos", "valor_manual")):
         colunas = {r[1] for r in conn.execute(f"PRAGMA table_info({tabela})")}
         if colunas and coluna not in colunas:
             conn.execute(f"ALTER TABLE {tabela} ADD COLUMN {coluna} REAL")
-            # O que ja estava la foi digitado a mao: e esse o valor de reserva.
             origem = "preco_kg" if tabela == "filamentos" else "valor_unit"
             conn.execute(f"UPDATE {tabela} SET {coluna} = {origem}")
-
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(movimentos)")}
-    if colunas and "compra_id" not in colunas:
-        conn.execute("ALTER TABLE movimentos ADD COLUMN compra_id INTEGER")
-
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(pecas)")}
-    for coluna, tipo in (("produto_id", "INTEGER"), ("quantidade", "REAL"),
-                         ("valor_unit", "REAL"), ("criado_por", "TEXT")):
-        if coluna not in colunas:
-            conn.execute(f"ALTER TABLE pecas ADD COLUMN {coluna} {tipo}")
-    conn.execute("UPDATE pecas SET quantidade = 1 WHERE quantidade IS NULL")
-
-    # Situacao de pedido que na verdade era etapa de peca. "novo" virou
-    # orcamento; "na fila"/"imprimindo"/"acabamento" eram producao, e
-    # producao so acontece em pedido aprovado.
-    # Etapas renomeadas para o vocabulario do Samir (o do Sistema3D).
-    for antigo, novo in (("na fila", "aguardando"), ("acabamento", "montagem")):
-        conn.execute("UPDATE pecas SET status = ? WHERE status = ?", (novo, antigo))
-
-    conn.execute("UPDATE pedidos SET status = 'orcamento' WHERE status = 'novo'")
-    conn.execute(
-        "UPDATE pedidos SET status = 'aprovado' WHERE status IN"
-        " ('na fila', 'imprimindo', 'acabamento', 'aguardando', 'montagem')")
 
     # O estoque inicial vira o primeiro movimento. Assim o saldo e a soma dos
     # movimentos, sempre -- e da para provar que a coluna `gramas` nao
@@ -569,66 +570,69 @@ def _migrar(conn: sqlite3.Connection) -> None:
         # Ate o C4 so havia topo de bolo, entao todo template existente e topo.
         conn.execute("ALTER TABLE templates ADD COLUMN tipo TEXT NOT NULL DEFAULT 'topo'")
 
-    # Desconto em REAIS, e nao em porcentagem: e assim que o desconto e dado
-    # no balcao ("faco por 600"), e porcentagem obrigaria a arredondar duas
-    # vezes -- uma para achar o valor, outra para escrever no papel.
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(pedidos)")}
-    for coluna, tipo in (("desconto", "REAL NOT NULL DEFAULT 0"),
-                         ("token", "TEXT"), ("token_expira", "TEXT"),
-                         ("aceito_em", "TEXT"), ("aceito_por", "TEXT")):
-        if coluna not in colunas:
-            conn.execute(f"ALTER TABLE pedidos ADD COLUMN {coluna} {tipo}")
-    # Um token vale para UM orcamento. O indice unico e quem garante isso, e
-    # nao a funcao que sorteia -- sorteio repetido acontece.
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_pedidos_token"
                  " ON pedidos (token) WHERE token IS NOT NULL")
 
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
-    for coluna, tipo in (("dimensao_x", "REAL"), ("dimensao_y", "REAL"),
+    # P3: produtos antigos que tinham catalogo=1 viram publicados.
+    conn.execute("UPDATE produtos SET situacao = 'publicado'"
+                 " WHERE catalogo = 1 AND situacao = 'rascunho'"
+                 " AND catalogo IS NOT NULL")
+
+    # P6: movimento inicial do estoque de produto (mesmo padrao de filamentos/insumos).
+    sem_inicial_prod = conn.execute(
+        "SELECT id, criado_em, criado_por FROM produtos t"
+        " WHERE NOT EXISTS (SELECT 1 FROM movimentos m WHERE m.tipo = 'produto'"
+        " AND m.alvo_id = t.id AND m.motivo = 'inicial')").fetchall()
+    for linha in sem_inicial_prod:
+        conn.execute(
+            "INSERT INTO movimentos (tipo, alvo_id, quantidade, motivo, criado_em,"
+            " criado_por) VALUES ('produto', ?, 0, 'inicial', ?, ?)",
+            (linha["id"], linha["criado_em"] or agora(), linha["criado_por"] or "migracao"))
+
+    # -- P7: colunas que passaram do _migrar() para o CREATE TABLE. ---------
+    # Bancos criados antes do P7 ainda nao as tem; o ALTER so roda se faltarem.
+    colunas_pedidos = {r[1] for r in conn.execute("PRAGMA table_info(pedidos)")}
+    for coluna, tipo in (("cliente_id", "INTEGER"), ("id_no_canal", "TEXT"),
+                         ("comissao", "REAL"), ("valor_liquido", "REAL"),
+                         ("criado_por", "TEXT"), ("entregue_em", "TEXT"),
+                         ("desconto", "REAL NOT NULL DEFAULT 0"),
+                         ("token", "TEXT"), ("token_expira", "TEXT"),
+                         ("aceito_em", "TEXT"), ("aceito_por", "TEXT")):
+        if coluna not in colunas_pedidos:
+            conn.execute(f"ALTER TABLE pedidos ADD COLUMN {coluna} {tipo}")
+
+    colunas_pecas = {r[1] for r in conn.execute("PRAGMA table_info(pecas)")}
+    for coluna, tipo in (("produto_id", "INTEGER"), ("quantidade", "REAL"),
+                         ("valor_unit", "REAL"), ("criado_por", "TEXT")):
+        if coluna not in colunas_pecas:
+            conn.execute(f"ALTER TABLE pecas ADD COLUMN {coluna} {tipo}")
+    conn.execute("UPDATE pecas SET quantidade = 1 WHERE quantidade IS NULL")
+
+    colunas_produtos = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
+    for coluna, tipo in (("minutos", "REAL"),
+                         ("dimensao_x", "REAL"), ("dimensao_y", "REAL"),
                          ("usa_preco_volume", "INTEGER NOT NULL DEFAULT 0"),
                          ("margem_volume", "REAL NOT NULL DEFAULT 150"),
                          ("taxa_setup", "REAL NOT NULL DEFAULT 5.0"),
-                         ("preco_fixo", "REAL")):
-        if coluna not in colunas:
+                         ("preco_fixo", "REAL"),
+                         ("catalogo", "INTEGER NOT NULL DEFAULT 0"),
+                         ("impressora_id", "INTEGER"),
+                         ("situacao", "TEXT NOT NULL DEFAULT 'rascunho'"),
+                         ("estoque", "REAL NOT NULL DEFAULT 0"),
+                         ("estoque_minimo", "REAL NOT NULL DEFAULT 0")):
+        if coluna not in colunas_produtos:
             conn.execute(f"ALTER TABLE produtos ADD COLUMN {coluna} {tipo}")
 
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
-    if "catalogo" not in colunas:
-        conn.execute("ALTER TABLE produtos ADD COLUMN catalogo INTEGER NOT NULL DEFAULT 0")
+    colunas_movimentos = {r[1] for r in conn.execute("PRAGMA table_info(movimentos)")}
+    if "compra_id" not in colunas_movimentos:
+        conn.execute("ALTER TABLE movimentos ADD COLUMN compra_id INTEGER")
 
-    # P1: produto pode apontar para uma impressora. NULL = usa parametro global.
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(produtos)")}
-    if "impressora_id" not in colunas:
-        conn.execute("ALTER TABLE produtos ADD COLUMN impressora_id INTEGER"
-                     " REFERENCES impressoras (id)")
-
-    if "produto_fotos" not in tabelas:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS produto_fotos ("
-            " id INTEGER PRIMARY KEY,"
-            " produto_id INTEGER NOT NULL REFERENCES produtos (id) ON DELETE CASCADE,"
-            " ordem INTEGER NOT NULL DEFAULT 1,"
-            " arquivo TEXT NOT NULL,"
-            " criado_em TEXT NOT NULL)")
-
-    colunas = {r[1] for r in conn.execute("PRAGMA table_info(clientes)")}
+    colunas_clientes = {r[1] for r in conn.execute("PRAGMA table_info(clientes)")}
     for coluna in ("email", "cpf", "endereco", "complemento", "bairro",
                     "cidade", "cep", "data_nascimento"):
-        if coluna not in colunas:
+        if coluna not in colunas_clientes:
             conn.execute(f"ALTER TABLE clientes ADD COLUMN {coluna}"
                          " TEXT NOT NULL DEFAULT ''")
-
-    if "cliente_historico" not in tabelas:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS cliente_historico ("
-            " id INTEGER PRIMARY KEY,"
-            " cliente_id INTEGER NOT NULL REFERENCES clientes (id) ON DELETE CASCADE,"
-            " data TEXT NOT NULL DEFAULT '',"
-            " descricao TEXT NOT NULL,"
-            " criado_em TEXT NOT NULL,"
-            " criado_por TEXT NOT NULL DEFAULT '')")
-        conn.execute("CREATE INDEX IF NOT EXISTS ix_cliente_hist"
-                     " ON cliente_historico (cliente_id)")
 
     if not conn.execute("SELECT 1 FROM empresa WHERE id = 1").fetchone():
         conn.execute("INSERT INTO empresa (id, atualizado_em) VALUES (1, ?)", (agora(),))
@@ -1294,7 +1298,9 @@ def produtos(so_ativos: bool = True) -> list[dict]:
         linhas = conn.execute(
             "SELECT p.*, f.nome AS filamento_nome, f.cor AS filamento_cor,"
             " f.preco_kg AS filamento_preco_kg,"
-            " i.nome AS impressora_nome, i.custo_hora AS impressora_custo_hora"
+            " i.nome AS impressora_nome, i.custo_hora AS impressora_custo_hora,"
+            " (SELECT COUNT(*) FROM variacoes v"
+            "  WHERE v.produto_id = p.id AND v.ativo = 1) AS num_variacoes"
             " FROM produtos p LEFT JOIN filamentos f ON f.id = p.filamento_id"
             " LEFT JOIN impressoras i ON i.id = p.impressora_id"
             f" {onde} ORDER BY p.nome").fetchall()
@@ -1316,8 +1322,15 @@ def produto(id_: int) -> dict | None:
             "SELECT i.id, i.nome, i.unidade, i.valor_unit, pi.quantidade"
             " FROM produto_insumos pi JOIN insumos i ON i.id = pi.insumo_id"
             " WHERE pi.produto_id = ? ORDER BY i.nome", (id_,)).fetchall()
+        variacoes = conn.execute(
+            "SELECT v.*, f.nome AS filamento_nome, f.cor AS filamento_cor,"
+            " f.preco_kg AS filamento_preco_kg"
+            " FROM variacoes v LEFT JOIN filamentos f ON f.id = v.filamento_id"
+            " WHERE v.produto_id = ? ORDER BY v.nome, v.id",
+            (id_,)).fetchall()
     dados = dict(linha)
     dados["insumos"] = [dict(v) for v in vinculos]
+    dados["variacoes"] = [dict(v) for v in variacoes]
     return dados
 
 
@@ -1347,7 +1360,24 @@ def campos_produto(dados: dict) -> dict:
         taxa_setup=_numero(dados.get("taxa_setup")) or 5.0,
         preco_fixo=_numero(dados.get("preco_fixo")) or None,
         catalogo=1 if dados.get("catalogo", "") in (1, "1", "on") else 0,
+        situacao=dados.get("situacao", "rascunho") if dados.get("situacao") in SITUACOES_PRODUTO else "rascunho",
+        estoque_minimo=_numero(dados.get("estoque_minimo")) or 0,
     )
+
+
+def validar_publicacao(campos: dict) -> None:
+    """Impede que um produto vá ao catálogo sem os dados essenciais."""
+    if not campos.get("sku"):
+        raise ErroDeCampo("sku", "Produto publicado precisa de SKU.")
+    if not campos.get("filamento_id"):
+        raise ErroDeCampo("filamento_id", "Defina o filamento antes de publicar.")
+    if not campos.get("gramas") or campos["gramas"] <= 0:
+        raise ErroDeCampo("gramas", "Preencha o peso antes de publicar.")
+    if not campos.get("horas") or campos["horas"] <= 0:
+        raise ErroDeCampo("horas", "Preencha o tempo de impressão antes de publicar.")
+    preco = campos.get("preco") or campos.get("preco_fixo")
+    if not preco or preco <= 0:
+        raise ErroDeCampo("preco", "Defina um preço antes de publicar.")
 
 
 def salvar_produto(dados: dict, autor: str, id_: int | None = None,
@@ -1355,6 +1385,11 @@ def salvar_produto(dados: dict, autor: str, id_: int | None = None,
     campos = campos_produto(dados)
     if not campos["nome"]:
         raise ErroDeCampo("nome", "Dê um nome ao produto.")
+    if campos["situacao"] == "publicado":
+        validar_publicacao(campos)
+        campos["catalogo"] = 1
+        if id_:
+            _validar_variacoes_publicacao(id_)
     colunas = ", ".join(f"{c}=:{c}" for c in campos)
     with conectar() as conn:
         if id_:
@@ -1417,15 +1452,150 @@ def produtos_catalogo() -> list[dict]:
     with conectar() as conn:
         linhas = conn.execute(
             "SELECT p.id, p.nome, p.sku, p.categoria, p.preco, p.gramas, p.horas,"
-            " p.observacao, f.cor AS filamento_cor"
+            " p.observacao, f.cor AS filamento_cor, f.nome AS filamento_nome"
             " FROM produtos p LEFT JOIN filamentos f ON f.id = p.filamento_id"
             " WHERE p.catalogo = 1 AND p.ativo = 1 ORDER BY p.nome").fetchall()
+        ids_catalogo = [l["id"] for l in linhas]
+        variacoes_map: dict[int, list[dict]] = {}
+        if ids_catalogo:
+            marcadores = ",".join("?" for _ in ids_catalogo)
+            vars_all = conn.execute(
+                "SELECT v.*, f.nome AS filamento_nome, f.cor AS filamento_cor"
+                " FROM variacoes v LEFT JOIN filamentos f ON f.id = v.filamento_id"
+                " WHERE v.produto_id IN ({}) AND v.ativo = 1"
+                " ORDER BY v.nome, v.id".format(marcadores),
+                ids_catalogo).fetchall()
+            for v in vars_all:
+                variacoes_map.setdefault(v["produto_id"], []).append(dict(v))
     resultado = []
     for l in linhas:
         d = dict(l)
         d["fotos"] = fotos_produto(d["id"])
-        resultado.append(d)
+        vars_produto = variacoes_map.get(d["id"], [])
+        if vars_produto:
+            for v in vars_produto:
+                item = dict(d)
+                item["variacao_id"] = v["id"]
+                item["nome"] = d["nome"] + " — " + (v["nome"] or v["filamento_nome"] or "")
+                item["sku"] = v["sku"] or d["sku"]
+                item["filamento_cor"] = v["filamento_cor"]
+                if v["preco_ajuste"]:
+                    item["preco"] = v["preco_ajuste"]
+                resultado.append(item)
+        else:
+            resultado.append(d)
     return resultado
+
+
+def duplicar_produto(id_: int, autor: str) -> int:
+    """Cria uma cópia do produto, voltando ao rascunho."""
+    original = produto(id_)
+    if not original:
+        raise ValueError("Produto não encontrado.")
+    copia = {
+        "nome": original["nome"] + " (Cópia)",
+        "sku": "",
+        "categoria": original["categoria"] or "",
+        "gramas": str(original["gramas"]) if original["gramas"] else "",
+        "horas": str(original["horas"]) if original["horas"] else "",
+        "caixa_x": str(original["caixa_x"]) if original["caixa_x"] else "",
+        "caixa_y": str(original["caixa_y"]) if original["caixa_y"] else "",
+        "caixa_z": str(original["caixa_z"]) if original["caixa_z"] else "",
+        "minutos": str(original["minutos"]) if original["minutos"] else "",
+        "filamento_id": str(original["filamento_id"]) if original["filamento_id"] else "",
+        "impressora_id": str(original["impressora_id"]) if original["impressora_id"] else "",
+        "arquivo": original["arquivo"] or "",
+        "malha_ok": original["malha_ok"],
+        "malha_nota": str(original["malha_nota"]) if original["malha_nota"] else "",
+        "preco": str(original["preco"]) if original["preco"] else "",
+        "observacao": original["observacao"] or "",
+        "ativo": "1" if original["ativo"] else "0",
+        "dimensao_x": str(original["dimensao_x"]) if original["dimensao_x"] else "",
+        "dimensao_y": str(original["dimensao_y"]) if original["dimensao_y"] else "",
+        "usa_preco_volume": "1" if original["usa_preco_volume"] else "",
+        "margem_volume": str(original["margem_volume"]) if original["margem_volume"] else "",
+        "taxa_setup": str(original["taxa_setup"]) if original["taxa_setup"] else "",
+        "preco_fixo": str(original["preco_fixo"]) if original["preco_fixo"] else "",
+        "catalogo": "",
+        "situacao": "rascunho",
+    }
+    vinculos = [(v["id"], v["quantidade"]) for v in original.get("insumos", [])]
+    novo_id = salvar_produto(copia, autor, vinculos=vinculos)
+    with conectar() as conn:
+        vars_orig = conn.execute(
+            "SELECT * FROM variacoes WHERE produto_id = ?", (id_,)).fetchall()
+        for v in vars_orig:
+            conn.execute(
+                "INSERT INTO variacoes (produto_id, filamento_id, nome, sku,"
+                " preco_ajuste, ativo, criado_em, criado_por)"
+                " VALUES (?, ?, ?, NULL, ?, ?, ?, ?)",
+                (novo_id, v["filamento_id"], v["nome"],
+                 v["preco_ajuste"], v["ativo"], agora(), autor))
+        conn.commit()
+    return novo_id
+
+
+# --------------------------------------------------------- variações
+
+def variacoes_do_produto(produto_id: int) -> list[dict]:
+    with conectar() as conn:
+        linhas = conn.execute(
+            "SELECT v.*, f.nome AS filamento_nome, f.cor AS filamento_cor,"
+            " f.preco_kg AS filamento_preco_kg"
+            " FROM variacoes v LEFT JOIN filamentos f ON f.id = v.filamento_id"
+            " WHERE v.produto_id = ? ORDER BY v.nome, v.id",
+            (produto_id,)).fetchall()
+    return [dict(l) for l in linhas]
+
+
+def salvar_variacao(produto_id: int, dados_form: dict, autor: str) -> int:
+    nome = _limpo(dados_form.get("variacao_nome"))
+    filamento_id = (int(dados_form["variacao_filamento_id"])
+                    if _limpo(dados_form.get("variacao_filamento_id")) else None)
+    sku = _limpo(dados_form.get("variacao_sku")) or None
+    preco_ajuste = _numero(dados_form.get("variacao_preco")) or None
+    if not filamento_id:
+        raise ErroDeCampo("variacao_filamento_id",
+                          "Escolha o filamento da variação.")
+    with conectar() as conn:
+        if not conn.execute("SELECT 1 FROM produtos WHERE id = ?",
+                            (produto_id,)).fetchone():
+            raise ValueError("Produto não encontrado.")
+        cur = conn.execute(
+            "INSERT INTO variacoes (produto_id, filamento_id, nome, sku,"
+            " preco_ajuste, ativo, criado_em, criado_por)"
+            " VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
+            (produto_id, filamento_id, nome, sku, preco_ajuste,
+             agora(), autor))
+        conn.commit()
+    return int(cur.lastrowid)
+
+
+def excluir_variacao(variacao_id: int, produto_id: int) -> None:
+    with conectar() as conn:
+        conn.execute("DELETE FROM variacoes WHERE id = ? AND produto_id = ?",
+                     (variacao_id, produto_id))
+        conn.commit()
+
+
+def _validar_variacoes_publicacao(produto_id: int) -> None:
+    with conectar() as conn:
+        variacoes = conn.execute(
+            "SELECT * FROM variacoes WHERE produto_id = ? AND ativo = 1",
+            (produto_id,)).fetchall()
+    for v in variacoes:
+        if not v["filamento_id"]:
+            raise ErroDeCampo("variacao_filamento_id",
+                              "Variação \"{}\" precisa de filamento.".format(
+                                  v["nome"] or "(sem nome)"))
+        if not v["sku"]:
+            raise ErroDeCampo("variacao_sku",
+                              "Variação \"{}\" precisa de SKU para publicar.".format(
+                                  v["nome"] or "(sem nome)"))
+    skus = [v["sku"] for v in variacoes if v["sku"]]
+    if len(skus) != len(set(skus)):
+        raise ErroDeCampo("variacao_sku",
+                          "As variações têm SKUs duplicados.")
 
 
 # ------------------------------------------------------------ clientes
@@ -1895,7 +2065,8 @@ def mudar_situacao(id_: int, situacao: str, autor: str) -> None:
 # devolve o material sem precisar adivinhar quanto foi tirado, e o relatorio
 # de filamento gasto (sprint 7) sai de graca.
 
-CAMPO_SALDO = {"filamento": ("filamentos", "gramas"), "insumo": ("insumos", "quantidade")}
+CAMPO_SALDO = {"filamento": ("filamentos", "gramas"), "insumo": ("insumos", "quantidade"),
+                "produto": ("produtos", "estoque")}
 
 
 def _lancar(conn, tipo: str, alvo_id: int, quantidade: float, motivo: str,
@@ -1919,6 +2090,92 @@ def saldo_pelos_movimentos(tipo: str, alvo_id: int) -> float:
             "SELECT COALESCE(SUM(quantidade), 0) AS s FROM movimentos"
             " WHERE tipo = ? AND alvo_id = ?", (tipo, alvo_id)).fetchone()
     return round(float(linha["s"]), 4)
+
+
+ROTULOS_MOTIVO = {
+    "inicial": "Saldo inicial",
+    "compra": "Compra",
+    "producao": "Produção",
+    "refugo": "Refugo",
+    "ajuste": "Ajuste manual",
+}
+
+
+def movimentos_do_item(tipo: str, alvo_id: int, limite: int = 50) -> list[dict]:
+    with conectar() as conn:
+        linhas = conn.execute(
+            "SELECT * FROM movimentos WHERE tipo = ? AND alvo_id = ?"
+            " ORDER BY id DESC LIMIT ?", (tipo, alvo_id, limite)).fetchall()
+    return [dict(l) for l in linhas]
+
+
+def movimentos_recentes(limite: int = 30) -> list[dict]:
+    with conectar() as conn:
+        linhas = conn.execute(
+            "SELECT m.*,"
+            " CASE m.tipo WHEN 'filamento' THEN f.nome"
+            " WHEN 'insumo' THEN s.nome WHEN 'produto' THEN p.nome END AS nome_item"
+            " FROM movimentos m"
+            " LEFT JOIN filamentos f ON m.tipo = 'filamento' AND f.id = m.alvo_id"
+            " LEFT JOIN insumos s ON m.tipo = 'insumo' AND s.id = m.alvo_id"
+            " LEFT JOIN produtos p ON m.tipo = 'produto' AND p.id = m.alvo_id"
+            " WHERE m.motivo <> 'inicial'"
+            " ORDER BY m.id DESC LIMIT ?", (limite,)).fetchall()
+    return [dict(l) for l in linhas]
+
+
+def alertas_estoque() -> dict:
+    """Tudo que esta abaixo do minimo, separado por tipo."""
+    with conectar() as conn:
+        fils = conn.execute(
+            "SELECT id, nome, cor, gramas AS saldo, minimo"
+            " FROM filamentos WHERE ativo = 1 AND minimo > 0 AND gramas <= minimo"
+            " ORDER BY gramas / minimo").fetchall()
+        ins = conn.execute(
+            "SELECT id, nome, unidade, quantidade AS saldo, minimo"
+            " FROM insumos WHERE ativo = 1 AND minimo > 0 AND quantidade <= minimo"
+            " ORDER BY quantidade / minimo").fetchall()
+        prods = conn.execute(
+            "SELECT id, nome, estoque AS saldo, estoque_minimo AS minimo"
+            " FROM produtos WHERE ativo = 1 AND estoque_minimo > 0"
+            " AND estoque <= estoque_minimo ORDER BY estoque / estoque_minimo"
+        ).fetchall()
+    return {
+        "filamentos": [dict(f) for f in fils],
+        "insumos": [dict(i) for i in ins],
+        "produtos": [dict(p) for p in prods],
+        "total": len(fils) + len(ins) + len(prods),
+    }
+
+
+def ajustar_estoque(tipo: str, alvo_id: int, quantidade: float,
+                    observacao: str, autor: str) -> None:
+    if tipo not in CAMPO_SALDO:
+        raise ValueError(f"tipo desconhecido: {tipo}")
+    if quantidade == 0:
+        raise ErroDeCampo("quantidade", "Quantidade não pode ser zero.")
+    with conectar() as conn:
+        tabela, coluna = CAMPO_SALDO[tipo]
+        existe = conn.execute(f"SELECT 1 FROM {tabela} WHERE id = ?",
+                              (alvo_id,)).fetchone()
+        if not existe:
+            raise ValueError("item nao encontrado")
+        _lancar(conn, tipo, alvo_id, quantidade, "ajuste", autor,
+                observacao=observacao)
+        conn.commit()
+
+
+def nome_do_item(tipo: str, alvo_id: int) -> str | None:
+    campo = {"filamento": ("filamentos", "nome"),
+             "insumo": ("insumos", "nome"),
+             "produto": ("produtos", "nome")}
+    if tipo not in campo:
+        return None
+    tabela, col = campo[tipo]
+    with conectar() as conn:
+        linha = conn.execute(f"SELECT {col} FROM {tabela} WHERE id = ?",
+                             (alvo_id,)).fetchone()
+    return linha[col] if linha else None
 
 
 def _filamento_da_peca(conn, peca) -> int | None:

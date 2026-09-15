@@ -560,6 +560,32 @@ dl.numeros .destaque dd{font-size:20px;font-weight:600;color:var(--azul)}
   border:1px solid var(--linha-forte);border-radius:4px;
   background:var(--mesa);color:var(--tinta);
 }
+.lista-variacoes{display:flex;flex-direction:column;gap:2px}
+.linha-variacao{
+  display:flex;align-items:center;gap:10px;padding:8px 0;
+  border-bottom:1px solid var(--linha);font-size:14.5px;
+}
+.linha-variacao:last-child{border-bottom:none}
+.linha-variacao .cresce{flex:1 1 auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cor-amostra{
+  display:inline-block;width:14px;height:14px;border-radius:50%;
+  border:1px solid var(--linha-forte);vertical-align:middle;flex-shrink:0;
+}
+
+/* ---------- estoque ---------- */
+.alerta-estoque{padding:16px}
+.subtitulo-estoque{font-size:15px;font-weight:600;margin:0 0 12px}
+.tipo-alerta{font-size:13px;font-weight:600;color:var(--suave);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.5px}
+.tipo-alerta:first-of-type{margin-top:0}
+.lista-alertas{display:flex;flex-direction:column;gap:2px}
+.item-alerta{
+  display:flex;align-items:center;gap:10px;padding:6px 8px;
+  border-radius:4px;text-decoration:none;color:inherit;font-size:14.5px;
+}
+.item-alerta:hover{background:var(--bancada)}
+.item-alerta .cresce{flex:1 1 auto}
+.entrada{color:var(--verde);font-weight:600}
+.saida{color:var(--vermelho);font-weight:600}
 .recado.erro{
   border-left:3px solid var(--vermelho);background:var(--vermelho-fundo);
   color:var(--vermelho);padding:11px 14px;border-radius:0 4px 4px 0;margin-bottom:14px;
@@ -1025,6 +1051,30 @@ th a.ordenar.ativa .seta{visibility:visible;color:var(--azul)}
 }
 /* Filha de um grid de duas colunas: a barra atravessa as duas. */
 .duas-colunas > .acoes.principal{grid-column:1 / -1}
+.acao-extra{margin-top:8px;text-align:right}
+
+/* ---------- P4: seções colapsáveis do cadastro de produto ---------- */
+.secao-produto{
+  background:var(--mesa);border:1px solid var(--linha);border-radius:6px;
+  margin-bottom:4px;
+}
+.secao-produto > summary{
+  display:flex;align-items:center;gap:8px;
+  list-style:none;cursor:pointer;user-select:none;
+  font-size:14px;font-weight:600;letter-spacing:.01em;
+  color:var(--tinta);padding:14px 18px;border-radius:6px;
+  min-height:44px;
+}
+.secao-produto > summary::-webkit-details-marker{display:none}
+.secao-produto > summary::after{
+  content:"▸";margin-left:auto;font-size:11px;color:var(--suave);
+  transition:transform .15s ease;
+}
+.secao-produto[open] > summary::after{transform:rotate(90deg)}
+.secao-produto > summary:hover{background:var(--bancada)}
+.secao-produto .conteudo-secao{
+  padding:0 18px 18px;display:flex;flex-direction:column;gap:14px;
+}
 
 @media (max-width:900px){
   /* Sangra até a borda do cartão, para a linha de cima separar de verdade em
